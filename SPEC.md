@@ -422,3 +422,117 @@ Build dianggap selesai kalau:
 - Style fonts kalau Geist ga available di lokal.
 
 Selain itu: ikuti spec letter for letter. Kalau ada konflik antara spec dan "best practice umum", **ikuti spec**.
+
+---
+
+## Roadmap & future architecture
+
+Bagian ini **informational** — JANGAN diimplementasi di MVP. Tapi schema dan keputusan teknis di MVP harus aware bahwa fitur-fitur ini akan datang, supaya ga ada decision yang ngeblokir extensibility nanti.
+
+### Vision: Three-phase season economy
+
+Sistem ekonomi yang self-balancing dengan reset periodik (kayak "season" di game competitive).
+
+**Phase 1: Bootstrap** — `total_chip_in_system < max_pool`
+- Dealer dapet flat salary 100 (di-print dari udara).
+- Total chip di sistem naik tiap sesi.
+- Pemain baru gampang catch up.
+
+**Phase 2: Steady-state** — `total_chip_in_system >= max_pool`
+- Print mode mati. Dealer salary di-switch ke **rake** (% dari total chip masuk meja per sesi).
+- Total chip di sistem konstan (zero-sum dari sini).
+- Kompetisi makin ketat, menang = orang lain rugi.
+
+**Phase 3: Season end** — `sessions_in_season >= max_sessions`
+- Snapshot final balance semua pemain.
+- Leaderboard di-publish (rank by final balance).
+- Per-player stats di-snapshot (sesi main, kali dealer, total menang/kalah).
+- All balance reset ke 200. Season counter naik. Phase balik ke 1.
+
+### Pemain low-balance (<100) — sistem cooldown + spectator
+
+Di phase manapun, pemain dengan `balance < 100` di awal sesi:
+- **Ga bisa main beneran** (ga cukup buy-in).
+- Pilihan: **spectator** (cuma nonton) ATAU **dealer-tanpa-gaji** (bagi kartu, ga ikut taruhan, ga dapet salary).
+- Pemain yang udah jadi dealer di sesi sebelumnya kena **cooldown 2 sesi** sebelum bisa jadi dealer (berbayar) lagi. Cegah abuse "stuck di 0 trus minta dealer terus".
+
+Dealer eligibility (untuk dealer berbayar):
+1. `balance >= 100` (bisa bayar buy-in normal).
+2. Tidak dalam cooldown (`sessions_since_last_dealer >= 2`).
+
+### Season preset (admin tool)
+
+Owner pilih preset pas mulai season baru. Tiap preset bergerak 3 angka bareng (max pool, max sessions, rake rate):
+
+| Preset | Target durasi | Max pool | Max sessions | Rake rate |
+|---|---|---|---|---|
+| Sprint | ~1 minggu | 1500 | 15 | 15% |
+| Quick | ~2 minggu | 2500 | 25 | 10% |
+| Standard | ~3 minggu | 3500 | 40 | 10% |
+| Marathon | ~1 bulan | 5000 | 60 | 8% |
+| Custom | — | manual | manual | manual |
+
+Owner bisa override individual values dari preset terpilih. Asumsi pace: 4 pemain main 2-3x seminggu, 4-6 sesi per hari main.
+
+### Schema extensions yang bakal dibutuhkan (NANTI)
+
+```sql
+CREATE TABLE seasons (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  number INTEGER NOT NULL UNIQUE,
+  status TEXT CHECK (status IN ('active', 'ended')),
+  preset_name TEXT,             -- 'sprint'|'quick'|'standard'|'marathon'|'custom'
+  max_pool INTEGER NOT NULL,
+  max_sessions INTEGER NOT NULL,
+  rake_rate INTEGER NOT NULL,   -- as integer percentage, 10 = 10%
+  current_phase TEXT CHECK (current_phase IN ('bootstrap', 'steady')) DEFAULT 'bootstrap',
+  started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ended_at TIMESTAMPTZ
+);
+
+-- partial unique: cuma 1 season active
+CREATE UNIQUE INDEX one_active_season ON seasons (status) WHERE status = 'active';
+
+CREATE TABLE season_results (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  season_id UUID NOT NULL REFERENCES seasons(id),
+  player_id UUID NOT NULL REFERENCES players(id),
+  final_balance INTEGER NOT NULL,
+  rank INTEGER NOT NULL,
+  sessions_played INTEGER NOT NULL,
+  times_dealer INTEGER NOT NULL,
+  total_won INTEGER NOT NULL,
+  total_lost INTEGER NOT NULL,
+  UNIQUE (season_id, player_id)
+);
+
+-- alter ke tabel existing:
+ALTER TABLE sessions ADD COLUMN season_id UUID REFERENCES seasons(id);
+ALTER TABLE players ADD COLUMN last_dealer_session_id UUID REFERENCES sessions(id);
+```
+
+### Implikasi ke MVP (yang dibangun sekarang)
+
+Supaya schema sekarang ga ngeblokir migrasi nanti:
+
+1. **`sessions` table:** sisain ruang untuk `season_id` (nullable, akan di-backfill nanti pas season system aktif).
+2. **`players` table:** balance tetep di sini. Pas season end, balance di-snapshot ke `season_results` lalu di-reset.
+3. **`edit_log.action`:** JANGAN pake CHECK constraint pada kolom action. Pake TEXT bebas, validasi di app layer. Action enum bakal expand di milestone berikutnya: `'season_start'`, `'season_end'`, `'phase_transition'`, `'rake_collected'`, `'spectator_session'`.
+4. **Validasi total chip** (di fase end session): MVP cukup hitung kayak spec sekarang. Nanti pas phase 2 aktif, formula bakal include rake deduction.
+5. **Logic dealer di MVP:** dealer gratis buy-in. **Belum perlu** implement cooldown, balance check, atau rake. Tapi pas bikin UI selector dealer, sisain ruang buat "indicator" (misal disabled state + tooltip) yang di milestone 2 akan dipake buat indicate "cooldown" atau "balance insufficient".
+
+### Milestone ordering
+
+- **M1 (MVP, current spec):** Basic tracking, sesi, rebuy/undo, end session, admin. **Build this first. Deploy. Play.**
+- **M2:** Phase system (bootstrap → steady), rake calculation, cooldown dealer, balance < 100 → spectator/dealer-no-gaji.
+- **M3:** Season system (max sessions → reset), leaderboard, preset selector, season history.
+- **M4:** Per-player stats, achievements, export CSV, polish.
+
+Tiap milestone independent-ish — bisa skip M2 dan langsung ke M3 kalau owner mau, dengan adjustment.
+
+### Pertimbangan operasional
+
+- **Mid-season join:** kalau pemain baru join di tengah season aktif, kasih starter balance 200. Mereka mungkin underdog di leaderboard season itu, tapi season berikutnya fresh start. Acceptable.
+- **Variable rake rate:** owner bisa adjust rake rate di tengah season via admin kalau distribusi terlalu skew. Catat di edit_log.
+- **Force end season:** admin tool buat akhirin season early (kalo bosen). Snapshot tetep jalan normal.
+- **Owner data feedback loop:** setelah beberapa season jalan, owner punya data real (sesi per minggu, durasi season actual, etc) buat tune preset kustom. App ini bertumbuh dengan data sendiri.
