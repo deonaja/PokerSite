@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:migrate": "tsx db/migrate.ts"
+    "db:migrate": "node --env-file=.env.local --import=tsx/esm db/migrate.ts"
   },
   "dependencies": {
     "@vercel/postgres": "^0.10.0",
