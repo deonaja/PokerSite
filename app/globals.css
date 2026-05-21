@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base: #0a0a0a;
+  --bg-surface: #141414;
+  --bg-elevated: #1c1c1c;
+  --border-subtle: #2a2a2a;
+  --border-strong: #3a3a3a;
+  --text-primary: #e8e8e6;
+  --text-secondary: #9c9a92;
+  --text-tertiary: #6a6862;
+  --accent-felt: #1d6b4f;
+  --accent-felt-dim: #15493a;
+  --accent-warn: #b8860b;
+  --accent-danger: #a03030;
+  --accent-success: #5a8a40;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+}
+
+/* JetBrains Mono always gets tabular-nums */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
