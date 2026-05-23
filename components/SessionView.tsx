@@ -1,0 +1,217 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { rebuy, undoRebuy } from '@/lib/actions/session'
+import Sheet from './Sheet'
+import Button from './Button'
+
+interface Participant {
+  participant_id: string
+  player_id: string
+  player_name: string
+  is_dealer: boolean
+  rebuy_count: number
+}
+
+interface Props {
+  sessionId: string
+  participants: Participant[]
+}
+
+export default function SessionView({ sessionId, participants }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [rebuying, setRebuying] = useState<Participant | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  function confirmRebuy() {
+    if (!rebuying || isPending) return
+    const actorPlayerId = localStorage.getItem('playerId') ?? ''
+    startTransition(async () => {
+      const result = await rebuy({ sessionId, playerId: rebuying.player_id, actorPlayerId })
+      setRebuying(null)
+      if ('error' in result) setError(result.error)
+      else router.refresh()
+    })
+  }
+
+  function handleUndo(p: Participant) {
+    if (isPending) return
+    const actorPlayerId = localStorage.getItem('playerId') ?? ''
+    startTransition(async () => {
+      const result = await undoRebuy({ sessionId, playerId: p.player_id, actorPlayerId })
+      if ('error' in result) setError(result.error)
+      else router.refresh()
+    })
+  }
+
+  return (
+    <>
+      {/* Sticky header */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0.625rem 1rem',
+          borderBottom: '1px solid var(--border-subtle)',
+          background: 'var(--bg-base)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Link
+            href="/"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '44px',
+              minHeight: '44px',
+              fontSize: '1.125rem',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            ←
+          </Link>
+          <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+            Sesi aktif
+          </span>
+        </div>
+        <Link
+          href="/session/end"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 0.875rem',
+            minHeight: '36px',
+            borderRadius: '6px',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            background: 'var(--accent-danger)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          End
+        </Link>
+      </div>
+
+      {/* Error banner */}
+      {error && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.75rem 1rem',
+            background: 'var(--accent-danger)',
+            fontSize: '0.875rem',
+            color: 'var(--text-primary)',
+          }}
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0 0.25rem', fontSize: '1rem' }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Participants */}
+      <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {participants.map((p) => (
+          <div
+            key={p.participant_id}
+            style={{
+              padding: '0.875rem 1rem',
+              borderRadius: '8px',
+              border: `1px solid ${p.is_dealer ? 'var(--accent-felt)' : 'var(--border-subtle)'}`,
+              background: p.is_dealer ? 'var(--accent-felt-dim)' : 'var(--bg-surface)',
+            }}
+          >
+            {/* Name + dealer badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <span style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                {p.player_name}
+              </span>
+              {p.is_dealer && (
+                <span
+                  style={{
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    background: 'var(--accent-felt)',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  ★ DEALER
+                </span>
+              )}
+            </div>
+
+            {/* Rebuy count */}
+            <p
+              style={{
+                fontSize: '0.8125rem',
+                color: 'var(--text-secondary)',
+                marginBottom: '0.625rem',
+                fontFamily: 'var(--font-mono)',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              Rebuy: {p.rebuy_count}
+            </p>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <Button
+                variant="secondary"
+                disabled={isPending}
+                onClick={() => setRebuying(p)}
+                style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
+              >
+                Rebuy
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={isPending || p.rebuy_count === 0}
+                onClick={() => handleUndo(p)}
+                style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
+              >
+                Undo
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Rebuy confirmation sheet */}
+      <Sheet
+        isOpen={rebuying !== null}
+        onClose={() => !isPending && setRebuying(null)}
+        title={`Rebuy ${rebuying?.player_name ?? ''}?`}
+      >
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+          Balance kepotong 100.
+        </p>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <Button variant="secondary" fullWidth disabled={isPending} onClick={() => setRebuying(null)}>
+            Cancel
+          </Button>
+          <Button variant="primary" fullWidth disabled={isPending} onClick={confirmRebuy}>
+            {isPending ? 'Loading...' : 'Rebuy'}
+          </Button>
+        </div>
+      </Sheet>
+    </>
+  )
+}
