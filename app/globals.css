@@ -42,3 +42,13 @@ body {
 .font-mono {
   font-variant-numeric: tabular-nums;
 }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
