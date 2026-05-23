@@ -3,12 +3,12 @@ import type { Player } from '@/lib/types'
 import IdentityPicker from '@/components/IdentityPicker'
 
 async function getPlayers(): Promise<Player[]> {
-  const { rows } = await sql<Player>`
+  const rows = await sql`
     SELECT id, name, balance, created_at
     FROM players
     ORDER BY name ASC
   `
-  return rows
+  return rows as Player[]
 }
 
 export default async function IdentityPage() {

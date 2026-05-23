@@ -10,6 +10,7 @@
     "db:migrate": "node --env-file=.env.local --import=tsx/esm db/migrate.ts"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@vercel/postgres": "^0.10.0",
     "geist": "^1.7.0",
     "next": "^16.2.6",
