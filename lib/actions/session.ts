@@ -102,6 +102,66 @@ export async function undoRebuy({
   }
 }
 
+export async function endSession({
+  sessionId,
+  stacks,
+  actorPlayerId,
+}: {
+  sessionId: string
+  stacks: { playerId: string; finalStack: number }[]
+  actorPlayerId: string
+}): Promise<{ success: true } | { error: string }> {
+  const client = createDbClient()
+  await client.connect()
+  try {
+    await client.query('BEGIN')
+
+    const playerIds = stacks.map((s) => s.playerId)
+    const { rows: players } = await client.query<{ id: string; balance: number }>(
+      `SELECT id, balance FROM players WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
+      [playerIds]
+    )
+
+    const { rows: [session] } = await client.query<{ id: string }>(
+      `SELECT id FROM sessions WHERE id = $1 AND status = 'active'`,
+      [sessionId]
+    )
+    if (!session) { await client.query('ROLLBACK'); return { error: 'Sesi tidak aktif' } }
+
+    for (const { playerId, finalStack } of stacks) {
+      const player = players.find((p) => p.id === playerId)
+      if (!player) continue
+
+      await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [finalStack, playerId])
+      await client.query(
+        `UPDATE session_participants SET final_stack = $1 WHERE session_id = $2 AND player_id = $3`,
+        [finalStack, sessionId, playerId]
+      )
+      await client.query(
+        `INSERT INTO edit_log
+           (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
+         VALUES ($1, $2, $3, 'session_end', $4, $5, $6)`,
+        [sessionId, playerId, actorPlayerId, player.balance, player.balance + finalStack,
+          JSON.stringify({ final_stack: finalStack })]
+      )
+    }
+
+    await client.query(
+      `UPDATE sessions SET status = 'ended', ended_at = now() WHERE id = $1`,
+      [sessionId]
+    )
+
+    await client.query('COMMIT')
+    return { success: true }
+  } catch (e) {
+    await client.query('ROLLBACK')
+    console.error('endSession error:', e)
+    return { error: 'Gagal mengakhiri sesi' }
+  } finally {
+    await client.end()
+  }
+}
+
 interface StartSessionInput {
   playerIds: string[]
   dealerId: string
