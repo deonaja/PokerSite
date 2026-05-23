@@ -102,6 +102,37 @@ export async function undoRebuy({
   }
 }
 
+export async function forceEndSession({
+  sessionId,
+  actorPlayerId,
+}: {
+  sessionId: string
+  actorPlayerId: string
+}): Promise<{ success: true } | { error: string }> {
+  const client = createDbClient()
+  await client.connect()
+  try {
+    await client.query('BEGIN')
+    const { rowCount } = await client.query(
+      `UPDATE sessions SET status = 'ended', ended_at = now() WHERE id = $1 AND status = 'active'`,
+      [sessionId]
+    )
+    if (!rowCount) { await client.query('ROLLBACK'); return { error: 'Sesi tidak ditemukan atau sudah ended' } }
+    await client.query(
+      `INSERT INTO edit_log (session_id, actor_player_id, action) VALUES ($1, $2, 'admin_session_force_end')`,
+      [sessionId, actorPlayerId || null]
+    )
+    await client.query('COMMIT')
+    return { success: true }
+  } catch (e) {
+    await client.query('ROLLBACK')
+    console.error('forceEndSession error:', e)
+    return { error: 'Gagal force-end sesi' }
+  } finally {
+    await client.end()
+  }
+}
+
 export async function endSession({
   sessionId,
   stacks,
