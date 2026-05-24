@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests',
@@ -9,6 +9,9 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // Mobile viewport (iPhone SE size), Chromium engine
+    viewport: { width: 375, height: 667 },
+    browserName: 'chromium',
   },
   webServer: {
     command: 'pnpm dev',
@@ -19,13 +22,6 @@ export default defineConfig({
   globalSetup: './tests/global-setup.ts',
   globalTeardown: './tests/global-teardown.ts',
   projects: [
-    {
-      name: 'mobile',
-      use: {
-        ...devices['iPhone SE'],
-        // override device's hasTouch so regular click() works
-        hasTouch: false,
-      },
-    },
+    { name: 'mobile' },
   ],
 })

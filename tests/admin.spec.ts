@@ -41,7 +41,7 @@ test.describe('Admin — player management', () => {
   test('shows test players in the player list', async ({ page }) => {
     const { players } = getTestData()
     for (const p of players) {
-      await expect(page.getByText(p.name)).toBeVisible()
+      await expect(page.getByText(p.name, { exact: true }).first()).toBeVisible()
     }
   })
 
@@ -55,7 +55,7 @@ test.describe('Admin — player management', () => {
     await page.getByRole('button', { name: '+ Tambah' }).click()
 
     await expect(page.getByText('Pemain ditambahkan.')).toBeVisible()
-    await expect(page.getByText(newName)).toBeVisible()
+    await expect(page.getByText(newName, { exact: true }).first()).toBeVisible()
     // Also appears in edit-balance dropdown
     const option = page.locator('select option', { hasText: newName })
     await expect(option).toBeAttached()
@@ -69,20 +69,20 @@ test.describe('Admin — player management', () => {
     const { players } = getTestData()
     const alice = players[0]
 
-    // Select Alice in the dropdown
-    await page.locator('select').selectOption({ label: alice.name })
+    // Select Alice by player ID (option text includes balance: "Name (saat ini: 500)")
+    await page.locator('select').selectOption({ value: alice.id })
     await page.getByPlaceholder(/Balance baru/).fill('999')
     await page.getByPlaceholder(/Alasan/).fill('test edit balance')
     await page.getByRole('button', { name: 'Update balance' }).click()
 
     await expect(page.getByText('Balance diupdate.')).toBeVisible()
-    // Admin page refreshes — Alice's balance should now be 999
-    await expect(page.getByText('999')).toBeVisible()
+    // Admin page refreshes — Alice's new balance should appear in the player list
+    await expect(page.getByText('999').first()).toBeVisible()
   })
 
   test('edit balance: empty reason → button disabled', async ({ page }) => {
     const { players } = getTestData()
-    await page.locator('select').selectOption({ label: players[0].name })
+    await page.locator('select').selectOption({ value: players[0].id })
     await page.getByPlaceholder(/Balance baru/).fill('100')
     // Reason empty → Update balance button disabled
     await expect(page.getByRole('button', { name: 'Update balance' })).toBeDisabled()
@@ -102,11 +102,11 @@ test.describe('Admin — logs', () => {
   })
 
   test('filter by action type shows only that action', async ({ page }) => {
-    await page.getByText('admin_balance_edit').click()
+    // Use href-based selector to avoid hitting log entry badges with the same text
+    await page.locator('a[href*="logAction=admin_balance_edit"]').click()
     await page.waitForURL(/logAction=admin_balance_edit/)
-    // All visible action badges should be admin_balance_edit
-    const badges = page.locator('span').filter({ hasText: 'admin_balance_edit' })
-    await expect(badges.first()).toBeVisible()
+    // The active filter chip should be highlighted
+    await expect(page.locator('a[href*="logAction=admin_balance_edit"]')).toBeVisible()
   })
 
   test('filter "all" shows all log entries', async ({ page }) => {

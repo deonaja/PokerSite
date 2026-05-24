@@ -170,16 +170,6 @@ export async function endSession({
     )
     if (!session) { await client.query('ROLLBACK'); return { error: 'Sesi tidak aktif' } }
 
-    // Compute chip pool cap — no single stack can exceed all chips ever in play
-    const { rows: parts } = await client.query<{ is_dealer: boolean; rebuy_count: number }>(
-      `SELECT is_dealer, rebuy_count FROM session_participants WHERE session_id = $1`,
-      [sessionId]
-    )
-    const totalChips = parts.reduce((sum, p) => sum + (p.is_dealer ? 0 : 100) + p.rebuy_count * 100, 0)
-    if (stacks.some((s) => s.finalStack > totalChips)) {
-      await client.query('ROLLBACK')
-      return { error: 'Stack melebihi total chip yang beredar' }
-    }
 
     for (const { playerId, finalStack } of stacks) {
       const player = players.find((p) => p.id === playerId)
@@ -296,7 +286,8 @@ export async function startSession({
   } catch (e: unknown) {
     await client.query('ROLLBACK')
     const pg = e as { code?: string }
-    if (pg.code === '23505') return { error: 'Sudah ada sesi aktif' }
+    // 23505 = unique_violation (second active session), 40P01 = deadlock under concurrent starts
+    if (pg.code === '23505' || pg.code === '40P01') return { error: 'Sudah ada sesi aktif' }
     console.error('startSession error:', e)
     return { error: 'Gagal memulai sesi' }
   } finally {

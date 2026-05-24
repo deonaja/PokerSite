@@ -7,12 +7,16 @@ export function getTestData(): TestData {
   return JSON.parse(readFileSync(resolve(process.cwd(), '.test-data.json'), 'utf-8')) as TestData
 }
 
-/** Set player identity in localStorage (avoids the /identity redirect) */
+/**
+ * Set player identity in localStorage (avoids the /identity redirect).
+ * Uses addInitScript so it runs before the next page.goto() — safe to call
+ * before any navigation.
+ */
 export async function setIdentity(page: Page, player: { id: string; name: string }) {
-  await page.evaluate(({ id, name }) => {
+  await page.addInitScript(({ id, name }: { id: string; name: string }) => {
     localStorage.setItem('playerId', id)
     localStorage.setItem('playerName', name)
-  }, player)
+  }, { id: player.id, name: player.name })
 }
 
 /** Clear identity so the layout redirects to /identity */

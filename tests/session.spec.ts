@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { neon } from '@neondatabase/serverless'
 import { getTestData, setIdentity, clickLabelFor } from './helpers'
 
 test.describe('Session setup — validation', () => {
@@ -52,6 +53,15 @@ test.describe('Full session flow', () => {
   const alice = players[0] // will be dealer (free buy-in)
   const bob = players[1]   // pays buy-in (balance: 500 → 400)
 
+  test.beforeAll(async () => {
+    // Clean up any stale active session left by a previous test or run (e.g. concurrency tests).
+    // The setup page doesn't redirect when a session exists, so we go straight to the DB.
+    try {
+      const sql = neon(process.env.DATABASE_URL!)
+      await sql`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`
+    } catch {}
+  })
+
   test.beforeEach(async ({ page }) => {
     await setIdentity(page, alice)
   })
@@ -73,7 +83,7 @@ test.describe('Full session flow', () => {
     await page.waitForURL('**/session')
 
     await expect(page.getByText('Sesi aktif')).toBeVisible()
-    await expect(page.getByText(alice.name)).toBeVisible()
+    await expect(page.getByRole('main').getByText(alice.name)).toBeVisible()
     await expect(page.getByText(bob.name)).toBeVisible()
     // Alice is dealer
     await expect(page.getByText('★ DEALER')).toBeVisible()
@@ -90,31 +100,40 @@ test.describe('Full session flow', () => {
 
   test('rebuy: sheet opens, confirm decreases bob balance, rebuy_count → 1', async ({ page }) => {
     await page.goto('/session')
-    const bobSection = page.locator('div').filter({ hasText: bob.name }).last()
-    await bobSection.getByRole('button', { name: 'Rebuy' }).click()
+    // Participant cards are uniquely identified by having a "Rebuy: N" paragraph inside
+    const bobCard = page.locator('div').filter({
+      has: page.locator('p', { hasText: /^Rebuy: \d+$/ }),
+    }).filter({ hasText: bob.name }).last()
+
+    await bobCard.getByRole('button', { name: 'Rebuy' }).click()
 
     // Sheet opens
     await expect(page.getByText('Balance kepotong 100')).toBeVisible()
-    // Confirm rebuy (the sheet's Rebuy button)
+    // Confirm in sheet — use the sheet's Rebuy button (last in DOM, rendered after participant list)
     await page.getByRole('button', { name: 'Rebuy' }).last().click()
 
-    // Rebuy count updates
-    await expect(bobSection.getByText('Rebuy: 1')).toBeVisible({ timeout: 5000 })
+    // Poll updates within 2s
+    await expect(bobCard.getByText('Rebuy: 1')).toBeVisible({ timeout: 5000 })
   })
 
   test('undo rebuy: rebuy_count returns to 0', async ({ page }) => {
     await page.goto('/session')
-    const bobSection = page.locator('div').filter({ hasText: bob.name }).last()
-    // Undo the rebuy done in previous test
-    await bobSection.getByRole('button', { name: 'Undo' }).click()
-    await expect(bobSection.getByText('Rebuy: 0')).toBeVisible({ timeout: 5000 })
+    const bobCard = page.locator('div').filter({
+      has: page.locator('p', { hasText: /^Rebuy: \d+$/ }),
+    }).filter({ hasText: bob.name }).last()
+
+    await bobCard.getByRole('button', { name: 'Undo' }).click()
+    await expect(bobCard.getByText('Rebuy: 0')).toBeVisible({ timeout: 5000 })
   })
 
   test('undo button is disabled when rebuy_count is 0', async ({ page }) => {
     await page.goto('/session')
-    const aliceSection = page.locator('div').filter({ hasText: alice.name }).last()
-    // Alice has 0 rebuys → Undo disabled
-    await expect(aliceSection.getByRole('button', { name: 'Undo' })).toBeDisabled()
+    const aliceCard = page.locator('div').filter({
+      has: page.locator('p', { hasText: /^Rebuy: \d+$/ }),
+    }).filter({ hasText: alice.name }).last()
+
+    // Alice is dealer with 0 rebuys → Undo disabled
+    await expect(aliceCard.getByRole('button', { name: 'Undo' })).toBeDisabled()
   })
 
   test('end session: input stacks → recap → confirm → redirects home', async ({ page }) => {
@@ -185,8 +204,13 @@ test.describe('Session end — back navigation', () => {
 
     // Ensure a session is active — if previous test left one, go with it
     await page.goto('/')
-    const sessionCard = page.getByText('Sesi sedang berjalan')
-    const hasSession = await sessionCard.isVisible().catch(() => false)
+    let hasSession: boolean
+    try {
+      await expect(page.getByText('Sesi sedang berjalan')).toBeVisible({ timeout: 4000 })
+      hasSession = true
+    } catch {
+      hasSession = false
+    }
 
     if (!hasSession) {
       await page.goto('/session/setup')
@@ -201,7 +225,7 @@ test.describe('Session end — back navigation', () => {
 
     // Step 1: input 150
     await page.locator('input[type="number"]').fill('150')
-    await page.getByRole('button', { name: /Next|recap/ }).click()
+    await page.getByRole('button', { name: 'Next →' }).click()
 
     // Step 2: input 100
     await page.locator('input[type="number"]').fill('100')
@@ -218,7 +242,7 @@ test.describe('Session end — back navigation', () => {
     await expect(page.locator('input[type="number"]')).toHaveValue('150')
 
     // Confirm to clean up
-    await page.getByRole('button', { name: /Next|recap/ }).click()
+    await page.getByRole('button', { name: 'Next →' }).click()
     await page.locator('input[type="number"]').fill('100')
     await page.getByRole('button', { name: /recap/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()

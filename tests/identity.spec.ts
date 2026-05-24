@@ -42,8 +42,8 @@ test.describe('Identity flow', () => {
   test('dashboard header shows "Hi, [name]" after identity is set', async ({ page }) => {
     await setIdentity(page, alice)
     await page.goto('/')
-    await expect(page.getByText('Hi,')).toBeVisible()
-    await expect(page.getByText(alice.name)).toBeVisible()
+    await expect(page.locator('header').getByText('Hi,')).toBeVisible()
+    await expect(page.locator('header').getByText(alice.name)).toBeVisible()
   })
 
   test('"ganti identitas" navigates back to /identity', async ({ page }) => {

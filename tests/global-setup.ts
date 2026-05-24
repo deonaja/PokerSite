@@ -20,6 +20,10 @@ async function globalSetup() {
   const sql = neon(dbUrl)
   const runId = Date.now()
 
+  // Clean up any stale active sessions from previous test runs
+  await sql`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`
+  console.log('[setup] Cleared any stale active sessions')
+
   const names = ['Alice', 'Bob', 'Charlie']
   const players: TestData['players'] = []
 
