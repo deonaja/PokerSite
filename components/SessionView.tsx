@@ -4,26 +4,23 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { rebuy, undoRebuy } from '@/lib/actions/session'
+import { usePoll } from '@/lib/usePoll'
 import Sheet from './Sheet'
 import Button from './Button'
-
-interface Participant {
-  participant_id: string
-  player_id: string
-  player_name: string
-  is_dealer: boolean
-  rebuy_count: number
-}
+import type { PollParticipant, PollResponse } from '@/lib/types'
 
 interface Props {
   sessionId: string
-  participants: Participant[]
+  initial: PollResponse
 }
 
-export default function SessionView({ sessionId, participants }: Props) {
+export default function SessionView({ sessionId, initial }: Props) {
   const router = useRouter()
+  const { activeSession } = usePoll(initial)
+  const participants: PollParticipant[] = activeSession?.participants ?? []
+
   const [isPending, startTransition] = useTransition()
-  const [rebuying, setRebuying] = useState<Participant | null>(null)
+  const [rebuying, setRebuying] = useState<PollParticipant | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   function confirmRebuy() {
@@ -37,7 +34,7 @@ export default function SessionView({ sessionId, participants }: Props) {
     })
   }
 
-  function handleUndo(p: Participant) {
+  function handleUndo(p: PollParticipant) {
     if (isPending) return
     const actorPlayerId = localStorage.getItem('playerId') ?? ''
     startTransition(async () => {

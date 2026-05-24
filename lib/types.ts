@@ -38,3 +38,18 @@ export interface EditLog {
 export interface SessionWithParticipants extends Session {
   participants: (SessionParticipant & { player: Player })[]
 }
+
+// Used by /api/poll response
+export interface PollParticipant {
+  participant_id: string
+  player_id: string
+  player_name: string
+  is_dealer: boolean
+  rebuy_count: number
+  final_stack: number | null
+}
+
+export interface PollResponse {
+  players: Player[]
+  activeSession: { id: string; participants: PollParticipant[] } | null
+}

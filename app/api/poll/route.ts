@@ -1,8 +1,8 @@
+import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import type { Player, PollParticipant, PollResponse } from '@/lib/types'
-import DashboardClient from '@/components/DashboardClient'
 
-async function getDashboardData(): Promise<PollResponse> {
+export async function GET() {
   const [players, sessions] = await Promise.all([
     sql`SELECT id, name, balance, created_at FROM players ORDER BY name ASC`,
     sql`SELECT id FROM sessions WHERE status = 'active' LIMIT 1`,
@@ -18,7 +18,7 @@ async function getDashboardData(): Promise<PollResponse> {
       FROM session_participants sp
       JOIN players p ON p.id = sp.player_id
       WHERE sp.session_id = ${activeSessionRow.id}
-      ORDER BY p.name ASC
+      ORDER BY sp.is_dealer DESC, p.name ASC
     `
     activeSession = {
       id: activeSessionRow.id,
@@ -26,13 +26,12 @@ async function getDashboardData(): Promise<PollResponse> {
     }
   }
 
-  return {
+  const body: PollResponse = {
     players: players as unknown as Player[],
     activeSession,
   }
-}
 
-export default async function DashboardPage() {
-  const initial = await getDashboardData()
-  return <DashboardClient initial={initial} />
+  return NextResponse.json(body, {
+    headers: { 'Cache-Control': 'no-store' },
+  })
 }
