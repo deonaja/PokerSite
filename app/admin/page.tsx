@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation'
 import { sql } from '@/lib/db'
 import type { Player } from '@/lib/types'
 import BalanceDisplay from '@/components/BalanceDisplay'
@@ -19,8 +18,9 @@ const ACTION_COLORS: Record<string, string> = {
   admin_session_force_end: 'var(--accent-danger)',
 }
 
+const ACTION_TYPES = ['all', 'buy_in', 'buy_in_dealer_free', 'rebuy', 'rebuy_undo', 'session_end', 'admin_balance_edit', 'admin_player_add', 'admin_session_force_end']
+
 interface SearchParams {
-  key?: string
   logPage?: string
   logAction?: string
 }
@@ -31,11 +31,12 @@ export default async function AdminPage({
   searchParams: Promise<SearchParams>
 }) {
   const params = await searchParams
-  if (params.key !== process.env.ADMIN_KEY) notFound()
+  // Auth is handled by middleware — page renders only when cookie is valid
 
-  const logPage = Math.max(1, parseInt(params.logPage ?? '1', 10))
-  const logAction = params.logAction && params.logAction !== 'all' ? params.logAction : null
-  const offset = (logPage - 1) * PAGE_SIZE
+  const rawPage = Math.max(1, parseInt(params.logPage ?? '1', 10))
+  const rawAction = params.logAction ?? 'all'
+  const logAction = ACTION_TYPES.includes(rawAction) && rawAction !== 'all' ? rawAction : null
+  const offset = (rawPage - 1) * PAGE_SIZE
 
   const [players, sessions, logs, logCount] = await Promise.all([
     sql`SELECT id, name, balance FROM players ORDER BY name ASC`,
@@ -67,9 +68,9 @@ export default async function AdminPage({
   const activeSessionId = (sessions as unknown as { id: string }[])[0]?.id ?? null
   const totalLogs = (logCount as unknown as { cnt: number }[])[0]?.cnt ?? 0
   const totalPages = Math.max(1, Math.ceil(totalLogs / PAGE_SIZE))
+  const logPage = Math.min(rawPage, totalPages)
 
-  const baseUrl = `/admin?key=${params.key}`
-  const actionTypes = ['all', 'buy_in', 'buy_in_dealer_free', 'rebuy', 'rebuy_undo', 'session_end', 'admin_balance_edit', 'admin_player_add', 'admin_session_force_end']
+  const baseUrl = '/admin'
 
   const cell: React.CSSProperties = { padding: '0.625rem 0.75rem', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'top' }
 
@@ -110,10 +111,10 @@ export default async function AdminPage({
 
         {/* Filter */}
         <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
-          {actionTypes.map((a) => {
-            const active = (params.logAction ?? 'all') === a
+          {ACTION_TYPES.map((a) => {
+            const active = (rawAction) === a
             return (
-              <a key={a} href={`${baseUrl}&logAction=${a}&logPage=1`} style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '0.6875rem', fontWeight: active ? 600 : 400, background: active ? 'var(--accent-felt)' : 'var(--bg-elevated)', color: active ? 'var(--text-primary)' : 'var(--text-secondary)', border: '1px solid var(--border-subtle)', textDecoration: 'none' }}>
+              <a key={a} href={`${baseUrl}?logAction=${a}&logPage=1`} style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '0.6875rem', fontWeight: active ? 600 : 400, background: active ? 'var(--accent-felt)' : 'var(--bg-elevated)', color: active ? 'var(--text-primary)' : 'var(--text-secondary)', border: '1px solid var(--border-subtle)', textDecoration: 'none' }}>
                 {a}
               </a>
             )
@@ -164,10 +165,10 @@ export default async function AdminPage({
           <span style={{ color: 'var(--text-tertiary)' }}>Hal {logPage}/{totalPages}</span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             {logPage > 1 && (
-              <a href={`${baseUrl}&logAction=${params.logAction ?? 'all'}&logPage=${logPage - 1}`} style={{ color: 'var(--text-secondary)', textDecoration: 'none', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>← Prev</a>
+              <a href={`${baseUrl}?logAction=${rawAction}&logPage=${logPage - 1}`} style={{ color: 'var(--text-secondary)', textDecoration: 'none', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>← Prev</a>
             )}
             {logPage < totalPages && (
-              <a href={`${baseUrl}&logAction=${params.logAction ?? 'all'}&logPage=${logPage + 1}`} style={{ color: 'var(--text-secondary)', textDecoration: 'none', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>Next →</a>
+              <a href={`${baseUrl}?logAction=${rawAction}&logPage=${logPage + 1}`} style={{ color: 'var(--text-secondary)', textDecoration: 'none', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>Next →</a>
             )}
           </div>
         </div>
