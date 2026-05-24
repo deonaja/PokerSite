@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Player } from '@/lib/types'
 import Button from './Button'
@@ -12,18 +12,23 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [dealerId, setDealerId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
 
   function togglePlayer(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
         next.delete(id)
-        if (dealerId === id) setDealerId(null)
       } else {
         next.add(id)
       }
       return next
     })
+    setDealerId((prev) => (prev === id ? null : prev))
   }
 
   const selectedPlayers = players.filter((p) => selectedIds.has(p.id))
@@ -77,9 +82,13 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
           {players.map((p) => (
             <label key={p.id} style={rowStyle(selectedIds.has(p.id))}>
+              {/* Always uncontrolled — React won't reset on hydration.
+                  useEffect syncs pre-hydration clicks; onChange handles post-hydration. */}
               <input
                 type="checkbox"
+                data-player-id={p.id}
                 checked={selectedIds.has(p.id)}
+                disabled={!isHydrated || isPending}
                 onChange={() => togglePlayer(p.id)}
                 style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
               />
@@ -103,6 +112,7 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
                   name="dealer"
                   value={p.id}
                   checked={dealerId === p.id}
+                  disabled={!isHydrated || isPending}
                   onChange={() => setDealerId(p.id)}
                   style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
                 />
@@ -134,7 +144,7 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
           background: 'var(--bg-base)',
         }}
       >
-        <Button fullWidth disabled={!canStart || isPending} onClick={handleSubmit}>
+        <Button fullWidth disabled={!isHydrated || !canStart || isPending} onClick={handleSubmit}>
           {isPending ? 'Memulai...' : 'Mulai'}
         </Button>
       </div>

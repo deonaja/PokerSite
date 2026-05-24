@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import type { TestData } from './global-setup'
 
 export function getTestData(): TestData {
@@ -33,7 +33,16 @@ export async function clearIdentity(page: Page) {
  * Works for both the player-select checkboxes and dealer radio buttons.
  */
 export async function clickLabelFor(page: Page, text: string) {
-  await page.locator('label', { hasText: text }).first().click()
+  const label = page.locator('label', { hasText: text }).first()
+  const input = label.locator('input').first()
+  await input.waitFor({ state: 'visible' })
+  await expect(input).toBeEnabled({ timeout: 10_000 })
+  const inputType = await input.getAttribute('type')
+  if (inputType === 'checkbox') {
+    await input.click()
+    return
+  }
+  await input.check()
 }
 
 /** Admin page URL (cookie auth — first call must include ?key=) */

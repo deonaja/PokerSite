@@ -177,7 +177,7 @@ export default function SessionView({ sessionId, initial }: Props) {
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <Button
                 variant="secondary"
-                disabled={isPending || !isHydrated}
+                disabled={!isHydrated || isPending}
                 onClick={() => setRebuying(p)}
                 style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
               >
@@ -185,7 +185,7 @@ export default function SessionView({ sessionId, initial }: Props) {
               </Button>
               <Button
                 variant="secondary"
-                disabled={isPending || !isHydrated || p.rebuy_count === 0}
+                disabled={!isHydrated || isPending || p.rebuy_count === 0}
                 onClick={() => handleUndo(p)}
                 style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
               >
@@ -199,17 +199,17 @@ export default function SessionView({ sessionId, initial }: Props) {
       {/* Rebuy confirmation sheet */}
       <Sheet
         isOpen={rebuying !== null}
-        onClose={() => !isPending && setRebuying(null)}
+        onClose={() => !isPending && isHydrated && setRebuying(null)}
         title={`Rebuy ${rebuying?.player_name ?? ''}?`}
       >
         <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
           Balance kepotong 100.
         </p>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <Button variant="secondary" fullWidth disabled={isPending} onClick={() => setRebuying(null)}>
+          <Button variant="secondary" fullWidth disabled={!isHydrated || isPending} onClick={() => setRebuying(null)}>
             Cancel
           </Button>
-          <Button variant="primary" fullWidth disabled={isPending} onClick={confirmRebuy}>
+          <Button variant="primary" fullWidth disabled={!isHydrated || isPending} onClick={confirmRebuy}>
             {isPending ? 'Loading...' : 'Rebuy'}
           </Button>
         </div>
