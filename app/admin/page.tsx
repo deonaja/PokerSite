@@ -4,6 +4,7 @@ import BalanceDisplay from '@/components/BalanceDisplay'
 import AddPlayerForm from './AddPlayerForm'
 import EditBalanceForm from './EditBalanceForm'
 import ForceEndSection from './ForceEndSection'
+import ResetPinForm from './ResetPinForm'
 
 const PAGE_SIZE = 20
 
@@ -14,11 +15,12 @@ const ACTION_COLORS: Record<string, string> = {
   rebuy_undo: 'var(--text-tertiary)',
   session_end: '#4a7ab5',
   admin_balance_edit: 'var(--accent-danger)',
+  admin_pin_reset: '#5f4ab5',
   admin_player_add: '#7a4ab5',
   admin_session_force_end: 'var(--accent-danger)',
 }
 
-const ACTION_TYPES = ['all', 'buy_in', 'buy_in_dealer_free', 'rebuy', 'rebuy_undo', 'session_end', 'admin_balance_edit', 'admin_player_add', 'admin_session_force_end']
+const ACTION_TYPES = ['all', 'buy_in', 'buy_in_dealer_free', 'rebuy', 'rebuy_undo', 'session_end', 'admin_balance_edit', 'admin_pin_reset', 'admin_player_add', 'admin_session_force_end']
 
 interface SearchParams {
   logPage?: string
@@ -95,6 +97,7 @@ export default async function AdminPage({
         )}
         <AddPlayerForm />
         {playerList.length > 0 && <EditBalanceForm players={players as Player[]} />}
+        {playerList.length > 0 && <ResetPinForm players={players as Player[]} />}
       </section>
 
       {/* Active session */}
