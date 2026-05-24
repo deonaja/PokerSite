@@ -34,6 +34,22 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
   const selectedPlayers = players.filter((p) => selectedIds.has(p.id))
   const canStart = selectedIds.size >= 2 && dealerId !== null
 
+  const recommendedDealerId = selectedPlayers.length >= 2
+    ? [...selectedPlayers].sort((a, b) => a.balance - b.balance)[0]?.id ?? null
+    : null
+
+  useEffect(() => {
+    if (selectedPlayers.length < 2) {
+      setDealerId(null)
+      return
+    }
+    if (!dealerId || !selectedIds.has(dealerId)) {
+      const recommended = [...selectedPlayers].sort((a, b) => a.balance - b.balance)[0]?.id ?? null
+      setDealerId(recommended)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIds])
+
   function handleSubmit() {
     if (!canStart || isPending) return
     setError(null)
@@ -117,6 +133,24 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
                   style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
                 />
                 <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', marginLeft: '0.25rem' }}>
+                  {p.balance}
+                </span>
+                {p.id === recommendedDealerId && (
+                  <span style={{
+                    marginLeft: 'auto',
+                    fontSize: '0.625rem',
+                    fontWeight: 500,
+                    letterSpacing: '0.05em',
+                    color: 'var(--accent-felt)',
+                    border: '1px solid var(--accent-felt)',
+                    borderRadius: '4px',
+                    padding: '1px 5px',
+                    flexShrink: 0,
+                  }}>
+                    REKOMENDASI
+                  </span>
+                )}
               </label>
             ))}
           </div>

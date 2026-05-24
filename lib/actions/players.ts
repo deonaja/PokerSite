@@ -93,3 +93,62 @@ export async function editBalance({
     await client.end()
   }
 }
+
+export async function resetPlayerPin({
+  playerId,
+  pin,
+  pinConfirm,
+  reason,
+  actorPlayerId: _actorPlayerId,
+}: {
+  playerId: string
+  pin: string
+  pinConfirm: string
+  reason: string
+  actorPlayerId: string
+}): Promise<{ success: true } | { error: string }> {
+  if (!reason.trim()) return { error: 'Alasan reset PIN wajib diisi' }
+  if (reason.trim().length > 200) return { error: 'Alasan maksimal 200 karakter' }
+  if (!isValidPin(pin)) return { error: 'PIN harus 4-6 digit angka' }
+  if (pin !== pinConfirm) return { error: 'Konfirmasi PIN tidak sama' }
+
+  const actorPlayerId = await getAuthenticatedPlayerId()
+  const pinHash = await hashPin(pin)
+  const client = createDbClient()
+  await client.connect()
+  try {
+    await client.query('BEGIN')
+
+    const { rows: [player] } = await client.query<{ id: string }>(
+      `SELECT id FROM players WHERE id = $1 FOR UPDATE`,
+      [playerId]
+    )
+    if (!player) {
+      await client.query('ROLLBACK')
+      return { error: 'Pemain tidak ditemukan' }
+    }
+
+    await client.query(`UPDATE players SET pin_hash = $1 WHERE id = $2`, [pinHash, playerId])
+    await client.query(
+      `UPDATE auth_sessions
+       SET revoked_at = now()
+       WHERE player_id = $1
+         AND revoked_at IS NULL`,
+      [playerId]
+    )
+    await client.query(
+      `INSERT INTO edit_log (player_id, actor_player_id, action, metadata)
+       VALUES ($1, $2, 'admin_pin_reset', $3)`,
+      [playerId, actorPlayerId, JSON.stringify({ reason: reason.trim() })]
+    )
+
+    await client.query('COMMIT')
+    return { success: true }
+  } catch (e) {
+    await client.query('ROLLBACK')
+    console.error('resetPlayerPin error:', e)
+    return { error: 'Gagal reset PIN' }
+  } finally {
+    await client.end()
+  }
+}

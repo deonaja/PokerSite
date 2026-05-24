@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { editBalance } from '@/lib/actions/players'
 import Button from '@/components/Button'
@@ -13,6 +13,15 @@ export default function EditBalanceForm({ players }: { players: Player[] }) {
   const [newBalance, setNewBalance] = useState('')
   const [reason, setReason] = useState('')
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const balanceRef = useRef<HTMLInputElement>(null)
+  const reasonRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const b = balanceRef.current?.value ?? ''
+    if (b) setNewBalance(b)
+    const r = reasonRef.current?.value ?? ''
+    if (r) setReason(r)
+  }, [])
 
   function handleSubmit() {
     setMsg(null)
@@ -21,7 +30,14 @@ export default function EditBalanceForm({ players }: { players: Player[] }) {
     startTransition(async () => {
       const result = await editBalance({ playerId, newBalance: val, reason, actorPlayerId: '' })
       if ('error' in result) setMsg({ type: 'err', text: result.error })
-      else { setMsg({ type: 'ok', text: 'Balance diupdate.' }); setNewBalance(''); setReason(''); router.refresh() }
+      else {
+        setMsg({ type: 'ok', text: 'Balance diupdate.' })
+        setNewBalance('')
+        setReason('')
+        if (balanceRef.current) balanceRef.current.value = ''
+        if (reasonRef.current) reasonRef.current.value = ''
+        router.refresh()
+      }
     })
   }
 
@@ -37,8 +53,8 @@ export default function EditBalanceForm({ players }: { players: Player[] }) {
       <select style={{ ...inputStyle, appearance: 'auto' }} value={playerId} onChange={e => setPlayerId(e.target.value)}>
         {players.map(p => <option key={p.id} value={p.id}>{p.name} (saat ini: {p.balance})</option>)}
       </select>
-      <input style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }} type="number" placeholder="Balance baru (boleh negatif)" value={newBalance} onChange={e => setNewBalance(e.target.value)} />
-      <input style={inputStyle} placeholder="Alasan (wajib)" value={reason} onChange={e => setReason(e.target.value)} />
+      <input ref={balanceRef} style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }} type="number" placeholder="Balance baru (min 0)" defaultValue="" onChange={e => setNewBalance(e.target.value)} />
+      <input ref={reasonRef} style={inputStyle} placeholder="Alasan (wajib)" defaultValue="" onChange={e => setReason(e.target.value)} />
       {msg && <p style={{ fontSize: '0.8125rem', color: msg.type === 'ok' ? 'var(--accent-success)' : 'var(--accent-danger)', margin: 0 }}>{msg.text}</p>}
       <Button fullWidth variant="secondary" disabled={isPending || !reason.trim() || newBalance === ''} onClick={handleSubmit}>
         {isPending ? 'Menyimpan...' : 'Update balance'}

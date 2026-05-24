@@ -36,19 +36,8 @@ export async function rebuy({
     )
     if (!player) { await client.query('ROLLBACK'); return { error: 'Pemain tidak ditemukan' } }
 
-    let effectiveBalance = player.balance
-
-    if (effectiveBalance < 100) {
-      await client.query(`UPDATE players SET balance = 100 WHERE id = $1`, [playerId])
-      await client.query(
-        `INSERT INTO edit_log (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
-         VALUES ($1, $2, $3, 'top_up', $4, 100, $5)`,
-        [sessionId, playerId, actorPlayerId, effectiveBalance, JSON.stringify({ reason: 'auto top-up sebelum rebuy' })]
-      )
-      effectiveBalance = 100
-    }
-
-    await client.query(`UPDATE players SET balance = balance - 100 WHERE id = $1`, [playerId])
+    const deduction = Math.min(player.balance, 100)
+    await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [deduction, playerId])
     const rebuyRow = await client.query(
       `UPDATE session_participants SET rebuy_count = rebuy_count + 1 WHERE id = $1`,
       [participant.id]
@@ -58,7 +47,7 @@ export async function rebuy({
     await client.query(
       `INSERT INTO edit_log (session_id, player_id, actor_player_id, action, balance_before, balance_after)
        VALUES ($1, $2, $3, 'rebuy', $4, $5)`,
-      [sessionId, playerId, actorPlayerId, effectiveBalance, effectiveBalance - 100]
+      [sessionId, playerId, actorPlayerId, player.balance, player.balance - deduction]
     )
 
     await client.query('COMMIT')
@@ -331,25 +320,13 @@ export async function startSession({
       )
 
       if (!isDealer) {
-        let effectiveBalance = player.balance
-
-        if (effectiveBalance < 100) {
-          await client.query(`UPDATE players SET balance = 100 WHERE id = $1`, [player.id])
-          await client.query(
-            `INSERT INTO edit_log
-               (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
-             VALUES ($1, $2, $3, 'top_up', $4, 100, $5)`,
-            [sessionId, player.id, actorPlayerId, effectiveBalance, JSON.stringify({ reason: 'auto top-up sebelum buy-in' })]
-          )
-          effectiveBalance = 100
-        }
-
-        await client.query(`UPDATE players SET balance = balance - 100 WHERE id = $1`, [player.id])
+        const deduction = Math.min(player.balance, 100)
+        await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [deduction, player.id])
         await client.query(
           `INSERT INTO edit_log
              (session_id, player_id, actor_player_id, action, balance_before, balance_after)
            VALUES ($1, $2, $3, 'buy_in', $4, $5)`,
-          [sessionId, player.id, actorPlayerId, effectiveBalance, effectiveBalance - 100]
+          [sessionId, player.id, actorPlayerId, player.balance, player.balance - deduction]
         )
       } else {
         await client.query(
