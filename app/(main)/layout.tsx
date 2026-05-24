@@ -1,30 +1,18 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 
-export default function MainLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-  const [playerName, setPlayerName] = useState<string | null>(null)
-  const [ready, setReady] = useState(false)
+// Runs before React hydrates — syncs cookies to localStorage so client
+// components can still read localStorage.getItem('playerId') as before.
+const syncScript = `try{var c=document.cookie.split(';');for(var i=0;i<c.length;i++){var p=c[i].trim().split('=');if(p[0]==='playerId'||p[0]==='playerName')localStorage.setItem(p[0],decodeURIComponent(p.slice(1).join('=')||''));}}catch(e){}`
 
-  useEffect(() => {
-    const id = localStorage.getItem('playerId')
-    if (!id) {
-      router.replace('/identity')
-      return
-    }
-    setPlayerName(localStorage.getItem('playerName') ?? 'Pemain')
-    setReady(true)
-  }, [router])
-
-  if (!ready) {
-    return <div className="min-h-dvh" style={{ background: 'var(--bg-base)' }} />
-  }
+export default async function MainLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies()
+  const playerName = cookieStore.get('playerName')?.value ?? 'Pemain'
 
   return (
     <div className="flex flex-col min-h-dvh">
+      {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+      <script dangerouslySetInnerHTML={{ __html: syncScript }} />
       <header
         className="flex items-center justify-between px-4 py-3 border-b"
         style={{ borderColor: 'var(--border-subtle)' }}

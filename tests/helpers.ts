@@ -8,19 +8,23 @@ export function getTestData(): TestData {
 }
 
 /**
- * Set player identity in localStorage (avoids the /identity redirect).
- * Uses addInitScript so it runs before the next page.goto() — safe to call
- * before any navigation.
+ * Set player identity via cookie (for middleware) + localStorage (for client components).
+ * Cookie must be set before page.goto() so middleware allows the request.
  */
 export async function setIdentity(page: Page, player: { id: string; name: string }) {
+  await page.context().addCookies([
+    { name: 'playerId', value: player.id, domain: 'localhost', path: '/' },
+    { name: 'playerName', value: encodeURIComponent(player.name), domain: 'localhost', path: '/' },
+  ])
   await page.addInitScript(({ id, name }: { id: string; name: string }) => {
     localStorage.setItem('playerId', id)
     localStorage.setItem('playerName', name)
   }, { id: player.id, name: player.name })
 }
 
-/** Clear identity so the layout redirects to /identity */
+/** Clear identity so middleware redirects to /identity */
 export async function clearIdentity(page: Page) {
+  await page.context().clearCookies()
   await page.evaluate(() => localStorage.clear())
 }
 

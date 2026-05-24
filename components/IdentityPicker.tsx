@@ -1,17 +1,6 @@
-'use client'
-
-import { useRouter } from 'next/navigation'
 import type { Player } from '@/lib/types'
 
 export default function IdentityPicker({ players }: { players: Player[] }) {
-  const router = useRouter()
-
-  function pick(player: Player) {
-    localStorage.setItem('playerId', player.id)
-    localStorage.setItem('playerName', player.name)
-    router.push('/')
-  }
-
   return (
     <div className="flex flex-col px-4 pt-12 pb-8">
       <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
@@ -25,19 +14,21 @@ export default function IdentityPicker({ players }: { players: Player[] }) {
       ) : (
         <div className="flex flex-col gap-2">
           {players.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => pick(p)}
-              className="w-full text-left px-4 rounded-lg border transition-colors duration-150"
-              style={{
-                minHeight: '44px',
-                background: 'var(--bg-surface)',
-                borderColor: 'var(--border-subtle)',
-                color: 'var(--text-primary)',
-              }}
-            >
-              {p.name}
-            </button>
+            <form key={p.id} method="post" action="/api/identity">
+              <input type="hidden" name="playerId" value={p.id} />
+              <input type="hidden" name="playerName" value={p.name} />
+              <button
+                type="submit"
+                className="w-full text-left px-4 py-3 rounded-lg border transition-colors duration-150"
+                style={{
+                  background: 'var(--bg-surface)',
+                  borderColor: 'var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {p.name}
+              </button>
+            </form>
           ))}
         </div>
       )}
