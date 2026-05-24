@@ -19,7 +19,7 @@ export async function setIdentity(page: Page, player: { id: string; name: string
   const sql = neon(process.env.DATABASE_URL!)
   await sql`
     INSERT INTO auth_sessions (player_id, token_hash, expires_at)
-    VALUES (${player.id}, ${tokenHash}, now() + interval '30 days')
+    VALUES (${player.id}, ${tokenHash}, now() + interval '7 days')
   `
 
   await page.context().addCookies([

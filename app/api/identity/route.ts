@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const tokenHash = hashSessionToken(token)
     await client.query(
       `INSERT INTO auth_sessions (player_id, token_hash, expires_at)
-       VALUES ($1, $2, now() + interval '30 days')`,
+       VALUES ($1, $2, now() + interval '7 days')`,
       [player.id, tokenHash]
     )
 
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       path: '/',
       sameSite: 'lax',
       httpOnly: true,
-      maxAge: 60 * 60 * 24 * 30,
+      maxAge: 60 * 60 * 24 * 7,
     })
     response.cookies.set('playerId', player.id, { path: '/', sameSite: 'lax' })
     response.cookies.set('playerName', encodeURIComponent(player.name), { path: '/', sameSite: 'lax' })
