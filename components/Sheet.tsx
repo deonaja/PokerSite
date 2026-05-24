@@ -16,6 +16,8 @@ export default function Sheet({ isOpen, onClose, title, children }: SheetProps) 
     return () => { document.body.style.overflow = '' }
   }, [isOpen])
 
+  if (!isOpen) return null
+
   return (
     <>
       {/* Backdrop */}
@@ -26,8 +28,8 @@ export default function Sheet({ isOpen, onClose, title, children }: SheetProps) 
           inset: 0,
           background: 'rgba(0,0,0,0.6)',
           zIndex: 40,
-          opacity: isOpen ? 1 : 0,
-          pointerEvents: isOpen ? 'auto' : 'none',
+          opacity: 1,
+          pointerEvents: 'auto',
           transition: 'opacity 150ms ease',
         }}
       />
@@ -37,7 +39,7 @@ export default function Sheet({ isOpen, onClose, title, children }: SheetProps) 
           position: 'fixed',
           bottom: 0,
           left: '50%',
-          transform: `translateX(-50%) translateY(${isOpen ? '0' : '100%'})`,
+          transform: 'translateX(-50%)',
           width: '100%',
           maxWidth: '480px',
           background: 'var(--bg-elevated)',

@@ -7,6 +7,14 @@ async function forceEndAllSessions() {
   await sql`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`
 }
 
+async function openRebuySheet(page: import('@playwright/test').Page, card: import('@playwright/test').Locator) {
+  for (let i = 0; i < 3; i++) {
+    await card.getByRole('button', { name: 'Rebuy' }).click()
+    if (await page.getByText('Balance kepotong 100').isVisible().catch(() => false)) return
+  }
+  await expect(page.getByText('Balance kepotong 100')).toBeVisible()
+}
+
 /**
  * Concurrency test: two users rebuy the same player simultaneously.
  * Expected: balance decreases by 200 total (2 × 100), rebuy_count = 2.
@@ -63,17 +71,9 @@ test('concurrent rebuys on same player apply both correctly', async () => {
       has: pageB.locator('p', { hasText: /^Rebuy: \d+$/ }),
     }).filter({ hasText: bob.name }).last()
 
-    // Both open the rebuy sheet
-    await Promise.all([
-      bobCardA.getByRole('button', { name: 'Rebuy' }).click(),
-      bobCardB.getByRole('button', { name: 'Rebuy' }).click(),
-    ])
-
-    // Wait for both sheets to open before confirming
-    await Promise.all([
-      pageA.getByText('Balance kepotong 100').waitFor({ state: 'visible', timeout: 15000 }),
-      pageB.getByText('Balance kepotong 100').waitFor({ state: 'visible', timeout: 15000 }),
-    ])
+    // Open rebuy sheet on both pages (retry handles pre-hydration dead-clicks)
+    await openRebuySheet(pageA, bobCardA)
+    await openRebuySheet(pageB, bobCardB)
 
     // Both confirm simultaneously
     await Promise.all([

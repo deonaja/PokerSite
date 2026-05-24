@@ -2,6 +2,14 @@ import { test, expect } from '@playwright/test'
 import { neon } from '@neondatabase/serverless'
 import { getTestData, setIdentity, clickLabelFor } from './helpers'
 
+async function openRebuySheet(page: import('@playwright/test').Page, card: import('@playwright/test').Locator) {
+  for (let i = 0; i < 3; i++) {
+    await card.getByRole('button', { name: 'Rebuy' }).click()
+    if (await page.getByText('Balance kepotong 100').isVisible().catch(() => false)) return
+  }
+  await expect(page.getByText('Balance kepotong 100')).toBeVisible()
+}
+
 test.describe('Session setup — validation', () => {
   const { players } = getTestData()
   const alice = players[0]
@@ -105,10 +113,7 @@ test.describe('Full session flow', () => {
       has: page.locator('p', { hasText: /^Rebuy: \d+$/ }),
     }).filter({ hasText: bob.name }).last()
 
-    await bobCard.getByRole('button', { name: 'Rebuy' }).click()
-
-    // Sheet opens
-    await expect(page.getByText('Balance kepotong 100')).toBeVisible()
+    await openRebuySheet(page, bobCard)
     // Confirm in sheet — use the sheet's Rebuy button (last in DOM, rendered after participant list)
     await page.getByRole('button', { name: 'Rebuy' }).last().click()
 

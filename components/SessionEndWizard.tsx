@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useTransition, useRef, useEffect } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import Button from './Button'
-import BalanceDisplay from './BalanceDisplay'
 import { endSession } from '@/lib/actions/session'
+import BalanceDisplay from './BalanceDisplay'
+import Button from './Button'
 
 interface Participant {
   player_id: string
@@ -34,39 +34,45 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
   const current = participants[step] ?? null
 
   useEffect(() => {
-    if (!isRecap) inputRef.current?.focus()
-  }, [step, isRecap])
+    if (isRecap || !current) return
+    const saved = inputs[current.player_id] ?? ''
+    const domValue = inputRef.current?.value ?? ''
+    setCurrentInput(domValue || saved)
+    inputRef.current?.focus()
+  }, [current, inputs, isRecap])
 
   function handleNext() {
-    const val = parseInt(currentInput, 10)
-    if (currentInput === '' || isNaN(val) || val < 0) {
-      setInputError('Input angka ≥ 0')
+    if (!current) return
+    const rawVal = currentInput
+    const val = parseInt(rawVal, 10)
+    if (rawVal === '' || isNaN(val) || val < 0) {
+      setInputError('Input angka >= 0')
       return
     }
-    const saved = { ...inputs, [current.player_id]: currentInput }
-    setInputs(saved)
+
+    setInputs((prev) => ({ ...prev, [current.player_id]: rawVal }))
     setInputError(null)
-    const next = participants[step + 1]
-    setCurrentInput(next ? (saved[next.player_id] ?? '') : '')
     setStep((s) => s + 1)
+  }
+
+  function handleJumpTo(idx: number) {
+    setInputError(null)
+    setStep(idx)
   }
 
   function handleBack() {
     setInputError(null)
     if (isRecap) {
-      const last = participants[totalSteps - 1]
-      setCurrentInput(inputs[last.player_id] ?? '')
       setStep(totalSteps - 1)
-    } else if (step === 0) {
-      router.push('/session')
-    } else {
-      const prev = participants[step - 1]
-      setCurrentInput(inputs[prev.player_id] ?? '')
-      setStep((s) => s - 1)
+      return
     }
+    if (step === 0) {
+      router.push('/session')
+      return
+    }
+    setStep((s) => s - 1)
   }
 
-  // Chip validation
   const nonDealerCount = participants.filter((p) => !p.is_dealer).length
   const totalRebuy = participants.reduce((sum, p) => sum + p.rebuy_count, 0)
   const expectedTotal = (nonDealerCount + totalRebuy) * 100
@@ -80,10 +86,14 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
       playerId: p.player_id,
       finalStack: parseInt(inputs[p.player_id] ?? '0', 10),
     }))
+
     startTransition(async () => {
       const result = await endSession({ sessionId, stacks, actorPlayerId })
-      if ('error' in result) setSubmitError(result.error)
-      else router.push('/')
+      if ('error' in result) {
+        setSubmitError(result.error)
+        return
+      }
+      router.push('/')
     })
   }
 
@@ -100,7 +110,6 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
     background: 'var(--bg-base)',
   }
 
-  // ── RECAP ──────────────────────────────────────────────────
   if (isRecap) {
     return (
       <div style={{ paddingBottom: '6rem' }}>
@@ -120,9 +129,10 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', marginBottom: '1.25rem' }}>
-            {participants.map((p) => {
+            {participants.map((p, idx) => {
               const stack = parseInt(inputs[p.player_id] ?? '0', 10)
               const newBalance = p.current_balance + stack
+
               return (
                 <div key={p.player_id} style={{ padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -130,13 +140,20 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
                     {p.is_dealer && (
                       <span style={{ fontSize: '0.6875rem', padding: '1px 5px', borderRadius: '4px', background: 'var(--accent-felt)', color: 'var(--text-primary)' }}>★</span>
                     )}
+                    <button
+                      onClick={() => handleJumpTo(idx)}
+                      style={{ marginLeft: 'auto', background: 'none', border: '1px solid var(--border-strong)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer', padding: '2px 8px', minHeight: '28px', lineHeight: 1 }}
+                    >
+                      Edit
+                    </button>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem' }}>
                     <BalanceDisplay balance={p.current_balance} />
                     <span style={{ color: 'var(--text-tertiary)' }}>→</span>
                     <BalanceDisplay balance={newBalance} />
                     <span style={{ color: stack >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
-                      ({stack >= 0 ? '+' : ''}{stack})
+                      ({stack >= 0 ? '+' : ''}
+                      {stack})
                     </span>
                   </div>
                 </div>
@@ -144,7 +161,6 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
             })}
           </div>
 
-          {/* Chip validation */}
           <div style={{ padding: '0.875rem 1rem', borderRadius: '8px', border: `1px solid ${chipDiff !== 0 ? 'var(--accent-warn)' : 'var(--border-subtle)'}`, background: 'var(--bg-surface)', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Total chip seharusnya</span>
@@ -156,7 +172,8 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
             </div>
             {chipDiff !== 0 && (
               <p style={{ fontSize: '0.8125rem', color: 'var(--accent-warn)', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.5rem', margin: 0 }}>
-                ⚠ Selisih {chipDiff > 0 ? '+' : ''}{chipDiff}. Confirm tetap atau revisi?
+                ⚠ Selisih {chipDiff > 0 ? '+' : ''}
+                {chipDiff}. Confirm tetap atau revisi?
               </p>
             )}
           </div>
@@ -176,14 +193,12 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
     )
   }
 
-  // ── INPUT SCREEN ───────────────────────────────────────────
-  const totalSpent = current.is_dealer
-    ? current.rebuy_count * 100
-    : 100 + current.rebuy_count * 100
+  if (!current) return null
+
+  const totalSpent = current.is_dealer ? current.rebuy_count * 100 : 100 + current.rebuy_count * 100
 
   return (
     <div style={{ paddingBottom: '6rem' }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <button
@@ -199,7 +214,6 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
         </span>
       </div>
 
-      {/* Player info */}
       <div style={{ padding: '2rem 1.5rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.375rem' }}>
         <p style={{ fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>{current.player_name}</p>
         {current.is_dealer && (
@@ -209,7 +223,6 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
         )}
       </div>
 
-      {/* Cost breakdown */}
       <div style={{ padding: '1.25rem 1.5rem 0' }}>
         <div style={{ padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
@@ -233,16 +246,19 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
         </div>
       </div>
 
-      {/* Stack input */}
       <div style={{ padding: '1.25rem 1.5rem 0' }}>
         <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Stack akhir:</p>
         <input
+          key={current.player_id}
           ref={inputRef}
           type="number"
           inputMode="numeric"
           min="0"
-          value={currentInput}
-          onChange={(e) => { setCurrentInput(e.target.value); setInputError(null) }}
+          defaultValue={inputs[current.player_id] ?? ''}
+          onChange={(e) => {
+            setCurrentInput(e.target.value)
+            setInputError(null)
+          }}
           onKeyDown={(e) => e.key === 'Enter' && handleNext()}
           placeholder="0"
           style={{
@@ -263,7 +279,6 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
         {inputError && <p style={{ fontSize: '0.8125rem', color: 'var(--accent-danger)', marginTop: '0.375rem' }}>{inputError}</p>}
       </div>
 
-      {/* CTA */}
       <div style={stickyBottom}>
         <Button fullWidth disabled={currentInput === ''} onClick={handleNext}>
           {step === totalSteps - 1 ? 'Lihat recap' : 'Next →'}

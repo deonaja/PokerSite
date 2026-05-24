@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { rebuy, undoRebuy } from '@/lib/actions/session'
@@ -22,6 +22,11 @@ export default function SessionView({ sessionId, initial }: Props) {
   const [isPending, startTransition] = useTransition()
   const [rebuying, setRebuying] = useState<PollParticipant | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
 
   function confirmRebuy() {
     if (!rebuying || isPending) return
@@ -172,7 +177,7 @@ export default function SessionView({ sessionId, initial }: Props) {
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <Button
                 variant="secondary"
-                disabled={isPending}
+                disabled={isPending || !isHydrated}
                 onClick={() => setRebuying(p)}
                 style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
               >
@@ -180,7 +185,7 @@ export default function SessionView({ sessionId, initial }: Props) {
               </Button>
               <Button
                 variant="secondary"
-                disabled={isPending || p.rebuy_count === 0}
+                disabled={isPending || !isHydrated || p.rebuy_count === 0}
                 onClick={() => handleUndo(p)}
                 style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
               >
