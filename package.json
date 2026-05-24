@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db:migrate": "node --env-file=.env.local --import=tsx/esm db/migrate.ts"
+    "db:migrate": "node --env-file=.env.local --import=tsx/esm db/migrate.ts",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -18,12 +21,15 @@
     "react-dom": "^19.2.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.5.0",
+    "dotenv": "^17.4.2",
     "eslint": "^10.4.0",
     "eslint-config-next": "^16.2.6",
+    "playwright": "^1.60.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.22.3",
