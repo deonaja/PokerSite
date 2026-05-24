@@ -34,7 +34,7 @@ export function proxy(req: NextRequest) {
   // ── Identity guard ───────────────────────────────────────────
   const guarded = ['/', '/session']
   const isGuarded = guarded.includes(pathname) || pathname.startsWith('/session/')
-  if (isGuarded && !req.cookies.get('playerId')?.value) {
+  if (isGuarded && !req.cookies.get('auth_session')?.value) {
     return NextResponse.redirect(new URL('/identity', req.url))
   }
 

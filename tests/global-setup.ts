@@ -2,12 +2,14 @@ import { resolve } from 'path'
 import { writeFileSync } from 'fs'
 import { config as loadDotenv } from 'dotenv'
 import { neon } from '@neondatabase/serverless'
+import { hashPin } from '../lib/auth'
 
 loadDotenv({ path: resolve(process.cwd(), '.env.local') })
 
 export interface TestData {
   runId: number
   adminKey: string
+  defaultPin: string
   players: { id: string; name: string; balance: number }[]
 }
 
@@ -25,18 +27,20 @@ async function globalSetup() {
   console.log('[setup] Cleared any stale active sessions')
 
   const names = ['Alice', 'Bob', 'Charlie']
+  const defaultPin = '1234'
   const players: TestData['players'] = []
 
   for (const shortName of names) {
     const fullName = `[T${runId}] ${shortName}`
+    const pinHash = await hashPin(defaultPin)
     const rows = await sql`
-      INSERT INTO players (name, balance) VALUES (${fullName}, 500)
+      INSERT INTO players (name, balance, pin_hash) VALUES (${fullName}, 500, ${pinHash})
       RETURNING id, name, balance
     ` as { id: string; name: string; balance: number }[]
     players.push(rows[0])
   }
 
-  const data: TestData = { runId, adminKey, players }
+  const data: TestData = { runId, adminKey, defaultPin, players }
   writeFileSync(resolve(process.cwd(), '.test-data.json'), JSON.stringify(data, null, 2))
   console.log(`\n[setup] Created ${players.length} test players (runId: ${runId})`)
 }

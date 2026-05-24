@@ -1,6 +1,8 @@
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { expect, type Page } from '@playwright/test'
+import { neon } from '@neondatabase/serverless'
+import { generateSessionToken, hashSessionToken } from '../lib/auth'
 import type { TestData } from './global-setup'
 
 export function getTestData(): TestData {
@@ -12,7 +14,16 @@ export function getTestData(): TestData {
  * Cookie must be set before page.goto() so middleware allows the request.
  */
 export async function setIdentity(page: Page, player: { id: string; name: string }) {
+  const token = generateSessionToken()
+  const tokenHash = hashSessionToken(token)
+  const sql = neon(process.env.DATABASE_URL!)
+  await sql`
+    INSERT INTO auth_sessions (player_id, token_hash, expires_at)
+    VALUES (${player.id}, ${tokenHash}, now() + interval '30 days')
+  `
+
   await page.context().addCookies([
+    { name: 'auth_session', value: token, domain: 'localhost', path: '/' },
     { name: 'playerId', value: player.id, domain: 'localhost', path: '/' },
     { name: 'playerName', value: encodeURIComponent(player.name), domain: 'localhost', path: '/' },
   ])

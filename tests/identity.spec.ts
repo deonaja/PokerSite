@@ -30,8 +30,12 @@ test.describe('Identity flow', () => {
 
   test('tapping a player saves identity to localStorage and redirects to /', async ({ page }) => {
     await page.goto('/identity')
-    await page.getByText(alice.name).click()
+    await page.getByRole('button', { name: alice.name }).click()
+    await page.getByPlaceholder('PIN (4-6 digit)').fill('1234')
+    await page.getByRole('button', { name: 'Masuk' }).click()
     await page.waitForURL('/')
+    // Wait for LocalStorageSync useEffect to run after React hydrates
+    await page.waitForFunction(() => localStorage.getItem('playerId') !== null)
 
     const storedId = await page.evaluate(() => localStorage.getItem('playerId'))
     const storedName = await page.evaluate(() => localStorage.getItem('playerName'))

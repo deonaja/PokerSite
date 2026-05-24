@@ -52,6 +52,8 @@ test.describe('Admin — player management', () => {
 
     await page.getByPlaceholder('Nama').fill(newName)
     await page.getByPlaceholder(/Balance awal/).fill(newBalance)
+    await page.getByPlaceholder('PIN (4-6 digit)').fill('1234')
+    await page.getByPlaceholder('Konfirmasi PIN').fill('1234')
     await page.getByRole('button', { name: '+ Tambah' }).click()
 
     await expect(page.getByText('Pemain ditambahkan.')).toBeVisible()
