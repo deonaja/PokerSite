@@ -4,13 +4,54 @@ import Link from 'next/link'
 import { usePoll } from '@/lib/usePoll'
 import PlayerCard from './PlayerCard'
 import Button from './Button'
-import type { PollResponse } from '@/lib/types'
+import type { PollResponse, Season } from '@/lib/types'
 
-export default function DashboardClient({ initial }: { initial: PollResponse }) {
+interface Props {
+  initial: PollResponse
+  season: Season | null
+}
+
+export default function DashboardClient({ initial, season }: Props) {
   const { players, activeSession } = usePoll(initial)
 
   return (
     <div style={{ paddingBottom: '6rem' }}>
+      {/* Season info */}
+      {season && (
+        <div style={{ padding: '1rem 1rem 0' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.625rem 0.875rem',
+            borderRadius: '8px',
+            border: '1px solid var(--border-subtle)',
+            background: 'var(--bg-surface)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                Season {season.number}
+              </span>
+              <span style={{
+                fontSize: '0.625rem',
+                fontWeight: 600,
+                letterSpacing: '0.05em',
+                padding: '1px 5px',
+                borderRadius: '4px',
+                background: season.current_phase === 'steady' ? 'var(--accent-warn)' : 'var(--accent-felt)',
+                color: 'var(--text-primary)',
+              }}>
+                {season.current_phase === 'steady' ? 'STEADY' : 'BOOTSTRAP'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
+              <span>buy-in {season.buy_in}</span>
+              <span>BB {season.bb}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Player list */}
       <div style={{ padding: '1.5rem 1rem 0' }}>
         <p

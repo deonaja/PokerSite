@@ -1,11 +1,12 @@
 import { sql } from '@/lib/db'
-import type { Player, PollParticipant, PollResponse } from '@/lib/types'
+import type { Player, Season, PollParticipant, PollResponse } from '@/lib/types'
 import DashboardClient from '@/components/DashboardClient'
 
-async function getDashboardData(): Promise<PollResponse> {
-  const [players, sessions] = await Promise.all([
+async function getDashboardData(): Promise<{ initial: PollResponse; season: Season | null }> {
+  const [players, sessions, seasonRows] = await Promise.all([
     sql`SELECT id, name, balance, created_at FROM players ORDER BY name ASC`,
     sql`SELECT id FROM sessions WHERE status = 'active' LIMIT 1`,
+    sql`SELECT id, number, status, preset_name, starting_balance, buy_in, bb, sb, max_pool, max_sessions, rake_rate, current_phase, creator_player_id, started_at, ended_at FROM seasons WHERE status = 'active' LIMIT 1`,
   ])
 
   const activeSessionRow = (sessions as unknown as { id: string }[])[0]
@@ -27,12 +28,15 @@ async function getDashboardData(): Promise<PollResponse> {
   }
 
   return {
-    players: players as unknown as Player[],
-    activeSession,
+    initial: {
+      players: players as unknown as Player[],
+      activeSession,
+    },
+    season: (seasonRows[0] as unknown as Season) ?? null,
   }
 }
 
 export default async function DashboardPage() {
-  const initial = await getDashboardData()
-  return <DashboardClient initial={initial} />
+  const { initial, season } = await getDashboardData()
+  return <DashboardClient initial={initial} season={season} />
 }
