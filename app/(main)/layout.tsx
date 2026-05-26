@@ -1,12 +1,9 @@
-import { cookies } from 'next/headers'
-import MainIdentityGate from '@/components/MainIdentityGate'
+import { redirect } from 'next/navigation'
 import { getAuthenticatedPlayer } from '@/lib/auth-server'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies()
-  const cookieName = cookieStore.get('playerName')?.value
   const authPlayer = await getAuthenticatedPlayer()
-  const playerName = authPlayer?.name ?? (cookieName ? decodeURIComponent(cookieName) : 'Pemain')
+  if (!authPlayer) redirect('/identity')
 
   return (
     <div className="flex flex-col min-h-dvh">
@@ -16,7 +13,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       >
         <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
           Hi,{' '}
-          <span className="font-medium">{playerName}</span>
+          <span className="font-medium">{authPlayer.name}</span>
         </span>
         <form method="post" action="/api/identity/logout">
           <button
@@ -29,11 +26,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         </form>
       </header>
 
-      <MainIdentityGate>
-        <main className="flex-1">
-          {children}
-        </main>
-      </MainIdentityGate>
+      <main className="flex-1">
+        {children}
+      </main>
     </div>
   )
 }
