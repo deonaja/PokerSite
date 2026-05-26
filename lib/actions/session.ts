@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
 import { getAuthenticatedPlayerId } from '@/lib/auth-server'
 
@@ -51,6 +52,8 @@ export async function rebuy({
     )
 
     await client.query('COMMIT')
+    revalidatePath('/')
+    revalidatePath('/session')
     return { success: true }
   } catch (e) {
     await client.query('ROLLBACK')
@@ -123,6 +126,8 @@ export async function undoRebuy({
     )
 
     await client.query('COMMIT')
+    revalidatePath('/')
+    revalidatePath('/session')
     return { success: true }
   } catch (e) {
     await client.query('ROLLBACK')
@@ -156,6 +161,8 @@ export async function forceEndSession({
       [sessionId, actorPlayerId]
     )
     await client.query('COMMIT')
+    revalidatePath('/')
+    revalidatePath('/session')
     return { success: true }
   } catch (e) {
     await client.query('ROLLBACK')
@@ -256,6 +263,9 @@ export async function endSession({
     if (!ended.rowCount) { await client.query('ROLLBACK'); return { error: 'Sesi sudah berakhir' } }
 
     await client.query('COMMIT')
+    revalidatePath('/')
+    revalidatePath('/session')
+    revalidatePath('/session/end')
     return { success: true }
   } catch (e) {
     await client.query('ROLLBACK')
@@ -339,6 +349,9 @@ export async function startSession({
     }
 
     await client.query('COMMIT')
+    revalidatePath('/')
+    revalidatePath('/session')
+    revalidatePath('/session/setup')
     return { sessionId }
   } catch (e: unknown) {
     await client.query('ROLLBACK')

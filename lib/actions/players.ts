@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
 import { getAuthenticatedPlayerId } from '@/lib/auth-server'
 import { hashPin, isValidPin } from '@/lib/auth'
@@ -38,6 +39,9 @@ export async function addPlayer({
        VALUES ($1, $2, 'admin_player_add', 0, $3, $4)`,
       [player.id, actorPlayerId, balance, JSON.stringify({ name: trimmed })]
     )
+    revalidatePath('/')
+    revalidatePath('/admin')
+    revalidatePath('/session/setup')
     return { success: true, playerId: player.id }
   } catch (e: unknown) {
     const pg = e as { code?: string }
@@ -84,6 +88,8 @@ export async function editBalance({
     )
 
     await client.query('COMMIT')
+    revalidatePath('/')
+    revalidatePath('/admin')
     return { success: true }
   } catch (e) {
     await client.query('ROLLBACK')
@@ -143,6 +149,7 @@ export async function resetPlayerPin({
     )
 
     await client.query('COMMIT')
+    revalidatePath('/admin')
     return { success: true }
   } catch (e) {
     await client.query('ROLLBACK')
