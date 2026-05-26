@@ -11,7 +11,11 @@ async function getPlayers(): Promise<Player[]> {
   return rows as Player[]
 }
 
-export default async function IdentityPage() {
-  const players = await getPlayers()
-  return <IdentityPicker players={players} />
+export default async function IdentityPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>
+}) {
+  const [players, params] = await Promise.all([getPlayers(), searchParams])
+  return <IdentityPicker players={players} error={params.error} />
 }

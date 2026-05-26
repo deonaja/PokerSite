@@ -4,14 +4,23 @@ import { useMemo, useState } from 'react'
 import type { Player } from '@/lib/types'
 import Button from './Button'
 
-export default function IdentityPicker({ players }: { players: Player[] }) {
+interface Props {
+  players: Player[]
+  error?: string
+}
+
+export default function IdentityPicker({ players, error }: Props) {
   const [selectedId, setSelectedId] = useState<string>(players[0]?.id ?? '')
-  const [pin, setPin] = useState('')
 
   const selectedPlayer = useMemo(
     () => players.find((p) => p.id === selectedId) ?? null,
     [players, selectedId]
   )
+
+  const errorMessage =
+    error === 'invalid' ? 'PIN salah.' :
+    error === 'missing' ? 'Pilih pemain dan masukkan PIN.' :
+    null
 
   return (
     <div className="flex flex-col px-4 pt-12 pb-8">
@@ -63,14 +72,15 @@ export default function IdentityPicker({ players }: { players: Player[] }) {
             type="password"
             inputMode="numeric"
             maxLength={6}
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
+            minLength={4}
+            required
+            autoComplete="one-time-code"
             placeholder="PIN (4-6 digit)"
             style={{
               width: '100%',
               padding: '0.75rem 1rem',
               borderRadius: '8px',
-              border: '1px solid var(--border-strong)',
+              border: `1px solid ${errorMessage ? 'var(--accent-danger)' : 'var(--border-strong)'}`,
               background: 'var(--bg-elevated)',
               color: 'var(--text-primary)',
               fontSize: '0.875rem',
@@ -80,7 +90,13 @@ export default function IdentityPicker({ players }: { players: Player[] }) {
             }}
           />
 
-          <Button type="submit" fullWidth disabled={!selectedId || pin.length < 4}>
+          {errorMessage && (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--accent-danger)', margin: 0 }}>
+              {errorMessage}
+            </p>
+          )}
+
+          <Button type="submit" fullWidth disabled={!selectedId}>
             Masuk
           </Button>
         </form>
