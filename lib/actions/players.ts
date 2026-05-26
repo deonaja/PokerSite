@@ -3,7 +3,55 @@
 import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
 import { getAuthenticatedPlayerId } from '@/lib/auth-server'
-import { hashPin, isValidPin } from '@/lib/auth'
+import { hashPin, isValidPin, verifyPin } from '@/lib/auth'
+
+export async function changePin({
+  oldPin,
+  newPin,
+  newPinConfirm,
+}: {
+  oldPin: string
+  newPin: string
+  newPinConfirm: string
+}): Promise<{ success: true } | { error: string }> {
+  if (!isValidPin(newPin)) return { error: 'PIN baru harus 4-6 digit angka' }
+  if (newPin !== newPinConfirm) return { error: 'Konfirmasi PIN tidak sama' }
+
+  const playerId = await getAuthenticatedPlayerId()
+  if (!playerId) return { error: 'Belum login' }
+
+  const client = createDbClient()
+  await client.connect()
+  try {
+    await client.query('BEGIN')
+
+    const { rows: [player] } = await client.query<{ id: string; pin_hash: string | null }>(
+      `SELECT id, pin_hash FROM players WHERE id = $1 FOR UPDATE`,
+      [playerId]
+    )
+    if (!player) { await client.query('ROLLBACK'); return { error: 'Pemain tidak ditemukan' } }
+
+    const valid = await verifyPin(oldPin, player.pin_hash)
+    if (!valid) { await client.query('ROLLBACK'); return { error: 'PIN lama salah' } }
+
+    const newHash = await hashPin(newPin)
+    await client.query(`UPDATE players SET pin_hash = $1 WHERE id = $2`, [newHash, playerId])
+    await client.query(
+      `INSERT INTO edit_log (player_id, actor_player_id, action) VALUES ($1, $1, 'pin_change')`,
+      [playerId]
+    )
+
+    await client.query('COMMIT')
+    revalidatePath('/')
+    return { success: true }
+  } catch (e) {
+    await client.query('ROLLBACK')
+    console.error('changePin error:', e)
+    return { error: 'Gagal ganti PIN' }
+  } finally {
+    await client.end()
+  }
+}
 
 export async function addPlayer({
   name,

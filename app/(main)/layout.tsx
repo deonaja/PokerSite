@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
 import { getAuthenticatedPlayer } from '@/lib/auth-server'
@@ -20,15 +21,24 @@ export default async function MainLayout({ children }: { children: React.ReactNo
           Hi,{' '}
           <span className="font-medium">{authPlayer.name}</span>
         </span>
-        <form method="post" action="/api/identity/logout">
-          <button
-            type="submit"
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <Link
+            href="/settings/pin"
             className="text-xs transition-colors duration-150"
-            style={{ color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', minHeight: '44px', padding: '0 0.25rem' }}
+            style={{ color: 'var(--text-tertiary)', minHeight: '44px', padding: '0 0.5rem', display: 'flex', alignItems: 'center', textDecoration: 'none' }}
           >
-            ganti identitas
-          </button>
-        </form>
+            ganti PIN
+          </Link>
+          <form method="post" action="/api/identity/logout">
+            <button
+              type="submit"
+              className="text-xs transition-colors duration-150"
+              style={{ color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', minHeight: '44px', padding: '0 0.25rem' }}
+            >
+              ganti identitas
+            </button>
+          </form>
+        </div>
       </header>
 
       <main className="flex-1">
