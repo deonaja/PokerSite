@@ -7,7 +7,7 @@ interface PlayerWithMeta extends Player {
   in_cooldown: boolean
 }
 
-async function getSetupData(): Promise<{ players: PlayerWithMeta[]; buyIn: number }> {
+async function getSetupData(): Promise<{ players: PlayerWithMeta[]; buyIn: number; currentPhase: 'bootstrap' | 'steady' }> {
   const [playerRows, seasonRows] = await Promise.all([
     sql`
       SELECT
@@ -23,19 +23,22 @@ async function getSetupData(): Promise<{ players: PlayerWithMeta[]; buyIn: numbe
       FROM players p
       ORDER BY p.name ASC
     `,
-    sql`SELECT buy_in FROM seasons WHERE status = 'active' LIMIT 1`,
+    sql`SELECT buy_in, current_phase FROM seasons WHERE status = 'active' LIMIT 1`,
   ])
 
-  const buyIn = (seasonRows[0] as { buy_in: number } | undefined)?.buy_in ?? 100
+  const seasonRow = seasonRows[0] as { buy_in: number; current_phase: string } | undefined
+  const buyIn = seasonRow?.buy_in ?? 100
+  const currentPhase = (seasonRow?.current_phase as 'bootstrap' | 'steady') ?? 'bootstrap'
 
   return {
     players: playerRows as unknown as PlayerWithMeta[],
     buyIn,
+    currentPhase,
   }
 }
 
 export default async function SessionSetupPage() {
-  const { players, buyIn } = await getSetupData()
+  const { players, buyIn, currentPhase } = await getSetupData()
 
   return (
     <div style={{ paddingBottom: '6rem' }}>
@@ -59,7 +62,7 @@ export default async function SessionSetupPage() {
         </span>
       </div>
 
-      <SessionSetupForm players={players} buyIn={buyIn} />
+      <SessionSetupForm players={players} buyIn={buyIn} currentPhase={currentPhase} />
     </div>
   )
 }

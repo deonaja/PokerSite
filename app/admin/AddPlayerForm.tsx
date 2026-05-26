@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import { addPlayer } from '@/lib/actions/players'
 import Button from '@/components/Button'
 
-export default function AddPlayerForm() {
+export default function AddPlayerForm({ defaultBalance = 200 }: { defaultBalance?: number }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [name, setName] = useState('')
-  const [balance, setBalance] = useState('200')
+  const [balance, setBalance] = useState(String(defaultBalance))
   const [pin, setPin] = useState('')
   const [pinConfirm, setPinConfirm] = useState('')
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -34,7 +34,7 @@ export default function AddPlayerForm() {
     startTransition(async () => {
       const result = await addPlayer({
         name,
-        balance: parseInt(balance, 10) || 200,
+        balance: parseInt(balance, 10) || defaultBalance,
         pin,
         pinConfirm,
         actorPlayerId: '',
@@ -43,11 +43,11 @@ export default function AddPlayerForm() {
       else {
         setMsg({ type: 'ok', text: 'Pemain ditambahkan.' })
         setName('')
-        setBalance('200')
+        setBalance(String(defaultBalance))
         setPin('')
         setPinConfirm('')
         if (nameRef.current) nameRef.current.value = ''
-        if (balanceRef.current) balanceRef.current.value = '200'
+        if (balanceRef.current) balanceRef.current.value = String(defaultBalance)
         if (pinRef.current) pinRef.current.value = ''
         if (pinConfirmRef.current) pinConfirmRef.current.value = ''
         router.refresh()
@@ -65,7 +65,7 @@ export default function AddPlayerForm() {
     <div style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
       <p style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-secondary)', margin: 0 }}>Tambah pemain</p>
       <input ref={nameRef} style={inputStyle} placeholder="Nama" defaultValue="" onChange={e => setName(e.target.value)} />
-      <input ref={balanceRef} style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }} type="number" placeholder="Balance awal (default 200)" defaultValue="200" onChange={e => setBalance(e.target.value)} />
+      <input ref={balanceRef} style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }} type="number" placeholder={`Balance awal (default ${defaultBalance})`} defaultValue={String(defaultBalance)} onChange={e => setBalance(e.target.value)} />
       <input
         ref={pinRef}
         style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}

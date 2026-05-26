@@ -235,27 +235,6 @@ export async function endSession({
       return { error: 'Ada pemain yang tidak ikut sesi ini' }
     }
 
-    // Get season info for rake calculation
-    const { rows: [sessionSeason] } = await client.query<{
-      buy_in: number; current_phase: string; rake_rate: number
-    }>(
-      `SELECT s.buy_in, s.current_phase, s.rake_rate
-       FROM seasons s JOIN sessions sess ON sess.season_id = s.id
-       WHERE sess.id = $1`,
-      [sessionId]
-    )
-    const isPhase2 = sessionSeason?.current_phase === 'steady'
-    const buyIn = sessionSeason?.buy_in ?? 100
-    const rakeRate = sessionSeason?.rake_rate ?? 0
-
-    // Rake = rake_rate% of total chips that entered this session
-    const totalRebuy = activeParticipants.reduce((sum, p) => sum + p.rebuy_count, 0)
-    const sessionChips = isPhase2
-      ? (activeParticipants.length + totalRebuy) * buyIn    // all paid in phase 2
-      : (activeParticipants.filter((p) => !p.is_dealer).length + totalRebuy) * buyIn
-    const rakeAmount = isPhase2 ? Math.floor(sessionChips * rakeRate / 100) : 0
-    const dealerParticipant = activeParticipants.find((p) => p.is_dealer)
-
     const { rows: players } = await client.query<{ id: string; balance: number }>(
       `SELECT id, balance FROM players WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
       [playerIds]
@@ -265,14 +244,13 @@ export async function endSession({
       return { error: 'Beberapa pemain tidak ditemukan' }
     }
 
+    // Approach C: dealer's stack already includes any rake they collected during play.
+    // No special handling — everyone gets `balance += final_stack`.
     for (const { playerId, finalStack } of stacks) {
       const player = players.find((p) => p.id === playerId)
       if (!player) { await client.query('ROLLBACK'); return { error: 'Pemain tidak ditemukan' } }
 
-      const isDealer = dealerParticipant?.player_id === playerId
-      const credit = finalStack + (isPhase2 && isDealer ? rakeAmount : 0)
-
-      await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [credit, playerId])
+      await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [finalStack, playerId])
       const participantUpdate = await client.query(
         `UPDATE session_participants SET final_stack = $1 WHERE session_id = $2 AND player_id = $3`,
         [finalStack, sessionId, playerId]
@@ -288,8 +266,8 @@ export async function endSession({
           playerId,
           actorPlayerId,
           player.balance,
-          player.balance + credit,
-          JSON.stringify({ final_stack: finalStack, ...(isPhase2 && isDealer ? { rake: rakeAmount } : {}) }),
+          player.balance + finalStack,
+          JSON.stringify({ final_stack: finalStack }),
         ]
       )
     }
@@ -362,23 +340,26 @@ export async function startSession({
     )
     const buyIn = season?.buy_in ?? 100
 
-    // Validate cooldown: paid dealer must not be in cooldown
-    const { rows: [dealerCooldown] } = await client.query<{ in_cooldown: boolean }>(
-      `SELECT
-         CASE
-           WHEN last_dealer_session_id IS NULL THEN false
-           ELSE (
-             SELECT COUNT(*) FROM sessions s
-             WHERE s.started_at > (SELECT started_at FROM sessions WHERE id = p.last_dealer_session_id)
-             AND s.status IN ('active', 'ended')
-           ) < 2
-         END AS in_cooldown
-       FROM players p WHERE id = $1`,
-      [dealerId]
-    )
-    if (dealerCooldown?.in_cooldown) {
-      await client.query('ROLLBACK')
-      return { error: 'Dealer masih dalam cooldown (belum 2 sesi)' }
+    // Cooldown ONLY applies in Phase 1 (bootstrap) — that's where chips are printed,
+    // so anti-abuse matters. Phase 2 (steady) uses rake from actual play.
+    if (season?.current_phase === 'bootstrap') {
+      const { rows: [dealerCooldown] } = await client.query<{ in_cooldown: boolean }>(
+        `SELECT
+           CASE
+             WHEN last_dealer_session_id IS NULL THEN false
+             ELSE (
+               SELECT COUNT(*) FROM sessions s
+               WHERE s.started_at > (SELECT started_at FROM sessions WHERE id = p.last_dealer_session_id)
+               AND s.status IN ('active', 'ended')
+             ) < 2
+           END AS in_cooldown
+         FROM players p WHERE id = $1`,
+        [dealerId]
+      )
+      if (dealerCooldown?.in_cooldown) {
+        await client.query('ROLLBACK')
+        return { error: 'Dealer masih dalam cooldown (belum 2 sesi)' }
+      }
     }
 
     // Check phase transition: bootstrap → steady
@@ -453,11 +434,13 @@ export async function startSession({
       }
     }
 
-    // Update last_dealer_session_id for the paid dealer
-    await client.query(
-      `UPDATE players SET last_dealer_session_id = $1 WHERE id = $2`,
-      [sessionId, dealerId]
-    )
+    // Update last_dealer_session_id only in Phase 1 (cooldown only relevant there)
+    if (!isPhase2) {
+      await client.query(
+        `UPDATE players SET last_dealer_session_id = $1 WHERE id = $2`,
+        [sessionId, dealerId]
+      )
+    }
 
     await client.query('COMMIT')
     revalidatePath('/')

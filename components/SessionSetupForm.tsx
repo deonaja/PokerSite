@@ -13,9 +13,12 @@ interface PlayerWithMeta extends Player {
 interface Props {
   players: PlayerWithMeta[]
   buyIn: number
+  currentPhase: 'bootstrap' | 'steady'
 }
 
-export default function SessionSetupForm({ players, buyIn }: Props) {
+export default function SessionSetupForm({ players, buyIn, currentPhase }: Props) {
+  // Cooldown only matters in Phase 1 (bootstrap) where dealer salary is printed
+  const cooldownActive = currentPhase === 'bootstrap'
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -46,8 +49,9 @@ export default function SessionSetupForm({ players, buyIn }: Props) {
   }
 
   const selectedPlayers = players.filter((p) => selectedIds.has(p.id))
-  // Eligible for paid dealer: can afford buy_in AND not in cooldown
-  const dealerEligible = selectedPlayers.filter((p) => canAffordBuyIn(p) && !p.in_cooldown)
+  // Eligible for paid dealer: can afford buy_in AND not in cooldown (Phase 1 only)
+  const isDealerEligible = (p: PlayerWithMeta) => canAffordBuyIn(p) && !(cooldownActive && p.in_cooldown)
+  const dealerEligible = selectedPlayers.filter(isDealerEligible)
   // Players who can be no-gaji dealer: not already in the regular game
   const noGajiEligible = players.filter((p) => !selectedIds.has(p.id))
 
@@ -61,7 +65,8 @@ export default function SessionSetupForm({ players, buyIn }: Props) {
       setDealerId(null)
       return
     }
-    if (!dealerId || !selectedIds.has(dealerId) || !canAffordBuyIn(players.find((p) => p.id === dealerId)!) || (players.find((p) => p.id === dealerId)?.in_cooldown ?? false)) {
+    const currentDealer = players.find((p) => p.id === dealerId)
+    if (!dealerId || !selectedIds.has(dealerId) || !currentDealer || !isDealerEligible(currentDealer)) {
       setDealerId(recommendedDealerId)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,7 +155,8 @@ export default function SessionSetupForm({ players, buyIn }: Props) {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
             {selectedPlayers.map((p) => {
-              const eligible = canAffordBuyIn(p) && !p.in_cooldown
+              const eligible = isDealerEligible(p)
+              const showCooldown = cooldownActive && p.in_cooldown
               return (
                 <label key={p.id} style={rowStyle(dealerId === p.id, !eligible)}>
                   <input
@@ -166,7 +172,7 @@ export default function SessionSetupForm({ players, buyIn }: Props) {
                   <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', marginLeft: '0.25rem' }}>
                     {p.balance}
                   </span>
-                  {p.in_cooldown && (
+                  {showCooldown && (
                     <span style={{ fontSize: '0.6875rem', color: 'var(--accent-warn)', flexShrink: 0 }}>
                       cooldown
                     </span>

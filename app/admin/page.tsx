@@ -40,9 +40,10 @@ export default async function AdminPage({
   const logAction = ACTION_TYPES.includes(rawAction) && rawAction !== 'all' ? rawAction : null
   const offset = (rawPage - 1) * PAGE_SIZE
 
-  const [players, sessions, logs, logCount] = await Promise.all([
+  const [players, sessions, season, logs, logCount] = await Promise.all([
     sql`SELECT id, name, balance FROM players ORDER BY name ASC`,
     sql`SELECT id FROM sessions WHERE status = 'active' LIMIT 1`,
+    sql`SELECT starting_balance FROM seasons WHERE status = 'active' LIMIT 1`,
     logAction
       ? sql`
           SELECT el.id, el.action, el.balance_before, el.balance_after, el.voided, el.created_at, el.metadata,
@@ -68,6 +69,7 @@ export default async function AdminPage({
 
   const playerList = players as unknown as Player[]
   const activeSessionId = (sessions as unknown as { id: string }[])[0]?.id ?? null
+  const startingBalance = (season as unknown as { starting_balance: number }[])[0]?.starting_balance ?? 200
   const totalLogs = (logCount as unknown as { cnt: number }[])[0]?.cnt ?? 0
   const totalPages = Math.max(1, Math.ceil(totalLogs / PAGE_SIZE))
   const logPage = Math.min(rawPage, totalPages)
@@ -95,7 +97,7 @@ export default async function AdminPage({
             ))}
           </div>
         )}
-        <AddPlayerForm />
+        <AddPlayerForm defaultBalance={startingBalance} />
         {playerList.length > 0 && <EditBalanceForm players={players as Player[]} />}
         {playerList.length > 0 && <ResetPinForm players={players as Player[]} />}
       </section>

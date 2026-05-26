@@ -78,11 +78,12 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100,
 
   const nonDealerCount = participants.filter((p) => !p.is_dealer).length
   const totalRebuy = participants.reduce((sum, p) => sum + p.rebuy_count, 0)
-  const sessionChips = isPhase2
+  const expectedTotal = isPhase2
     ? (participants.length + totalRebuy) * buyIn
     : (nonDealerCount + totalRebuy) * buyIn
-  const rakeAmount = isPhase2 ? Math.floor(sessionChips * rakeRate / 100) : 0
-  const expectedTotal = sessionChips - rakeAmount
+  // Dealer's stack already includes rake they collected during play (Approach C).
+  // Hint amount shown as guidance only, not used in balance updates.
+  const rakeHint = isPhase2 ? Math.floor(expectedTotal * rakeRate / 100) : 0
   const inputTotal = Object.values(inputs).reduce((sum, v) => sum + (parseInt(v, 10) || 0), 0)
   const chipDiff = inputTotal - expectedTotal
 
@@ -138,8 +139,7 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100,
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', marginBottom: '1.25rem' }}>
             {participants.map((p, idx) => {
               const stack = parseInt(inputs[p.player_id] ?? '0', 10)
-              const rake = isPhase2 && p.is_dealer ? rakeAmount : 0
-              const newBalance = p.current_balance + stack + rake
+              const newBalance = p.current_balance + stack
 
               return (
                 <div key={p.player_id} style={{ padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
@@ -159,16 +159,11 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100,
                     <BalanceDisplay balance={p.current_balance} />
                     <span style={{ color: 'var(--text-tertiary)' }}>→</span>
                     <BalanceDisplay balance={newBalance} />
-                    <span style={{ color: (stack + rake) >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
-                      ({(stack + rake) >= 0 ? '+' : ''}
-                      {stack + rake})
+                    <span style={{ color: stack >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                      ({stack >= 0 ? '+' : ''}
+                      {stack})
                     </span>
                   </div>
-                  {rake > 0 && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--accent-success)', marginTop: '0.125rem', fontFamily: 'var(--font-mono)' }}>
-                      stack {stack} + rake {rake}
-                    </div>
-                  )}
                 </div>
               )
             })}
@@ -258,12 +253,12 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100,
               {totalSpent}
             </span>
           </div>
-          {current.is_dealer && isPhase2 && rakeAmount > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.375rem' }}>
-              <span style={{ color: 'var(--accent-success)' }}>Rake ({rakeRate}%)</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontWeight: 500, color: 'var(--accent-success)' }}>
-                +{rakeAmount}
-              </span>
+          {current.is_dealer && isPhase2 && rakeHint > 0 && (
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.375rem' }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: 0, lineHeight: 1.4 }}>
+                Target rake ({rakeRate}%): ~<span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{rakeHint}</span>.
+                Pastikan udah masuk ke stack akhir kamu.
+              </p>
             </div>
           )}
         </div>
