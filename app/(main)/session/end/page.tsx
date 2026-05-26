@@ -9,6 +9,7 @@ interface ParticipantRow {
   is_dealer: boolean
   rebuy_count: number
   current_balance: number
+  no_gaji_dealer: boolean
 }
 
 async function getSessionData() {
@@ -18,6 +19,7 @@ async function getSessionData() {
       sp.player_id,
       sp.is_dealer,
       sp.rebuy_count,
+      sp.no_gaji_dealer,
       p.name        AS player_name,
       p.balance     AS current_balance
     FROM sessions s
@@ -46,13 +48,16 @@ async function getSessionData() {
     buyIn,
     isPhase2,
     rakeRate,
-    participants: rows.map((r) => ({
-      player_id: r.player_id,
-      player_name: r.player_name,
-      is_dealer: r.is_dealer,
-      rebuy_count: r.rebuy_count,
-      current_balance: r.current_balance,
-    })),
+    // exclude no-gaji dealers from stack input flow
+    participants: rows
+      .filter((r) => !r.no_gaji_dealer)
+      .map((r) => ({
+        player_id: r.player_id,
+        player_name: r.player_name,
+        is_dealer: r.is_dealer,
+        rebuy_count: r.rebuy_count,
+        current_balance: r.current_balance,
+      })),
   }
 }
 

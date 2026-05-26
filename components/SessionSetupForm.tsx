@@ -6,11 +6,21 @@ import type { Player } from '@/lib/types'
 import Button from './Button'
 import { startSession } from '@/lib/actions/session'
 
-export default function SessionSetupForm({ players }: { players: Player[] }) {
+interface PlayerWithMeta extends Player {
+  in_cooldown: boolean
+}
+
+interface Props {
+  players: PlayerWithMeta[]
+  buyIn: number
+}
+
+export default function SessionSetupForm({ players, buyIn }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [dealerId, setDealerId] = useState<string | null>(null)
+  const [noGajiDealerId, setNoGajiDealerId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
 
@@ -18,24 +28,32 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
     setIsHydrated(true)
   }, [])
 
+  function canAffordBuyIn(p: PlayerWithMeta) {
+    return p.balance >= buyIn
+  }
+
   function togglePlayer(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
         next.delete(id)
+        if (dealerId === id) setDealerId(null)
       } else {
         next.add(id)
       }
       return next
     })
-    setDealerId((prev) => (prev === id ? null : prev))
   }
 
   const selectedPlayers = players.filter((p) => selectedIds.has(p.id))
-  const canStart = selectedIds.size >= 2 && dealerId !== null
+  // Eligible for paid dealer: can afford buy_in AND not in cooldown
+  const dealerEligible = selectedPlayers.filter((p) => canAffordBuyIn(p) && !p.in_cooldown)
+  // Players who can be no-gaji dealer: not already in the regular game
+  const noGajiEligible = players.filter((p) => !selectedIds.has(p.id))
 
-  const recommendedDealerId = selectedPlayers.length >= 2
-    ? [...selectedPlayers].sort((a, b) => a.balance - b.balance)[0]?.id ?? null
+  const canStart = selectedIds.size >= 2 && dealerId !== null
+  const recommendedDealerId = dealerEligible.length > 0
+    ? [...dealerEligible].sort((a, b) => a.balance - b.balance)[0]?.id ?? null
     : null
 
   useEffect(() => {
@@ -43,9 +61,8 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
       setDealerId(null)
       return
     }
-    if (!dealerId || !selectedIds.has(dealerId)) {
-      const recommended = [...selectedPlayers].sort((a, b) => a.balance - b.balance)[0]?.id ?? null
-      setDealerId(recommended)
+    if (!dealerId || !selectedIds.has(dealerId) || !canAffordBuyIn(players.find((p) => p.id === dealerId)!) || (players.find((p) => p.id === dealerId)?.in_cooldown ?? false)) {
+      setDealerId(recommendedDealerId)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIds])
@@ -60,6 +77,7 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
       const result = await startSession({
         playerIds: Array.from(selectedIds),
         dealerId: dealerId!,
+        noGajiDealerId: noGajiDealerId ?? undefined,
         actorPlayerId,
       })
       if ('error' in result) {
@@ -70,7 +88,7 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
     })
   }
 
-  const rowStyle = (active: boolean): React.CSSProperties => ({
+  const rowStyle = (active: boolean, disabled?: boolean): React.CSSProperties => ({
     display: 'flex',
     alignItems: 'center',
     gap: '0.75rem',
@@ -78,8 +96,9 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
     borderRadius: '8px',
     border: `1px solid ${active ? 'var(--accent-felt)' : 'var(--border-subtle)'}`,
     background: active ? 'var(--accent-felt-dim)' : 'var(--bg-surface)',
-    cursor: 'pointer',
+    cursor: disabled ? 'default' : 'pointer',
     minHeight: '44px',
+    opacity: disabled ? 0.5 : 1,
     transition: 'border-color 150ms ease, background 150ms ease',
   })
 
@@ -96,59 +115,113 @@ export default function SessionSetupForm({ players }: { players: Player[] }) {
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
-          {players.map((p) => (
-            <label key={p.id} style={rowStyle(selectedIds.has(p.id))}>
-              {/* Always uncontrolled — React won't reset on hydration.
-                  useEffect syncs pre-hydration clicks; onChange handles post-hydration. */}
-              <input
-                type="checkbox"
-                data-player-id={p.id}
-                checked={selectedIds.has(p.id)}
-                disabled={!isHydrated || isPending}
-                onChange={() => togglePlayer(p.id)}
-                style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
-              />
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
-            </label>
-          ))}
+          {players.map((p) => {
+            const lowBalance = !canAffordBuyIn(p)
+            return (
+              <label key={p.id} style={rowStyle(selectedIds.has(p.id), lowBalance)}>
+                <input
+                  type="checkbox"
+                  data-player-id={p.id}
+                  checked={selectedIds.has(p.id)}
+                  disabled={!isHydrated || isPending || lowBalance}
+                  onChange={() => !lowBalance && togglePlayer(p.id)}
+                  style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
+                />
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
+                  {p.balance}
+                </span>
+                {lowBalance && (
+                  <span style={{ marginLeft: 'auto', fontSize: '0.6875rem', color: 'var(--accent-warn)', flexShrink: 0 }}>
+                    kurang balance
+                  </span>
+                )}
+              </label>
+            )
+          })}
         </div>
       )}
 
-      {/* Dealer radios — only for checked players */}
+      {/* Dealer radios — only eligible players (balance >= buy_in, not in cooldown) */}
       {selectedPlayers.length > 0 && (
         <>
           <p style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: '0.75rem' }}>
             PILIH DEALER
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            {selectedPlayers.map((p) => (
-              <label key={p.id} style={rowStyle(dealerId === p.id)}>
+            {selectedPlayers.map((p) => {
+              const eligible = canAffordBuyIn(p) && !p.in_cooldown
+              return (
+                <label key={p.id} style={rowStyle(dealerId === p.id, !eligible)}>
+                  <input
+                    type="radio"
+                    name="dealer"
+                    value={p.id}
+                    checked={dealerId === p.id}
+                    disabled={!isHydrated || isPending || !eligible}
+                    onChange={() => eligible && setDealerId(p.id)}
+                    style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', marginLeft: '0.25rem' }}>
+                    {p.balance}
+                  </span>
+                  {p.in_cooldown && (
+                    <span style={{ fontSize: '0.6875rem', color: 'var(--accent-warn)', flexShrink: 0 }}>
+                      cooldown
+                    </span>
+                  )}
+                  {p.id === recommendedDealerId && (
+                    <span style={{
+                      marginLeft: 'auto',
+                      fontSize: '0.625rem',
+                      fontWeight: 500,
+                      letterSpacing: '0.05em',
+                      color: 'var(--accent-felt)',
+                      border: '1px solid var(--accent-felt)',
+                      borderRadius: '4px',
+                      padding: '1px 5px',
+                      flexShrink: 0,
+                    }}>
+                      REKOMENDASI
+                    </span>
+                  )}
+                </label>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {/* No-gaji dealer: optional, for players not in the regular game */}
+      {noGajiEligible.length > 0 && (
+        <>
+          <p style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: '0.25rem' }}>
+            DEALER TANPA GAJI (opsional)
+          </p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginBottom: '0.625rem' }}>
+            Bagi kartu saja — tidak bayar, tidak dapat apa-apa.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+            {noGajiEligible.map((p) => (
+              <label key={p.id} style={rowStyle(noGajiDealerId === p.id)}>
                 <input
                   type="radio"
-                  name="dealer"
+                  name="no-gaji-dealer"
                   value={p.id}
-                  checked={dealerId === p.id}
+                  checked={noGajiDealerId === p.id}
                   disabled={!isHydrated || isPending}
-                  onChange={() => setDealerId(p.id)}
+                  onChange={() => setNoGajiDealerId(noGajiDealerId === p.id ? null : p.id)}
+                  onClick={() => { if (noGajiDealerId === p.id) setNoGajiDealerId(null) }}
                   style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
                 />
                 <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', marginLeft: '0.25rem' }}>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
                   {p.balance}
                 </span>
-                {p.id === recommendedDealerId && (
-                  <span style={{
-                    marginLeft: 'auto',
-                    fontSize: '0.625rem',
-                    fontWeight: 500,
-                    letterSpacing: '0.05em',
-                    color: 'var(--accent-felt)',
-                    border: '1px solid var(--accent-felt)',
-                    borderRadius: '4px',
-                    padding: '1px 5px',
-                    flexShrink: 0,
-                  }}>
-                    REKOMENDASI
+                {p.balance < buyIn && (
+                  <span style={{ marginLeft: 'auto', fontSize: '0.6875rem', color: 'var(--accent-warn)', flexShrink: 0 }}>
+                    kurang balance
                   </span>
                 )}
               </label>

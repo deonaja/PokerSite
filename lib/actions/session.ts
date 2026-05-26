@@ -217,11 +217,13 @@ export async function endSession({
       return { error: 'Data stack duplikat' }
     }
 
-    const { rows: participants } = await client.query<{ player_id: string; is_dealer: boolean; rebuy_count: number }>(
-      `SELECT player_id, is_dealer, rebuy_count FROM session_participants WHERE session_id = $1 FOR UPDATE`,
+    const { rows: participants } = await client.query<{ player_id: string; is_dealer: boolean; rebuy_count: number; no_gaji_dealer: boolean }>(
+      `SELECT player_id, is_dealer, rebuy_count, no_gaji_dealer FROM session_participants WHERE session_id = $1 FOR UPDATE`,
       [sessionId]
     )
-    const participantIds = participants.map((row) => row.player_id)
+    // Active participants: exclude no-gaji dealer (they have no stack to input)
+    const activeParticipants = participants.filter((p) => !p.no_gaji_dealer)
+    const participantIds = activeParticipants.map((row) => row.player_id)
     if (participantIds.length !== stacks.length) {
       await client.query('ROLLBACK')
       return { error: 'Data stack harus lengkap untuk semua peserta' }
@@ -247,12 +249,12 @@ export async function endSession({
     const rakeRate = sessionSeason?.rake_rate ?? 0
 
     // Rake = rake_rate% of total chips that entered this session
-    const totalRebuy = participants.reduce((sum, p) => sum + p.rebuy_count, 0)
+    const totalRebuy = activeParticipants.reduce((sum, p) => sum + p.rebuy_count, 0)
     const sessionChips = isPhase2
-      ? (participants.length + totalRebuy) * buyIn    // all paid in phase 2
-      : (participants.filter((p) => !p.is_dealer).length + totalRebuy) * buyIn
+      ? (activeParticipants.length + totalRebuy) * buyIn    // all paid in phase 2
+      : (activeParticipants.filter((p) => !p.is_dealer).length + totalRebuy) * buyIn
     const rakeAmount = isPhase2 ? Math.floor(sessionChips * rakeRate / 100) : 0
-    const dealerParticipant = participants.find((p) => p.is_dealer)
+    const dealerParticipant = activeParticipants.find((p) => p.is_dealer)
 
     const { rows: players } = await client.query<{ id: string; balance: number }>(
       `SELECT id, balance FROM players WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
@@ -315,12 +317,14 @@ export async function endSession({
 interface StartSessionInput {
   playerIds: string[]
   dealerId: string
+  noGajiDealerId?: string | null
   actorPlayerId: string
 }
 
 export async function startSession({
   playerIds,
   dealerId,
+  noGajiDealerId,
   actorPlayerId: _actorPlayerId,
 }: StartSessionInput): Promise<{ sessionId: string } | { error: string }> {
   if (playerIds.length < 2) return { error: 'Minimal 2 pemain' }
@@ -341,6 +345,7 @@ export async function startSession({
       return { error: 'Sudah ada sesi aktif' }
     }
 
+    // All players who participate in the chip economy (paid players + dealer)
     const { rows: players } = await client.query<{ id: string; balance: number }>(
       `SELECT id, balance FROM players WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
       [playerIds]
@@ -356,6 +361,25 @@ export async function startSession({
       `SELECT id, buy_in, max_pool, current_phase, rake_rate FROM seasons WHERE status = 'active' LIMIT 1`
     )
     const buyIn = season?.buy_in ?? 100
+
+    // Validate cooldown: paid dealer must not be in cooldown
+    const { rows: [dealerCooldown] } = await client.query<{ in_cooldown: boolean }>(
+      `SELECT
+         CASE
+           WHEN last_dealer_session_id IS NULL THEN false
+           ELSE (
+             SELECT COUNT(*) FROM sessions s
+             WHERE s.started_at > (SELECT started_at FROM sessions WHERE id = p.last_dealer_session_id)
+             AND s.status IN ('active', 'ended')
+           ) < 2
+         END AS in_cooldown
+       FROM players p WHERE id = $1`,
+      [dealerId]
+    )
+    if (dealerCooldown?.in_cooldown) {
+      await client.query('ROLLBACK')
+      return { error: 'Dealer masih dalam cooldown (belum 2 sesi)' }
+    }
 
     // Check phase transition: bootstrap → steady
     let currentPhase = season?.current_phase ?? 'bootstrap'
@@ -408,6 +432,32 @@ export async function startSession({
         )
       }
     }
+
+    // No-gaji dealer: add to session without buy-in or salary
+    if (noGajiDealerId && !playerIds.includes(noGajiDealerId)) {
+      const { rows: [noGajiPlayer] } = await client.query<{ id: string }>(
+        `SELECT id FROM players WHERE id = $1`,
+        [noGajiDealerId]
+      )
+      if (noGajiPlayer) {
+        await client.query(
+          `INSERT INTO session_participants (session_id, player_id, is_dealer, no_gaji_dealer)
+           VALUES ($1, $2, false, true)`,
+          [sessionId, noGajiDealerId]
+        )
+        await client.query(
+          `INSERT INTO edit_log (session_id, player_id, actor_player_id, action)
+           VALUES ($1, $2, $3, 'buy_in_no_gaji_dealer')`,
+          [sessionId, noGajiDealerId, actorPlayerId]
+        )
+      }
+    }
+
+    // Update last_dealer_session_id for the paid dealer
+    await client.query(
+      `UPDATE players SET last_dealer_session_id = $1 WHERE id = $2`,
+      [sessionId, dealerId]
+    )
 
     await client.query('COMMIT')
     revalidatePath('/')

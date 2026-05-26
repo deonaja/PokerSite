@@ -3,15 +3,39 @@ import { sql } from '@/lib/db'
 import type { Player } from '@/lib/types'
 import SessionSetupForm from '@/components/SessionSetupForm'
 
-async function getPlayers(): Promise<Player[]> {
-  const rows = await sql`
-    SELECT id, name, balance, created_at FROM players ORDER BY name ASC
-  `
-  return rows as Player[]
+interface PlayerWithMeta extends Player {
+  in_cooldown: boolean
+}
+
+async function getSetupData(): Promise<{ players: PlayerWithMeta[]; buyIn: number }> {
+  const [playerRows, seasonRows] = await Promise.all([
+    sql`
+      SELECT
+        p.id, p.name, p.balance, p.created_at, p.last_dealer_session_id,
+        CASE
+          WHEN p.last_dealer_session_id IS NULL THEN false
+          ELSE (
+            SELECT COUNT(*) FROM sessions s
+            WHERE s.started_at > (SELECT started_at FROM sessions WHERE id = p.last_dealer_session_id)
+            AND s.status IN ('active', 'ended')
+          ) < 2
+        END AS in_cooldown
+      FROM players p
+      ORDER BY p.name ASC
+    `,
+    sql`SELECT buy_in FROM seasons WHERE status = 'active' LIMIT 1`,
+  ])
+
+  const buyIn = (seasonRows[0] as { buy_in: number } | undefined)?.buy_in ?? 100
+
+  return {
+    players: playerRows as unknown as PlayerWithMeta[],
+    buyIn,
+  }
 }
 
 export default async function SessionSetupPage() {
-  const players = await getPlayers()
+  const { players, buyIn } = await getSetupData()
 
   return (
     <div style={{ paddingBottom: '6rem' }}>
@@ -35,7 +59,7 @@ export default async function SessionSetupPage() {
         </span>
       </div>
 
-      <SessionSetupForm players={players} />
+      <SessionSetupForm players={players} buyIn={buyIn} />
     </div>
   )
 }
