@@ -37,7 +37,13 @@ export async function rebuy({
     )
     if (!player) { await client.query('ROLLBACK'); return { error: 'Pemain tidak ditemukan' } }
 
-    const deduction = Math.min(player.balance, 100)
+    const { rows: [sessionSeason] } = await client.query<{ buy_in: number }>(
+      `SELECT s.buy_in FROM seasons s JOIN sessions sess ON sess.season_id = s.id WHERE sess.id = $1`,
+      [sessionId]
+    )
+    const buyIn = sessionSeason?.buy_in ?? 100
+
+    const deduction = Math.min(player.balance, buyIn)
     await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [deduction, playerId])
     const rebuyRow = await client.query(
       `UPDATE session_participants SET rebuy_count = rebuy_count + 1 WHERE id = $1`,
@@ -46,9 +52,9 @@ export async function rebuy({
     if (!rebuyRow.rowCount) { await client.query('ROLLBACK'); return { error: 'Gagal update rebuy' } }
 
     await client.query(
-      `INSERT INTO edit_log (session_id, player_id, actor_player_id, action, balance_before, balance_after)
-       VALUES ($1, $2, $3, 'rebuy', $4, $5)`,
-      [sessionId, playerId, actorPlayerId, player.balance, player.balance - deduction]
+      `INSERT INTO edit_log (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
+       VALUES ($1, $2, $3, 'rebuy', $4, $5, $6)`,
+      [sessionId, playerId, actorPlayerId, player.balance, player.balance - deduction, JSON.stringify({ buy_in: buyIn })]
     )
 
     await client.query('COMMIT')
@@ -112,7 +118,13 @@ export async function undoRebuy({
     )
     if (!voided.rowCount) { await client.query('ROLLBACK'); return { error: 'Rebuy sudah di-undo' } }
 
-    await client.query(`UPDATE players SET balance = balance + 100 WHERE id = $1`, [playerId])
+    const { rows: [undoSeason] } = await client.query<{ buy_in: number }>(
+      `SELECT s.buy_in FROM seasons s JOIN sessions sess ON sess.season_id = s.id WHERE sess.id = $1`,
+      [sessionId]
+    )
+    const undoBuyIn = undoSeason?.buy_in ?? 100
+
+    await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [undoBuyIn, playerId])
     const undoRow = await client.query(
       `UPDATE session_participants SET rebuy_count = rebuy_count - 1 WHERE id = $1 AND rebuy_count > 0`,
       [participant.id]
@@ -122,7 +134,7 @@ export async function undoRebuy({
     await client.query(
       `INSERT INTO edit_log (session_id, player_id, actor_player_id, action, balance_before, balance_after)
        VALUES ($1, $2, $3, 'rebuy_undo', $4, $5)`,
-      [sessionId, playerId, actorPlayerId, player.balance, player.balance + 100]
+      [sessionId, playerId, actorPlayerId, player.balance, player.balance + undoBuyIn]
     )
 
     await client.query('COMMIT')
@@ -314,9 +326,14 @@ export async function startSession({
       return { error: 'Beberapa pemain tidak ditemukan' }
     }
 
+    const { rows: [season] } = await client.query<{ id: string; buy_in: number }>(
+      `SELECT id, buy_in FROM seasons WHERE status = 'active' LIMIT 1`
+    )
+    const buyIn = season?.buy_in ?? 100
+
     const { rows: [session] } = await client.query<{ id: string }>(
-      `INSERT INTO sessions (dealer_id, status) VALUES ($1, 'active') RETURNING id`,
-      [dealerId]
+      `INSERT INTO sessions (dealer_id, status, season_id) VALUES ($1, 'active', $2) RETURNING id`,
+      [dealerId, season?.id ?? null]
     )
     const sessionId = session.id
 
@@ -330,7 +347,7 @@ export async function startSession({
       )
 
       if (!isDealer) {
-        const deduction = Math.min(player.balance, 100)
+        const deduction = Math.min(player.balance, buyIn)
         await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [deduction, player.id])
         await client.query(
           `INSERT INTO edit_log

@@ -12,9 +12,10 @@ import type { PollParticipant, PollResponse } from '@/lib/types'
 interface Props {
   sessionId: string
   initial: PollResponse
+  buyIn?: number
 }
 
-export default function SessionView({ sessionId, initial }: Props) {
+export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) {
   const router = useRouter()
   const { activeSession } = usePoll(initial)
   const participants: PollParticipant[] = activeSession?.participants ?? []
@@ -203,7 +204,7 @@ export default function SessionView({ sessionId, initial }: Props) {
         title={`Rebuy ${rebuying?.player_name ?? ''}?`}
       >
         <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-          Balance kepotong 100.
+          Balance kepotong {buyIn}.
         </p>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <Button variant="secondary" fullWidth disabled={!isHydrated || isPending} onClick={() => setRebuying(null)}>

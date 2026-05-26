@@ -29,8 +29,18 @@ async function getSessionData() {
 
   if (rows.length === 0) return null
 
+  const seasonRows = await sql`
+    SELECT se.buy_in
+    FROM seasons se
+    JOIN sessions s ON s.season_id = se.id
+    WHERE s.status = 'active'
+    LIMIT 1
+  `
+  const buyIn = (seasonRows[0] as { buy_in: number } | undefined)?.buy_in ?? 100
+
   return {
     sessionId: rows[0].session_id,
+    buyIn,
     participants: rows.map((r) => ({
       player_id: r.player_id,
       player_name: r.player_name,
@@ -45,5 +55,5 @@ export default async function SessionEndPage() {
   const data = await getSessionData()
   if (!data) redirect('/')
 
-  return <SessionEndWizard sessionId={data.sessionId} participants={data.participants} />
+  return <SessionEndWizard sessionId={data.sessionId} participants={data.participants} buyIn={data.buyIn} />
 }

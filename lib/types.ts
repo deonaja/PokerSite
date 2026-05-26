@@ -35,6 +35,24 @@ export interface EditLog {
   created_at: string
 }
 
+export interface Season {
+  id: string
+  number: number
+  status: 'active' | 'ended'
+  preset_name: string | null
+  starting_balance: number
+  buy_in: number
+  bb: number
+  sb: number
+  max_pool: number
+  max_sessions: number
+  rake_rate: number
+  current_phase: 'bootstrap' | 'steady'
+  creator_player_id: string | null
+  started_at: string
+  ended_at: string | null
+}
+
 export interface SessionWithParticipants extends Session {
   participants: (SessionParticipant & { player: Player })[]
 }

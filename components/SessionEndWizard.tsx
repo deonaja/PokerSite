@@ -17,9 +17,10 @@ interface Participant {
 interface Props {
   sessionId: string
   participants: Participant[]
+  buyIn?: number
 }
 
-export default function SessionEndWizard({ sessionId, participants }: Props) {
+export default function SessionEndWizard({ sessionId, participants, buyIn = 100 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [step, setStep] = useState(0)
@@ -75,7 +76,7 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
 
   const nonDealerCount = participants.filter((p) => !p.is_dealer).length
   const totalRebuy = participants.reduce((sum, p) => sum + p.rebuy_count, 0)
-  const expectedTotal = (nonDealerCount + totalRebuy) * 100
+  const expectedTotal = (nonDealerCount + totalRebuy) * buyIn
   const inputTotal = Object.values(inputs).reduce((sum, v) => sum + (parseInt(v, 10) || 0), 0)
   const chipDiff = inputTotal - expectedTotal
 
@@ -195,7 +196,7 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
 
   if (!current) return null
 
-  const totalSpent = current.is_dealer ? current.rebuy_count * 100 : 100 + current.rebuy_count * 100
+  const totalSpent = current.is_dealer ? current.rebuy_count * buyIn : buyIn + current.rebuy_count * buyIn
 
   return (
     <div style={{ paddingBottom: '6rem' }}>
@@ -228,13 +229,13 @@ export default function SessionEndWizard({ sessionId, participants }: Props) {
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
             <span style={{ color: 'var(--text-secondary)' }}>Buy-in</span>
             <span style={{ fontFamily: 'var(--font-mono)', color: current.is_dealer ? 'var(--accent-success)' : 'var(--text-primary)' }}>
-              {current.is_dealer ? 'gratis' : '100'}
+              {current.is_dealer ? 'gratis' : buyIn}
             </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
             <span style={{ color: 'var(--text-secondary)' }}>Rebuy ({current.rebuy_count}×)</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
-              {current.rebuy_count * 100}
+              {current.rebuy_count * buyIn}
             </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.375rem' }}>

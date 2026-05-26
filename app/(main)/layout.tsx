@@ -1,8 +1,13 @@
 import { redirect } from 'next/navigation'
+import { sql } from '@/lib/db'
 import { getAuthenticatedPlayer } from '@/lib/auth-server'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
-  const authPlayer = await getAuthenticatedPlayer()
+  const [activeSeason, authPlayer] = await Promise.all([
+    sql`SELECT id FROM seasons WHERE status = 'active' LIMIT 1`,
+    getAuthenticatedPlayer(),
+  ])
+  if (activeSeason.length === 0) redirect('/season/new')
   if (!authPlayer) redirect('/identity')
 
   return (
