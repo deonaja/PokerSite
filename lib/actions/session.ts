@@ -217,8 +217,8 @@ export async function endSession({
       return { error: 'Data stack duplikat' }
     }
 
-    const { rows: participants } = await client.query<{ player_id: string }>(
-      `SELECT player_id FROM session_participants WHERE session_id = $1 FOR UPDATE`,
+    const { rows: participants } = await client.query<{ player_id: string; is_dealer: boolean; rebuy_count: number }>(
+      `SELECT player_id, is_dealer, rebuy_count FROM session_participants WHERE session_id = $1 FOR UPDATE`,
       [sessionId]
     )
     const participantIds = participants.map((row) => row.player_id)
@@ -233,6 +233,27 @@ export async function endSession({
       return { error: 'Ada pemain yang tidak ikut sesi ini' }
     }
 
+    // Get season info for rake calculation
+    const { rows: [sessionSeason] } = await client.query<{
+      buy_in: number; current_phase: string; rake_rate: number
+    }>(
+      `SELECT s.buy_in, s.current_phase, s.rake_rate
+       FROM seasons s JOIN sessions sess ON sess.season_id = s.id
+       WHERE sess.id = $1`,
+      [sessionId]
+    )
+    const isPhase2 = sessionSeason?.current_phase === 'steady'
+    const buyIn = sessionSeason?.buy_in ?? 100
+    const rakeRate = sessionSeason?.rake_rate ?? 0
+
+    // Rake = rake_rate% of total chips that entered this session
+    const totalRebuy = participants.reduce((sum, p) => sum + p.rebuy_count, 0)
+    const sessionChips = isPhase2
+      ? (participants.length + totalRebuy) * buyIn    // all paid in phase 2
+      : (participants.filter((p) => !p.is_dealer).length + totalRebuy) * buyIn
+    const rakeAmount = isPhase2 ? Math.floor(sessionChips * rakeRate / 100) : 0
+    const dealerParticipant = participants.find((p) => p.is_dealer)
+
     const { rows: players } = await client.query<{ id: string; balance: number }>(
       `SELECT id, balance FROM players WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
       [playerIds]
@@ -246,7 +267,10 @@ export async function endSession({
       const player = players.find((p) => p.id === playerId)
       if (!player) { await client.query('ROLLBACK'); return { error: 'Pemain tidak ditemukan' } }
 
-      await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [finalStack, playerId])
+      const isDealer = dealerParticipant?.player_id === playerId
+      const credit = finalStack + (isPhase2 && isDealer ? rakeAmount : 0)
+
+      await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [credit, playerId])
       const participantUpdate = await client.query(
         `UPDATE session_participants SET final_stack = $1 WHERE session_id = $2 AND player_id = $3`,
         [finalStack, sessionId, playerId]
@@ -262,8 +286,8 @@ export async function endSession({
           playerId,
           actorPlayerId,
           player.balance,
-          player.balance + finalStack,
-          JSON.stringify({ final_stack: finalStack }),
+          player.balance + credit,
+          JSON.stringify({ final_stack: finalStack, ...(isPhase2 && isDealer ? { rake: rakeAmount } : {}) }),
         ]
       )
     }
@@ -326,10 +350,28 @@ export async function startSession({
       return { error: 'Beberapa pemain tidak ditemukan' }
     }
 
-    const { rows: [season] } = await client.query<{ id: string; buy_in: number }>(
-      `SELECT id, buy_in FROM seasons WHERE status = 'active' LIMIT 1`
+    const { rows: [season] } = await client.query<{
+      id: string; buy_in: number; max_pool: number; current_phase: string; rake_rate: number
+    }>(
+      `SELECT id, buy_in, max_pool, current_phase, rake_rate FROM seasons WHERE status = 'active' LIMIT 1`
     )
     const buyIn = season?.buy_in ?? 100
+
+    // Check phase transition: bootstrap → steady
+    let currentPhase = season?.current_phase ?? 'bootstrap'
+    if (currentPhase === 'bootstrap' && season) {
+      const { rows: [{ total_chips }] } = await client.query<{ total_chips: number }>(
+        `SELECT COALESCE(SUM(balance), 0)::int AS total_chips FROM players`
+      )
+      if (total_chips >= season.max_pool) {
+        await client.query(
+          `UPDATE seasons SET current_phase = 'steady' WHERE id = $1`,
+          [season.id]
+        )
+        currentPhase = 'steady'
+      }
+    }
+    const isPhase2 = currentPhase === 'steady'
 
     const { rows: [session] } = await client.query<{ id: string }>(
       `INSERT INTO sessions (dealer_id, status, season_id) VALUES ($1, 'active', $2) RETURNING id`,
@@ -346,16 +388,18 @@ export async function startSession({
         [sessionId, player.id, isDealer]
       )
 
-      if (!isDealer) {
+      if (!isDealer || isPhase2) {
+        // Phase 1: non-dealers pay buy_in. Phase 2: everyone pays.
         const deduction = Math.min(player.balance, buyIn)
         await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [deduction, player.id])
         await client.query(
           `INSERT INTO edit_log
              (session_id, player_id, actor_player_id, action, balance_before, balance_after)
-           VALUES ($1, $2, $3, 'buy_in', $4, $5)`,
-          [sessionId, player.id, actorPlayerId, player.balance, player.balance - deduction]
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [sessionId, player.id, actorPlayerId, isDealer ? 'buy_in_dealer_phase2' : 'buy_in', player.balance, player.balance - deduction]
         )
       } else {
+        // Phase 1 dealer: free entry
         await client.query(
           `INSERT INTO edit_log
              (session_id, player_id, actor_player_id, action, balance_before, balance_after)

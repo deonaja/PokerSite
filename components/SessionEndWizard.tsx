@@ -18,9 +18,11 @@ interface Props {
   sessionId: string
   participants: Participant[]
   buyIn?: number
+  isPhase2?: boolean
+  rakeRate?: number
 }
 
-export default function SessionEndWizard({ sessionId, participants, buyIn = 100 }: Props) {
+export default function SessionEndWizard({ sessionId, participants, buyIn = 100, isPhase2 = false, rakeRate = 0 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [step, setStep] = useState(0)
@@ -76,7 +78,11 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100 
 
   const nonDealerCount = participants.filter((p) => !p.is_dealer).length
   const totalRebuy = participants.reduce((sum, p) => sum + p.rebuy_count, 0)
-  const expectedTotal = (nonDealerCount + totalRebuy) * buyIn
+  const sessionChips = isPhase2
+    ? (participants.length + totalRebuy) * buyIn
+    : (nonDealerCount + totalRebuy) * buyIn
+  const rakeAmount = isPhase2 ? Math.floor(sessionChips * rakeRate / 100) : 0
+  const expectedTotal = sessionChips - rakeAmount
   const inputTotal = Object.values(inputs).reduce((sum, v) => sum + (parseInt(v, 10) || 0), 0)
   const chipDiff = inputTotal - expectedTotal
 
@@ -132,7 +138,8 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', marginBottom: '1.25rem' }}>
             {participants.map((p, idx) => {
               const stack = parseInt(inputs[p.player_id] ?? '0', 10)
-              const newBalance = p.current_balance + stack
+              const rake = isPhase2 && p.is_dealer ? rakeAmount : 0
+              const newBalance = p.current_balance + stack + rake
 
               return (
                 <div key={p.player_id} style={{ padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
@@ -152,11 +159,16 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100 
                     <BalanceDisplay balance={p.current_balance} />
                     <span style={{ color: 'var(--text-tertiary)' }}>→</span>
                     <BalanceDisplay balance={newBalance} />
-                    <span style={{ color: stack >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
-                      ({stack >= 0 ? '+' : ''}
-                      {stack})
+                    <span style={{ color: (stack + rake) >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                      ({(stack + rake) >= 0 ? '+' : ''}
+                      {stack + rake})
                     </span>
                   </div>
+                  {rake > 0 && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--accent-success)', marginTop: '0.125rem', fontFamily: 'var(--font-mono)' }}>
+                      stack {stack} + rake {rake}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -196,7 +208,9 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100 
 
   if (!current) return null
 
-  const totalSpent = current.is_dealer ? current.rebuy_count * buyIn : buyIn + current.rebuy_count * buyIn
+  const totalSpent = (current.is_dealer && !isPhase2)
+    ? current.rebuy_count * buyIn
+    : buyIn + current.rebuy_count * buyIn
 
   return (
     <div style={{ paddingBottom: '6rem' }}>
@@ -228,8 +242,8 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100 
         <div style={{ padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
             <span style={{ color: 'var(--text-secondary)' }}>Buy-in</span>
-            <span style={{ fontFamily: 'var(--font-mono)', color: current.is_dealer ? 'var(--accent-success)' : 'var(--text-primary)' }}>
-              {current.is_dealer ? 'gratis' : buyIn}
+            <span style={{ fontFamily: 'var(--font-mono)', color: (current.is_dealer && !isPhase2) ? 'var(--accent-success)' : 'var(--text-primary)' }}>
+              {(current.is_dealer && !isPhase2) ? 'gratis' : buyIn}
             </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
@@ -244,6 +258,14 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100 
               {totalSpent}
             </span>
           </div>
+          {current.is_dealer && isPhase2 && rakeAmount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.375rem' }}>
+              <span style={{ color: 'var(--accent-success)' }}>Rake ({rakeRate}%)</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontWeight: 500, color: 'var(--accent-success)' }}>
+                +{rakeAmount}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
