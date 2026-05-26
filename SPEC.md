@@ -447,22 +447,39 @@ Sistem ekonomi yang self-balancing dengan reset periodik (kayak "season" di game
 - Snapshot final balance semua pemain.
 - Leaderboard di-publish (rank by final balance).
 - Per-player stats di-snapshot (sesi main, kali dealer, total menang/kalah).
-- All balance reset ke 200. Season counter naik. Phase balik ke 1.
+- All balance reset ke `starting_balance` season tersebut. Season counter naik. Phase balik ke 1.
 
-### Pemain low-balance (<100) — sistem cooldown + spectator
+### Pemain low-balance (< buy_in) — sistem cooldown + spectator
 
-Di phase manapun, pemain dengan `balance < 100` di awal sesi:
+Di phase manapun, pemain dengan `balance < buy_in` di awal sesi:
 - **Ga bisa main beneran** (ga cukup buy-in).
 - Pilihan: **spectator** (cuma nonton) ATAU **dealer-tanpa-gaji** (bagi kartu, ga ikut taruhan, ga dapet salary).
 - Pemain yang udah jadi dealer di sesi sebelumnya kena **cooldown 2 sesi** sebelum bisa jadi dealer (berbayar) lagi. Cegah abuse "stuck di 0 trus minta dealer terus".
 
 Dealer eligibility (untuk dealer berbayar):
-1. `balance >= 100` (bisa bayar buy-in normal).
+1. `balance >= buy_in` (bisa bayar buy-in normal).
 2. Tidak dalam cooldown (`sessions_since_last_dealer >= 2`).
 
-### Season preset (admin tool)
+### Season Creation Flow (M2)
 
-Owner pilih preset pas mulai season baru. Tiap preset bergerak 3 angka bareng (max pool, max sessions, rake rate):
+Season baru dibuat oleh **pemain biasa** — tidak perlu akses admin. **Tidak perlu login** untuk membuat season (fresh install belum ada pemain sama sekali).
+
+**Urutan input (multi-step, mobile-first):**
+
+1. **Isi pemain** — creator masukkan nama sendiri sebagai pemain pertama, lalu tambah pemain lain satu per satu. Season 2+: pemain dari season sebelumnya muncul sebagai pre-filled (tidak auto-confirmed — bisa uncheck, hapus, atau tambah pemain baru).
+2. **Duit awal & buy-in** — input `starting_balance` (default 200). Auto-tampil read-only:
+   - `buy_in = starting_balance / 2` (juga = dealer salary di Phase 1)
+   - BB/SB rekomendasi (informational only, berdasarkan `starting_balance`)
+3. **Preset season** — pilih Sprint / Quick / Standard / Marathon / Custom. Tiap preset tampil estimasi durasi berdasarkan jumlah pemain. Custom membuka field manual.
+4. **Konfirmasi** — recap semua settings, tombol "Mulai Season".
+
+**Pemain baru yang dibuat saat season setup mendapat PIN default `1234`.** Bisa diganti nanti dari dashboard.
+
+**Season creator = pemain biasa** — tidak ada privilege khusus. Di-log sebagai `creator_player_id` di tabel `seasons`.
+
+### Season preset
+
+Tiap preset bergerak 3 angka bareng (max pool, max sessions, rake rate). Estimasi durasi ditampilkan berdasarkan jumlah pemain aktif:
 
 | Preset | Target durasi | Max pool | Max sessions | Rake rate |
 |---|---|---|---|---|
@@ -472,7 +489,11 @@ Owner pilih preset pas mulai season baru. Tiap preset bergerak 3 angka bareng (m
 | Marathon | ~1 bulan | 5000 | 60 | 8% |
 | Custom | — | manual | manual | manual |
 
-Owner bisa override individual values dari preset terpilih. Asumsi pace: 4 pemain main 2-3x seminggu, 4-6 sesi per hari main.
+Bisa override individual values dari preset terpilih. Asumsi pace: 4 pemain main 2-3x seminggu, 4-6 sesi per hari main.
+
+### Ganti PIN sendiri (M2)
+
+Pemain bisa ganti PIN mereka sendiri dari dashboard — tidak perlu lewat admin. Flow: verifikasi PIN lama → input PIN baru → konfirmasi PIN baru. Admin tetap bisa reset PIN orang lain (untuk emergency).
 
 ### Schema extensions yang bakal dibutuhkan (NANTI)
 
@@ -482,10 +503,15 @@ CREATE TABLE seasons (
   number INTEGER NOT NULL UNIQUE,
   status TEXT CHECK (status IN ('active', 'ended')),
   preset_name TEXT,             -- 'sprint'|'quick'|'standard'|'marathon'|'custom'
+  starting_balance INTEGER NOT NULL DEFAULT 200,
+  buy_in INTEGER NOT NULL,      -- = starting_balance / 2, juga = dealer salary di phase 1
+  bb INTEGER NOT NULL,          -- big blind (informational only)
+  sb INTEGER NOT NULL,          -- small blind (informational only)
   max_pool INTEGER NOT NULL,
   max_sessions INTEGER NOT NULL,
   rake_rate INTEGER NOT NULL,   -- as integer percentage, 10 = 10%
   current_phase TEXT CHECK (current_phase IN ('bootstrap', 'steady')) DEFAULT 'bootstrap',
+  creator_player_id UUID REFERENCES players(id) ON DELETE SET NULL,
   started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   ended_at TIMESTAMPTZ
 );
@@ -519,20 +545,20 @@ Supaya schema sekarang ga ngeblokir migrasi nanti:
 2. **`players` table:** balance tetep di sini. Pas season end, balance di-snapshot ke `season_results` lalu di-reset.
 3. **`edit_log.action`:** JANGAN pake CHECK constraint pada kolom action. Pake TEXT bebas, validasi di app layer. Action enum bakal expand di milestone berikutnya: `'season_start'`, `'season_end'`, `'phase_transition'`, `'rake_collected'`, `'spectator_session'`.
 4. **Validasi total chip** (di fase end session): MVP cukup hitung kayak spec sekarang. Nanti pas phase 2 aktif, formula bakal include rake deduction.
-5. **Logic dealer di MVP:** dealer gratis buy-in. **Belum perlu** implement cooldown, balance check, atau rake. Tapi pas bikin UI selector dealer, sisain ruang buat "indicator" (misal disabled state + tooltip) yang di milestone 2 akan dipake buat indicate "cooldown" atau "balance insufficient".
+5. **Logic dealer di MVP:** dealer gratis buy-in, flat 100. **Belum perlu** implement cooldown, balance check, atau rake. Tapi pas bikin UI selector dealer, sisain ruang buat "indicator" (misal disabled state + tooltip) yang di milestone 2 akan dipake buat indicate "cooldown" atau "balance insufficient". Di M2, buy-in dan dealer salary berubah jadi `seasons.buy_in` (= `starting_balance / 2`), tidak lagi flat 100.
 
 ### Milestone ordering
 
 - **M1 (MVP, current spec):** Basic tracking, sesi, rebuy/undo, end session, admin. **Build this first. Deploy. Play.**
-- **M2:** Phase system (bootstrap → steady), rake calculation, cooldown dealer, balance < 100 → spectator/dealer-no-gaji.
-- **M3:** Season system (max sessions → reset), leaderboard, preset selector, season history.
+- **M2:** Season creation flow (player-initiated, unauthenticated), buy-in = `starting_balance / 2`, BB/SB informational, default PIN `1234`, ganti PIN dari dashboard, phase system (bootstrap → steady), rake calculation, cooldown dealer, balance < `buy_in` → spectator/dealer-no-gaji.
+- **M3:** Season end (max sessions → snapshot → reset), leaderboard, season history, season 2+ pre-fill players.
 - **M4:** Per-player stats, achievements, export CSV, polish.
 
 Tiap milestone independent-ish — bisa skip M2 dan langsung ke M3 kalau owner mau, dengan adjustment.
 
 ### Pertimbangan operasional
 
-- **Mid-season join:** kalau pemain baru join di tengah season aktif, kasih starter balance 200. Mereka mungkin underdog di leaderboard season itu, tapi season berikutnya fresh start. Acceptable.
+- **Mid-season join:** kalau pemain baru join di tengah season aktif, kasih starter balance = `seasons.starting_balance`. Mereka mungkin underdog di leaderboard season itu, tapi season berikutnya fresh start. Acceptable.
 - **Variable rake rate:** owner bisa adjust rake rate di tengah season via admin kalau distribusi terlalu skew. Catat di edit_log.
 - **Force end season:** admin tool buat akhirin season early (kalo bosen). Snapshot tetep jalan normal.
 - **Owner data feedback loop:** setelah beberapa season jalan, owner punya data real (sesi per minggu, durasi season actual, etc) buat tune preset kustom. App ini bertumbuh dengan data sendiri.
