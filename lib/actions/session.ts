@@ -387,27 +387,36 @@ export async function startSession({
     )
     const sessionId = session.id
 
-    let dealerGotFreeEntry = false
+    let dealerGotSalary = false
     for (const player of players) {
       const isDealer = player.id === dealerId
+      // `deduction` is what leaves the player's balance. Negative = a credit.
       let deduction = Math.min(player.balance, buyIn)
       let action = 'buy_in'
       let noGaji = false
 
       if (isDealer) {
         if (player.balance < buyIn) {
-          // Can't afford the buy-in → deals only (no ante, doesn't play), any phase.
-          // A broke dealer never gets free playing chips.
-          deduction = 0
-          action = 'buy_in_no_gaji_dealer'
+          // Broke → deals only (no ante, doesn't play hands). Still earns the
+          // dealer salary for the service of dealing.
           noGaji = true
+          if (dealerFreeEntry) {
+            // Phase 1 salary, paid as a direct credit (they can't play it).
+            deduction = -buyIn
+            action = 'dealer_salary'
+            dealerGotSalary = true
+          } else {
+            // Phase 2 → earns rake at end (via final stack); Phase 1 cooldown → no salary.
+            deduction = 0
+            action = 'buy_in_no_gaji_dealer'
+          }
         } else if (dealerFreeEntry) {
-          // Phase 1, not in cooldown, can afford → free entry (the salary)
+          // Can afford + Phase 1 + not cooldown → free entry (the salary), plays free.
           deduction = 0
           action = 'buy_in_dealer_free'
-          dealerGotFreeEntry = true
+          dealerGotSalary = true
         } else {
-          // Phase 2, or Phase 1 cooldown → pays buy-in like everyone
+          // Phase 2, or Phase 1 cooldown → pays buy-in like everyone, plays.
           deduction = buyIn
           action = 'buy_in_dealer_phase2'
         }
@@ -418,7 +427,7 @@ export async function startSession({
          VALUES ($1, $2, $3, $4)`,
         [sessionId, player.id, isDealer, noGaji]
       )
-      if (deduction > 0) {
+      if (deduction !== 0) {
         await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [deduction, player.id])
       }
       await client.query(
@@ -429,8 +438,8 @@ export async function startSession({
       )
     }
 
-    // Cooldown anchor is set only when the dealer actually got the free-entry salary.
-    if (dealerGotFreeEntry) {
+    // Cooldown anchor is set only when the dealer actually received the salary.
+    if (dealerGotSalary) {
       await client.query(
         `UPDATE players SET last_dealer_session_id = $1 WHERE id = $2`,
         [sessionId, dealerId]

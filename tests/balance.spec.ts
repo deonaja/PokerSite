@@ -20,10 +20,10 @@ test.describe('Balance non-negative enforcement', () => {
     await sql`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`
   })
 
-  // M2: a player with balance < buy_in is still selectable, but as dealer they can
-  // only DEAL (no ante, no playing) — even in Phase 1. A broke dealer never gets
-  // free playing chips.
-  test('low-balance dealer deals only (no ante), even in Phase 1', async ({ page }) => {
+  // M2: a player with balance < buy_in deals only (no ante, no playing) but still
+  // earns the dealer salary. In Phase 1 that salary (buy_in = 100) is credited
+  // directly since they can't play it: 50 → 150.
+  test('low-balance dealer deals only but still earns the Phase 1 salary', async ({ page }) => {
     const sql = neon(process.env.DATABASE_URL!)
     await sql`UPDATE players SET balance = 50 WHERE id = ${bob.id}`
 
@@ -41,9 +41,9 @@ test.describe('Balance non-negative enforcement', () => {
     await page.getByRole('button', { name: 'Mulai' }).click()
     await page.waitForURL('**/session')
 
-    // Bob can't afford buy-in → deals only, balance untouched (50)
+    // Bob deals only (no ante) but gets the Phase 1 salary credited: 50 + 100 = 150
     const [bobRow] = await sql`SELECT balance FROM players WHERE id = ${bob.id}` as { balance: number }[]
-    expect(Number(bobRow.balance)).toBe(50)
+    expect(Number(bobRow.balance)).toBe(150)
 
     const [participant] = await sql`
       SELECT sp.is_dealer, sp.no_gaji_dealer

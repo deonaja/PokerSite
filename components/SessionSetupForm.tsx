@@ -74,15 +74,17 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   const dealer = players.find((p) => p.id === dealerId)
   let dealerHint = ''
   if (dealer) {
-    if (dealer.balance < buyIn) {
-      // Can't afford buy-in → deals only, never plays (any phase)
-      dealerHint = `${dealer.name}: cuma bagi kartu — balance kurang, gak ikut main.`
-    } else if (currentPhase === 'bootstrap' && dealer.cooldown_remaining === 0) {
-      dealerHint = `${dealer.name}: main gratis (gaji dealer).`
+    const canAfford = dealer.balance >= buyIn
+    const p1NoCooldown = currentPhase === 'bootstrap' && dealer.cooldown_remaining === 0
+    if (canAfford) {
+      if (p1NoCooldown) dealerHint = `${dealer.name}: main gratis (gaji dealer).`
+      else if (currentPhase === 'steady') dealerHint = `${dealer.name}: main + ambil rake.`
+      else dealerHint = `${dealer.name}: bayar buy-in — cooldown, gak dapat gaji.`
     } else {
-      dealerHint = currentPhase === 'steady'
-        ? `${dealer.name}: main + ambil rake.`
-        : `${dealer.name}: bayar buy-in — lagi cooldown, gak dapat gaji.`
+      // Broke → deals only, doesn't play, but still earns the dealer salary
+      if (p1NoCooldown) dealerHint = `${dealer.name}: bagi kartu + dapet gaji dealer (gak ikut main).`
+      else if (currentPhase === 'steady') dealerHint = `${dealer.name}: bagi kartu + ambil rake (gak ikut main).`
+      else dealerHint = `${dealer.name}: cuma bagi kartu — cooldown, gak dapat gaji.`
     }
   }
 
