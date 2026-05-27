@@ -44,7 +44,7 @@ export default function DebugSection() {
   }
   const rowLabel: React.CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }
   const inputStyle: React.CSSProperties = {
-    flex: 1, padding: '0.5rem 0.75rem', borderRadius: '6px',
+    flex: 1, minWidth: 0, boxSizing: 'border-box', padding: '0.5rem 0.75rem', borderRadius: '6px',
     border: '1px solid var(--border-strong)', background: 'var(--bg-elevated)',
     color: 'var(--text-primary)', fontSize: '0.875rem', fontFamily: 'var(--font-mono)', outline: 'none',
   }
