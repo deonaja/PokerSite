@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { neon } from '@neondatabase/serverless'
-import { getTestData, setIdentity, clickLabelFor, adminUrl } from './helpers'
+import { getTestData, setIdentity, clickLabelFor, adminUrl, resetCooldown } from './helpers'
 
 test.describe('Balance non-negative enforcement', () => {
   const td = getTestData()
@@ -12,6 +12,7 @@ test.describe('Balance non-negative enforcement', () => {
     await sql`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`
     await sql`UPDATE players SET balance = 500 WHERE id = ${alice.id}`
     await sql`UPDATE players SET balance = 500 WHERE id = ${bob.id}`
+    await resetCooldown()
   })
 
   test.afterEach(async () => {

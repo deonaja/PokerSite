@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { neon } from '@neondatabase/serverless'
-import { getTestData, setIdentity, clickLabelFor } from './helpers'
+import { getTestData, setIdentity, clickLabelFor, resetCooldown } from './helpers'
 
 async function openRebuySheet(page: import('@playwright/test').Page, card: import('@playwright/test').Locator) {
   for (let i = 0; i < 3; i++) {
@@ -15,6 +15,7 @@ test.describe('Session setup — validation', () => {
   const alice = players[0]
 
   test.beforeEach(async ({ page }) => {
+    await resetCooldown()
     await setIdentity(page, alice)
     await page.goto('/session/setup')
   })
@@ -71,6 +72,7 @@ test.describe('Full session flow', () => {
   })
 
   test.beforeEach(async ({ page }) => {
+    await resetCooldown()
     await setIdentity(page, alice)
   })
 
@@ -205,6 +207,7 @@ test.describe('Session end — back navigation', () => {
   const bob = players[1]
 
   test('back button on recap restores previous input', async ({ page }) => {
+    await resetCooldown()
     await setIdentity(page, alice)
 
     // Ensure a session is active — if previous test left one, go with it

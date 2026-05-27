@@ -60,3 +60,17 @@ export async function clickLabelFor(page: Page, text: string) {
 export function adminUrl(adminKey: string, params = '') {
   return `/admin?key=${adminKey}${params ? `&${params}` : ''}`
 }
+
+/**
+ * Clear dealer cooldown so a player can be the paid dealer again immediately.
+ * Cooldown (Phase 1) blocks a player from dealing for 2 sessions after dealing.
+ * Tests that start several sessions in a row with the same dealer need this.
+ */
+export async function resetCooldown(playerIds?: string[]) {
+  const sql = neon(process.env.DATABASE_URL!)
+  if (playerIds && playerIds.length > 0) {
+    await sql`UPDATE players SET last_dealer_session_id = NULL WHERE id = ANY(${playerIds}::uuid[])`
+  } else {
+    await sql`UPDATE players SET last_dealer_session_id = NULL WHERE name LIKE '[T%'`
+  }
+}
