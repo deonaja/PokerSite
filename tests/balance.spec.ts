@@ -20,28 +20,28 @@ test.describe('Balance non-negative enforcement', () => {
     await sql`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`
   })
 
-  // M2: a low-balance player is still selectable, and as the Phase 1 dealer they
-  // get free entry — they play without paying buy-in (a path back to recovery).
-  test('low-balance player can be selected and deals free in Phase 1', async ({ page }) => {
+  // M2: a player with balance < buy_in is still selectable, but as dealer they can
+  // only DEAL (no ante, no playing) — even in Phase 1. A broke dealer never gets
+  // free playing chips.
+  test('low-balance dealer deals only (no ante), even in Phase 1', async ({ page }) => {
     const sql = neon(process.env.DATABASE_URL!)
     await sql`UPDATE players SET balance = 50 WHERE id = ${bob.id}`
 
     await setIdentity(page, alice)
     await page.goto('/session/setup')
 
-    // Low-balance Bob is selectable (no disabling in the new model)
+    // Low-balance Bob is still selectable (no disabling in the new model)
     const bobCheckbox = page.locator(`input[data-player-id="${bob.id}"]`)
     await expect(bobCheckbox).toBeEnabled()
 
     await clickLabelFor(page, alice.name)
     await clickLabelFor(page, bob.name)
-    // Make Bob the dealer — Phase 1 free entry lets him play despite low balance
     await page.locator(`input[name="dealer"][value="${bob.id}"]`).check()
 
     await page.getByRole('button', { name: 'Mulai' }).click()
     await page.waitForURL('**/session')
 
-    // Free entry: Bob's balance untouched (50); he's the dealer, not a no-gaji dealer
+    // Bob can't afford buy-in → deals only, balance untouched (50)
     const [bobRow] = await sql`SELECT balance FROM players WHERE id = ${bob.id}` as { balance: number }[]
     expect(Number(bobRow.balance)).toBe(50)
 
@@ -52,9 +52,9 @@ test.describe('Balance non-negative enforcement', () => {
       WHERE s.status = 'active' AND sp.player_id = ${bob.id}
     ` as { is_dealer: boolean; no_gaji_dealer: boolean }[]
     expect(participant?.is_dealer).toBe(true)
-    expect(participant?.no_gaji_dealer).toBe(false)
+    expect(participant?.no_gaji_dealer).toBe(true)
 
-    // Alice (non-dealer) paid buy-in: 500 → 400
+    // Alice (the actual player) paid buy-in: 500 → 400
     const [aliceRow] = await sql`SELECT balance FROM players WHERE id = ${alice.id}` as { balance: number }[]
     expect(Number(aliceRow.balance)).toBe(400)
   })

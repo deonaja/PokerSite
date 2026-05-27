@@ -387,6 +387,7 @@ export async function startSession({
     )
     const sessionId = session.id
 
+    let dealerGotFreeEntry = false
     for (const player of players) {
       const isDealer = player.id === dealerId
       let deduction = Math.min(player.balance, buyIn)
@@ -394,17 +395,21 @@ export async function startSession({
       let noGaji = false
 
       if (isDealer) {
-        if (dealerFreeEntry) {
-          deduction = 0
-          action = 'buy_in_dealer_free'
-        } else if (player.balance >= buyIn) {
-          deduction = buyIn
-          action = 'buy_in_dealer_phase2'
-        } else {
-          // Can't afford buy-in and no free entry → deals only, no ante
+        if (player.balance < buyIn) {
+          // Can't afford the buy-in → deals only (no ante, doesn't play), any phase.
+          // A broke dealer never gets free playing chips.
           deduction = 0
           action = 'buy_in_no_gaji_dealer'
           noGaji = true
+        } else if (dealerFreeEntry) {
+          // Phase 1, not in cooldown, can afford → free entry (the salary)
+          deduction = 0
+          action = 'buy_in_dealer_free'
+          dealerGotFreeEntry = true
+        } else {
+          // Phase 2, or Phase 1 cooldown → pays buy-in like everyone
+          deduction = buyIn
+          action = 'buy_in_dealer_phase2'
         }
       }
 
@@ -425,7 +430,7 @@ export async function startSession({
     }
 
     // Cooldown anchor is set only when the dealer actually got the free-entry salary.
-    if (dealerFreeEntry) {
+    if (dealerGotFreeEntry) {
       await client.query(
         `UPDATE players SET last_dealer_session_id = $1 WHERE id = $2`,
         [sessionId, dealerId]
