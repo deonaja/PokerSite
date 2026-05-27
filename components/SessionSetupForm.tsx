@@ -7,7 +7,7 @@ import Button from './Button'
 import { startSession } from '@/lib/actions/session'
 
 interface PlayerWithMeta extends Player {
-  in_cooldown: boolean
+  cooldown_remaining: number
 }
 
 interface Props {
@@ -17,8 +17,6 @@ interface Props {
 }
 
 export default function SessionSetupForm({ players, buyIn, currentPhase }: Props) {
-  // Cooldown only matters in Phase 1 (bootstrap) where dealer salary is printed
-  const cooldownActive = currentPhase === 'bootstrap'
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -30,10 +28,6 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   useEffect(() => {
     setIsHydrated(true)
   }, [])
-
-  function canAffordBuyIn(p: PlayerWithMeta) {
-    return p.balance >= buyIn
-  }
 
   function togglePlayer(id: string) {
     setSelectedIds((prev) => {
@@ -52,17 +46,14 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   }
 
   const selectedPlayers = players.filter((p) => selectedIds.has(p.id))
-  // A paid dealer must be a playing participant who can afford buy-in and (Phase 1) isn't in cooldown
-  const isDealerEligible = (p: PlayerWithMeta) => canAffordBuyIn(p) && !(cooldownActive && p.in_cooldown)
-  const dealerEligible = selectedPlayers.filter(isDealerEligible)
-  // No-gaji candidates: players who can't afford buy-in (can't play) — they may deal for free instead
-  const noGajiCandidates = players.filter((p) => !canAffordBuyIn(p))
-
-  const dealerIsNoGaji = dealerId !== null && !selectedIds.has(dealerId)
-  const dealerName = players.find((p) => p.id === dealerId)?.name ?? ''
   const canStart = selectedIds.size >= 2 && dealerId !== null
-  const recommendedDealerId = dealerEligible.length > 0
-    ? [...dealerEligible].sort((a, b) => a.balance - b.balance)[0]?.id ?? null
+
+  // Recommend the lowest-balance player who isn't in cooldown (they'll actually
+  // get the salary). Fall back to lowest balance overall if everyone's cooling down.
+  const notCooling = selectedPlayers.filter((p) => p.cooldown_remaining === 0)
+  const recoPool = notCooling.length > 0 ? notCooling : selectedPlayers
+  const recommendedDealerId = recoPool.length > 0
+    ? [...recoPool].sort((a, b) => a.balance - b.balance)[0]?.id ?? null
     : null
 
   useEffect(() => {
@@ -71,18 +62,29 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
       setDealerManuallySet(false)
       return
     }
-    const currentDealer = players.find((p) => p.id === dealerId)
-    const paidValid = !!dealerId && selectedIds.has(dealerId) && !!currentDealer && isDealerEligible(currentDealer)
-    const noGajiValid = !!dealerId && !selectedIds.has(dealerId) && noGajiCandidates.some((c) => c.id === dealerId)
-    const dealerStillValid = paidValid || noGajiValid
-    // Auto-recommend the lowest-balance eligible paid dealer unless the user
-    // manually picked one (paid or no-gaji) that's still valid.
-    if (!dealerManuallySet || !dealerStillValid) {
+    const stillValid = !!dealerId && selectedIds.has(dealerId)
+    if (!dealerManuallySet || !stillValid) {
       setDealerId(recommendedDealerId)
-      if (!dealerStillValid) setDealerManuallySet(false)
+      if (!stillValid) setDealerManuallySet(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIds])
+
+  // What will the chosen dealer actually do this session?
+  const dealer = players.find((p) => p.id === dealerId)
+  let dealerHint = ''
+  if (dealer) {
+    const freeEntry = currentPhase === 'bootstrap' && dealer.cooldown_remaining === 0
+    if (freeEntry) {
+      dealerHint = `${dealer.name}: main gratis (gaji dealer).`
+    } else if (dealer.balance >= buyIn) {
+      dealerHint = currentPhase === 'steady'
+        ? `${dealer.name}: main + ambil rake.`
+        : `${dealer.name}: bayar buy-in — lagi cooldown, gak dapat gaji.`
+    } else {
+      dealerHint = `${dealer.name}: cuma bagi kartu — balance kurang, gak ikut taruhan.`
+    }
+  }
 
   function handleSubmit() {
     if (!canStart || isPending) return
@@ -104,7 +106,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
     })
   }
 
-  const rowStyle = (active: boolean, disabled?: boolean): React.CSSProperties => ({
+  const rowStyle = (active: boolean): React.CSSProperties => ({
     display: 'flex',
     alignItems: 'center',
     gap: '0.75rem',
@@ -112,9 +114,8 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
     borderRadius: '8px',
     border: `1px solid ${active ? 'var(--accent-felt)' : 'var(--border-subtle)'}`,
     background: active ? 'var(--accent-felt-dim)' : 'var(--bg-surface)',
-    cursor: disabled ? 'default' : 'pointer',
+    cursor: 'pointer',
     minHeight: '44px',
-    opacity: disabled ? 0.5 : 1,
     transition: 'border-color 150ms ease, background 150ms ease',
   })
 
@@ -125,7 +126,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
 
   return (
     <div style={{ padding: '1.5rem 1rem 0' }}>
-      {/* Player checkboxes */}
+      {/* Player checkboxes — everyone selectable */}
       <p style={sectionLabel}>PILIH PEMAIN</p>
 
       {players.length === 0 ? (
@@ -135,107 +136,68 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
           {players.map((p) => {
-            const lowBalance = !canAffordBuyIn(p)
+            const lowBalance = p.balance < buyIn
             return (
-              <label key={p.id} style={rowStyle(selectedIds.has(p.id), lowBalance)}>
+              <label key={p.id} style={rowStyle(selectedIds.has(p.id))}>
                 <input
                   type="checkbox"
                   data-player-id={p.id}
                   checked={selectedIds.has(p.id)}
-                  disabled={!isHydrated || isPending || lowBalance}
-                  onChange={() => !lowBalance && togglePlayer(p.id)}
+                  disabled={!isHydrated || isPending}
+                  onChange={() => togglePlayer(p.id)}
                   style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
                 />
                 <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ fontSize: '0.8125rem', color: lowBalance ? 'var(--accent-warn)' : 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
                   {p.balance}
                 </span>
-                {lowBalance && (
-                  <span style={{ marginLeft: 'auto', fontSize: '0.6875rem', color: 'var(--accent-warn)', flexShrink: 0 }}>
-                    kurang balance
-                  </span>
-                )}
               </label>
             )
           })}
         </div>
       )}
 
-      {/* Dealer — a single choice. Either a playing participant (gets salary/rake)
-          or a low-balance player who only deals (no salary/rake for anyone). */}
+      {/* Single dealer choice from the selected players */}
       {selectedPlayers.length > 0 && (
         <>
           <p style={sectionLabel}>SIAPA YANG BAGI KARTU?</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: noGajiCandidates.length > 0 ? '1rem' : '1.5rem' }}>
-            {selectedPlayers.map((p) => {
-              const eligible = isDealerEligible(p)
-              const showCooldown = cooldownActive && p.in_cooldown
-              return (
-                <label key={p.id} style={rowStyle(dealerId === p.id, !eligible)}>
-                  <input
-                    type="radio"
-                    name="dealer"
-                    value={p.id}
-                    checked={dealerId === p.id}
-                    disabled={!isHydrated || isPending || !eligible}
-                    onChange={() => { if (eligible) { setDealerId(p.id); setDealerManuallySet(true) } }}
-                    style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                    main + {currentPhase === 'steady' ? 'rake' : 'gaji'}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            {selectedPlayers.map((p) => (
+              <label key={p.id} style={rowStyle(dealerId === p.id)}>
+                <input
+                  type="radio"
+                  name="dealer"
+                  value={p.id}
+                  checked={dealerId === p.id}
+                  disabled={!isHydrated || isPending}
+                  onChange={() => { setDealerId(p.id); setDealerManuallySet(true) }}
+                  style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
+                />
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', marginLeft: '0.25rem' }}>
+                  {p.balance}
+                </span>
+                {p.cooldown_remaining > 0 && (
+                  <span style={{ fontSize: '0.6875rem', color: 'var(--accent-warn)', flexShrink: 0 }}>
+                    cooldown {p.cooldown_remaining} sesi
                   </span>
-                  {showCooldown && (
-                    <span style={{ fontSize: '0.6875rem', color: 'var(--accent-warn)', flexShrink: 0, marginLeft: 'auto' }}>
-                      cooldown
-                    </span>
-                  )}
-                  {!showCooldown && p.id === recommendedDealerId && (
-                    <span style={{
-                      marginLeft: 'auto', fontSize: '0.625rem', fontWeight: 500, letterSpacing: '0.05em',
-                      color: 'var(--accent-felt)', border: '1px solid var(--accent-felt)', borderRadius: '4px',
-                      padding: '1px 5px', flexShrink: 0,
-                    }}>
-                      REKOMENDASI
-                    </span>
-                  )}
-                </label>
-              )
-            })}
+                )}
+                {p.id === recommendedDealerId && (
+                  <span style={{
+                    marginLeft: 'auto', fontSize: '0.625rem', fontWeight: 500, letterSpacing: '0.05em',
+                    color: 'var(--accent-felt)', border: '1px solid var(--accent-felt)', borderRadius: '4px',
+                    padding: '1px 5px', flexShrink: 0,
+                  }}>
+                    REKOMENDASI
+                  </span>
+                )}
+              </label>
+            ))}
           </div>
 
-          {/* No-gaji option: a broke player deals for free; nobody collects salary/rake */}
-          {noGajiCandidates.length > 0 && (
-            <>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginBottom: '0.5rem' }}>
-                …atau pemain yang kurang balance cuma bagi kartu (gratis, tidak ada yang digaji):
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-                {noGajiCandidates.map((p) => (
-                  <label key={p.id} style={rowStyle(dealerId === p.id)}>
-                    <input
-                      type="radio"
-                      name="dealer"
-                      value={p.id}
-                      checked={dealerId === p.id}
-                      disabled={!isHydrated || isPending}
-                      onChange={() => { setDealerId(p.id); setDealerManuallySet(true) }}
-                      style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
-                    />
-                    <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>bagi kartu</span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.6875rem', color: 'var(--accent-warn)', flexShrink: 0 }}>
-                      kurang balance
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </>
-          )}
-
-          {dealerIsNoGaji && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--accent-warn)', marginBottom: '1.5rem' }}>
-              {dealerName} cuma bagi kartu — tidak ada pemain yang dapat gaji/rake sesi ini.
+          {dealerHint && (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+              {dealerHint}
             </p>
           )}
         </>

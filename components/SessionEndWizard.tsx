@@ -10,19 +10,22 @@ interface Participant {
   player_id: string
   player_name: string
   is_dealer: boolean
+  no_gaji_dealer: boolean
   rebuy_count: number
   current_balance: number
+  // Chips this player actually put into the table (buy-in + rebuys − undos).
+  // Free dealer = 0, deals-only dealer = 0, low-balance partial = what they paid.
+  contributed: number
 }
 
 interface Props {
   sessionId: string
   participants: Participant[]
-  buyIn?: number
-  isPhase2?: boolean
-  rakeRate?: number
+  // Total chips on the table, summed from actual buy-in/rebuy deductions.
+  expectedTotal: number
 }
 
-export default function SessionEndWizard({ sessionId, participants, buyIn = 100, isPhase2 = false, rakeRate = 0 }: Props) {
+export default function SessionEndWizard({ sessionId, participants, expectedTotal }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [step, setStep] = useState(0)
@@ -76,14 +79,6 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100,
     setStep((s) => s - 1)
   }
 
-  const nonDealerCount = participants.filter((p) => !p.is_dealer).length
-  const totalRebuy = participants.reduce((sum, p) => sum + p.rebuy_count, 0)
-  const expectedTotal = isPhase2
-    ? (participants.length + totalRebuy) * buyIn
-    : (nonDealerCount + totalRebuy) * buyIn
-  // Dealer's stack already includes rake they collected during play (Approach C).
-  // Hint amount shown as guidance only, not used in balance updates.
-  const rakeHint = isPhase2 ? Math.floor(expectedTotal * rakeRate / 100) : 0
   const inputTotal = Object.values(inputs).reduce((sum, v) => sum + (parseInt(v, 10) || 0), 0)
   const chipDiff = inputTotal - expectedTotal
 
@@ -148,6 +143,9 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100,
                     {p.is_dealer && (
                       <span style={{ fontSize: '0.6875rem', padding: '1px 5px', borderRadius: '4px', background: 'var(--accent-felt)', color: 'var(--text-primary)' }}>★</span>
                     )}
+                    {p.no_gaji_dealer && (
+                      <span style={{ fontSize: '0.625rem', color: 'var(--text-tertiary)' }}>bagi kartu</span>
+                    )}
                     <button
                       onClick={() => handleJumpTo(idx)}
                       style={{ marginLeft: 'auto', background: 'none', border: '1px solid var(--border-strong)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer', padding: '2px 8px', minHeight: '28px', lineHeight: 1 }}
@@ -203,10 +201,6 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100,
 
   if (!current) return null
 
-  const totalSpent = (current.is_dealer && !isPhase2)
-    ? current.rebuy_count * buyIn
-    : buyIn + current.rebuy_count * buyIn
-
   return (
     <div style={{ paddingBottom: '6rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -228,38 +222,33 @@ export default function SessionEndWizard({ sessionId, participants, buyIn = 100,
         <p style={{ fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>{current.player_name}</p>
         {current.is_dealer && (
           <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.05em', padding: '2px 8px', borderRadius: '4px', background: 'var(--accent-felt)', color: 'var(--text-primary)' }}>
-            ★ DEALER
+            ★ DEALER{current.no_gaji_dealer ? ' (BAGI KARTU)' : ''}
           </span>
         )}
       </div>
 
       <div style={{ padding: '1.25rem 1.5rem 0' }}>
         <div style={{ padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Buy-in</span>
-            <span style={{ fontFamily: 'var(--font-mono)', color: (current.is_dealer && !isPhase2) ? 'var(--accent-success)' : 'var(--text-primary)' }}>
-              {(current.is_dealer && !isPhase2) ? 'gratis' : buyIn}
-            </span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Rebuy ({current.rebuy_count}×)</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
-              {current.rebuy_count * buyIn}
-            </span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.375rem' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Total dikeluarkan</span>
-            <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontWeight: 500, color: 'var(--text-primary)' }}>
-              {totalSpent}
-            </span>
-          </div>
-          {current.is_dealer && isPhase2 && rakeHint > 0 && (
-            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.375rem' }}>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: 0, lineHeight: 1.4 }}>
-                Target rake ({rakeRate}%): ~<span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{rakeHint}</span>.
-                Pastikan udah masuk ke stack akhir kamu.
-              </p>
+          {current.no_gaji_dealer ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Bagi kartu (gak ante)</span>
+              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)' }}>rake/tip</span>
             </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Chip masuk (buy-in + rebuy)</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
+                  {current.contributed}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Rebuy</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
+                  {current.rebuy_count}×
+                </span>
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -20,60 +20,43 @@ test.describe('Balance non-negative enforcement', () => {
     await sql`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`
   })
 
-  // M2: a player with balance < buy_in can no longer join as a regular player —
-  // their checkbox is disabled. (The min(balance, buy_in) safety net still exists
-  // server-side and is exercised by the rebuy test below.)
-  test('player with balance below buy-in cannot be selected (checkbox disabled)', async ({ page }) => {
+  // M2: a low-balance player is still selectable, and as the Phase 1 dealer they
+  // get free entry — they play without paying buy-in (a path back to recovery).
+  test('low-balance player can be selected and deals free in Phase 1', async ({ page }) => {
     const sql = neon(process.env.DATABASE_URL!)
     await sql`UPDATE players SET balance = 50 WHERE id = ${bob.id}`
 
     await setIdentity(page, alice)
     await page.goto('/session/setup')
 
+    // Low-balance Bob is selectable (no disabling in the new model)
     const bobCheckbox = page.locator(`input[data-player-id="${bob.id}"]`)
-    await expect(bobCheckbox).toBeDisabled()
-    await expect(page.getByText('kurang balance').first()).toBeVisible()
-  })
+    await expect(bobCheckbox).toBeEnabled()
 
-  // M2: a low-balance player can still deal as a no-gaji (unpaid) dealer —
-  // no buy-in is charged and their balance is untouched.
-  test('low-balance player can be assigned as no-gaji dealer (balance untouched)', async ({ page }) => {
-    const sql = neon(process.env.DATABASE_URL!)
-    const charlie = td.players[2]
-    await sql`UPDATE players SET balance = 0 WHERE id = ${bob.id}`
-    await sql`UPDATE players SET balance = 500 WHERE id = ${charlie.id}`
-
-    await setIdentity(page, alice)
-    await page.goto('/session/setup')
-
-    // Alice + Charlie play; Bob (broke) is picked as the no-gaji dealer.
-    // Picking a non-player as dealer means nobody is the paid dealer.
     await clickLabelFor(page, alice.name)
-    await clickLabelFor(page, charlie.name)
-
-    const bobNoGaji = page.locator(`input[name="dealer"][value="${bob.id}"]`)
-    await bobNoGaji.check()
+    await clickLabelFor(page, bob.name)
+    // Make Bob the dealer — Phase 1 free entry lets him play despite low balance
+    await page.locator(`input[name="dealer"][value="${bob.id}"]`).check()
 
     await page.getByRole('button', { name: 'Mulai' }).click()
     await page.waitForURL('**/session')
 
-    // Bob's balance untouched (no buy-in), and recorded as no_gaji_dealer
+    // Free entry: Bob's balance untouched (50); he's the dealer, not a no-gaji dealer
     const [bobRow] = await sql`SELECT balance FROM players WHERE id = ${bob.id}` as { balance: number }[]
-    expect(bobRow.balance).toBe(0)
+    expect(Number(bobRow.balance)).toBe(50)
 
     const [participant] = await sql`
-      SELECT sp.no_gaji_dealer
+      SELECT sp.is_dealer, sp.no_gaji_dealer
       FROM session_participants sp
       JOIN sessions s ON s.id = sp.session_id
       WHERE s.status = 'active' AND sp.player_id = ${bob.id}
-    ` as { no_gaji_dealer: boolean }[]
-    expect(participant?.no_gaji_dealer).toBe(true)
+    ` as { is_dealer: boolean; no_gaji_dealer: boolean }[]
+    expect(participant?.is_dealer).toBe(true)
+    expect(participant?.no_gaji_dealer).toBe(false)
 
-    // Nobody is the paid dealer: both playing participants paid buy-in (500 → 400)
+    // Alice (non-dealer) paid buy-in: 500 → 400
     const [aliceRow] = await sql`SELECT balance FROM players WHERE id = ${alice.id}` as { balance: number }[]
-    const [charlieRow] = await sql`SELECT balance FROM players WHERE id = ${charlie.id}` as { balance: number }[]
     expect(Number(aliceRow.balance)).toBe(400)
-    expect(Number(charlieRow.balance)).toBe(400)
   })
 
   test('player with balance 50 only pays 50 on rebuy — balance ends at 0, not negative', async ({ page }) => {

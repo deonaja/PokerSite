@@ -4,7 +4,7 @@ import type { Player } from '@/lib/types'
 import SessionSetupForm from '@/components/SessionSetupForm'
 
 interface PlayerWithMeta extends Player {
-  in_cooldown: boolean
+  cooldown_remaining: number
 }
 
 async function getSetupData(): Promise<{ players: PlayerWithMeta[]; buyIn: number; currentPhase: 'bootstrap' | 'steady' }> {
@@ -13,13 +13,13 @@ async function getSetupData(): Promise<{ players: PlayerWithMeta[]; buyIn: numbe
       SELECT
         p.id, p.name, p.balance, p.created_at, p.last_dealer_session_id,
         CASE
-          WHEN p.last_dealer_session_id IS NULL THEN false
-          ELSE (
+          WHEN p.last_dealer_session_id IS NULL THEN 0
+          ELSE GREATEST(0, 2 - (
             SELECT COUNT(*) FROM sessions s
             WHERE s.started_at > (SELECT started_at FROM sessions WHERE id = p.last_dealer_session_id)
             AND s.status IN ('active', 'ended')
-          ) < 2
-        END AS in_cooldown
+          ))
+        END AS cooldown_remaining
       FROM players p
       ORDER BY p.name ASC
     `,
