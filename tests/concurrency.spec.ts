@@ -1,6 +1,6 @@
 import { test, expect, chromium } from '@playwright/test'
 import { neon } from '@neondatabase/serverless'
-import { getTestData, setIdentity, clickLabelFor } from './helpers'
+import { getTestData, setIdentity, clickLabelFor, resetTestPlayers } from './helpers'
 
 async function forceEndAllSessions() {
   const sql = neon(process.env.DATABASE_URL!)
@@ -8,11 +8,12 @@ async function forceEndAllSessions() {
 }
 
 async function openRebuySheet(page: import('@playwright/test').Page, card: import('@playwright/test').Locator) {
+  const sheetTitle = page.getByText(/Rebuy .*?\?/)
   for (let i = 0; i < 3; i++) {
     await card.getByRole('button', { name: 'Rebuy' }).click()
-    if (await page.getByText('Balance kepotong 100').isVisible().catch(() => false)) return
+    if (await sheetTitle.isVisible()) return
   }
-  await expect(page.getByText('Balance kepotong 100')).toBeVisible()
+  await expect(sheetTitle).toBeVisible()
 }
 
 /**
@@ -39,6 +40,10 @@ test('concurrent rebuys on same player apply both correctly', async () => {
   pageB.setDefaultTimeout(20000)
 
   try {
+    // Top up balances + clear cooldown so Bob can afford 2 rebuys and Alice can deal
+    await forceEndAllSessions()
+    await resetTestPlayers(500)
+
     // ── SETUP: start a session via context A ──────────────────────────────────
     await setIdentity(pageA, alice)
     await pageA.goto('http://localhost:3000/session/setup')
@@ -46,9 +51,23 @@ test('concurrent rebuys on same player apply both correctly', async () => {
     await clickLabelFor(pageA, bob.name)
     await pageA.locator('label', { hasText: alice.name }).locator('input[type="radio"]').check()
     await pageA.getByRole('button', { name: 'Mulai' }).click()
-    // waitForURL fires on URL change; waitForLoadState ensures HTML is actually rendered
-    await pageA.waitForURL('**/session', { timeout: 25000 })
-    await pageA.waitForLoadState('domcontentloaded')
+    await expect
+      .poll(() => new URL(pageA.url()).pathname, { timeout: 25000, intervals: [250, 500, 1000] })
+      .toBe('/session')
+    const sql = neon(process.env.DATABASE_URL!)
+    let activeSessionId: string | null = null
+    await expect.poll(async () => {
+      const [row] = await sql`
+        SELECT id FROM sessions WHERE status = 'active' LIMIT 1
+      ` as Array<{ id: string }>
+      activeSessionId = row?.id ?? null
+      return activeSessionId
+    }, { timeout: 20000, intervals: [250, 500, 1000] }).not.toBeNull()
+    if (!activeSessionId) throw new Error('No active session found after setup')
+    const [balanceBeforeRow] = await sql`
+      SELECT balance FROM players WHERE id = ${bob.id} LIMIT 1
+    ` as Array<{ balance: number | string }>
+    const balanceBefore = Number(balanceBeforeRow?.balance ?? 0)
 
     // Read Bob's initial rebuy_count
     const bobCardSetup = pageA.locator('div').filter({
@@ -59,8 +78,7 @@ test('concurrent rebuys on same player apply both correctly', async () => {
 
     // ── Context B also navigates to the active session ─────────────────────────
     await setIdentity(pageB, bob)
-    await pageB.goto('http://localhost:3000/session')
-    await pageB.waitForLoadState('domcontentloaded')
+    await pageB.goto('http://localhost:3000/session', { waitUntil: 'domcontentloaded' })
 
     // ── CONCURRENT REBUY ─────────────────────────────────────────────────────
     // .last() picks the inner participant card div, not the outer container
@@ -84,18 +102,31 @@ test('concurrent rebuys on same player apply both correctly', async () => {
     // Wait for each page's rebuy action to complete: router.refresh() updates the
     // participant card to a non-zero rebuy count. The Sheet uses CSS transforms so
     // Playwright never sees it as DOM-hidden — watch the data update instead.
-    await Promise.all([
-      expect(bobCardA.getByText(/Rebuy: [1-9]/)).toBeVisible({ timeout: 20000 }),
-      expect(bobCardB.getByText(/Rebuy: [1-9]/)).toBeVisible({ timeout: 20000 }),
-    ])
+    await expect.poll(async () => {
+      const [row] = await sql`
+        SELECT rebuy_count
+        FROM session_participants
+        WHERE session_id = ${activeSessionId}
+          AND player_id = ${bob.id}
+        LIMIT 1
+      ` as Array<{ rebuy_count: number | string }>
+      return Number(row?.rebuy_count ?? -1)
+    }, { timeout: 20000, intervals: [250, 500, 1000] }).toBe(2)
+
+    await expect.poll(async () => {
+      const [row] = await sql`
+        SELECT balance
+        FROM players
+        WHERE id = ${bob.id}
+        LIMIT 1
+      ` as Array<{ balance: number | string }>
+      const currentBalance = Number(row?.balance ?? balanceBefore)
+      return balanceBefore - currentBalance
+    }, { timeout: 20000, intervals: [250, 500, 1000] }).toBe(200)
 
     // ── VERIFY: fresh server render shows rebuy_count = 2 ────────────────────
-    await pageA.goto('http://localhost:3000/session')
-    await pageA.waitForLoadState('domcontentloaded')
-    const updatedBobCard = pageA.locator('div').filter({
-      has: pageA.locator('p', { hasText: /^Rebuy: \d+$/ }),
-    }).filter({ hasText: bob.name }).last()
-    await expect(updatedBobCard.getByText('Rebuy: 2')).toBeVisible({ timeout: 10000 })
+    await pageA.reload({ waitUntil: 'domcontentloaded' })
+    await expect(pageA.getByText('Rebuy: 2')).toBeVisible({ timeout: 10000 })
   } finally {
     await forceEndAllSessions().catch(() => {})
     await ctxA.close()
@@ -111,13 +142,14 @@ test('concurrent rebuys on same player apply both correctly', async () => {
 test('concurrent startSession: only one succeeds', async () => {
   test.setTimeout(90_000)
 
-  const { players, adminKey } = getTestData()
+  const { players } = getTestData()
   const alice = players[0]
   const bob = players[1]
   const charlie = players[2]
 
-  // Ensure no active session before racing
+  // Ensure no active session before racing + reset balances/cooldown
   await forceEndAllSessions().catch(() => {})
+  await resetTestPlayers(500).catch(() => {})
 
   const browser = await chromium.launch()
   const ctxA = await browser.newContext({ viewport: { width: 375, height: 667 } })
@@ -154,20 +186,21 @@ test('concurrent startSession: only one succeeds', async () => {
     // Wait for each page to reach a stable state: redirect to /session OR show the
     // "already active" error. A fixed sleep isn't reliable in dev mode — the
     // router.push('/session') navigation can take longer than a hard-coded wait.
+    const statusOf = async (page: import('@playwright/test').Page): Promise<'success' | 'error' | 'pending'> => {
+      const url = page.url()
+      if (url.includes('/session') && !url.includes('/setup')) return 'success'
+      if (await page.getByText('Sudah ada sesi aktif').isVisible()) return 'error'
+      return 'pending'
+    }
+
     await Promise.all([
-      Promise.race([
-        pageA.waitForURL('**/session', { timeout: 30000 }),
-        pageA.getByText('Sudah ada sesi aktif').waitFor({ state: 'visible', timeout: 30000 }),
-      ]),
-      Promise.race([
-        pageB.waitForURL('**/session', { timeout: 30000 }),
-        pageB.getByText('Sudah ada sesi aktif').waitFor({ state: 'visible', timeout: 30000 }),
-      ]),
+      expect.poll(async () => statusOf(pageA), { timeout: 30000, intervals: [250, 500, 1000] }).not.toBe('pending'),
+      expect.poll(async () => statusOf(pageB), { timeout: 30000, intervals: [250, 500, 1000] }).not.toBe('pending'),
     ])
 
     // Exactly one should succeed (redirect to /session), one should show error
-    const aSuccess = pageA.url().includes('/session') && !pageA.url().includes('/setup')
-    const bSuccess = pageB.url().includes('/session') && !pageB.url().includes('/setup')
+    const aSuccess = (await statusOf(pageA)) === 'success'
+    const bSuccess = (await statusOf(pageB)) === 'success'
 
     // Exactly one should have succeeded
     expect(aSuccess !== bSuccess).toBe(true)

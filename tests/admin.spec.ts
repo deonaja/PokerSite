@@ -49,8 +49,8 @@ test.describe('Admin - player management', () => {
 
     await page.getByPlaceholder('Nama').fill(newName)
     await page.getByPlaceholder(/Balance awal/).fill(newBalance)
-    await page.getByPlaceholder('PIN (4-6 digit)').fill('1234')
-    await page.getByPlaceholder('Konfirmasi PIN').fill('1234')
+    await page.getByPlaceholder('PIN (4-6 digit)', { exact: true }).fill('1234')
+    await page.getByPlaceholder('Konfirmasi PIN', { exact: true }).fill('1234')
     await page.getByRole('button', { name: '+ Tambah' }).click()
 
     await expect(page.getByText('Pemain ditambahkan.')).toBeVisible()
@@ -69,7 +69,7 @@ test.describe('Admin - player management', () => {
 
     await page.locator('select').first().selectOption({ value: alice.id })
     await page.getByPlaceholder(/Balance baru/).fill('999')
-    await page.getByPlaceholder(/Alasan/).fill('test edit balance')
+    await page.getByPlaceholder('Alasan (wajib)', { exact: true }).fill('test edit balance')
     await page.getByRole('button', { name: 'Update balance' }).click()
 
     await expect(page.getByText('Balance diupdate.')).toBeVisible()
@@ -84,7 +84,12 @@ test.describe('Admin - player management', () => {
   })
 
   test('reset pin: update pin with reason', async ({ page }) => {
+    // Target Charlie, not the default-selected Alice — the identity spec logs in
+    // as Alice with the default PIN, so resetting Alice here would break that test.
+    const { players } = getTestData()
+    const charlie = players[2]
     const resetCard = page.locator('div', { hasText: 'Set / reset PIN pemain' }).first()
+    await resetCard.locator('select').selectOption(charlie.id)
     await resetCard.getByPlaceholder('PIN baru (4-6 digit)').fill('5678')
     await resetCard.getByPlaceholder('Konfirmasi PIN baru').fill('5678')
     await resetCard.getByPlaceholder('Alasan reset PIN (wajib)').fill('player minta reset pin')

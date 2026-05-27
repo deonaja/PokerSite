@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { neon } from '@neondatabase/serverless'
-import { getTestData, setIdentity, clickLabelFor, resetCooldown } from './helpers'
+import { getTestData, setIdentity, clickLabelFor, resetTestPlayers } from './helpers'
 
 async function openRebuySheet(page: import('@playwright/test').Page, card: import('@playwright/test').Locator) {
   for (let i = 0; i < 3; i++) {
@@ -15,7 +15,7 @@ test.describe('Session setup — validation', () => {
   const alice = players[0]
 
   test.beforeEach(async ({ page }) => {
-    await resetCooldown()
+    await resetTestPlayers()
     await setIdentity(page, alice)
     await page.goto('/session/setup')
   })
@@ -29,30 +29,32 @@ test.describe('Session setup — validation', () => {
     await expect(page.getByRole('button', { name: 'Mulai' })).toBeDisabled()
   })
 
-  test('start button disabled when 2 players selected but no dealer', async ({ page }) => {
+  test('selecting 2 players auto-recommends a dealer and enables start', async ({ page }) => {
     await clickLabelFor(page, players[0].name)
     await clickLabelFor(page, players[1].name)
-    // Dealer radios appear but none selected yet
-    await expect(page.locator('input[type="radio"]')).toHaveCount(2)
-    await expect(page.getByRole('button', { name: 'Mulai' })).toBeDisabled()
+    // Two dealer radios appear (one per selected player)
+    await expect(page.locator('input[name="dealer"]')).toHaveCount(2)
+    // A dealer is auto-recommended (lowest balance), so start is enabled
+    await expect(page.getByText('REKOMENDASI')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Mulai' })).toBeEnabled()
   })
 
   test('unchecking a player removes their dealer radio option', async ({ page }) => {
     await clickLabelFor(page, players[0].name)
     await clickLabelFor(page, players[1].name)
-    // Both radios visible
-    await expect(page.locator('input[type="radio"]')).toHaveCount(2)
+    // Both dealer radios visible
+    await expect(page.locator('input[name="dealer"]')).toHaveCount(2)
     // Uncheck player[1]
     await clickLabelFor(page, players[1].name)
-    // Only one radio left
-    await expect(page.locator('input[type="radio"]')).toHaveCount(1)
+    // Only one dealer radio left
+    await expect(page.locator('input[name="dealer"]')).toHaveCount(1)
   })
 
   test('start button enabled when 2 players selected + dealer chosen', async ({ page }) => {
     await clickLabelFor(page, players[0].name)
     await clickLabelFor(page, players[1].name)
-    // Select first radio as dealer
-    await page.locator('input[type="radio"]').first().check()
+    // Select first dealer radio
+    await page.locator('input[name="dealer"]').first().check()
     await expect(page.getByRole('button', { name: 'Mulai' })).toBeEnabled()
   })
 })
@@ -72,7 +74,7 @@ test.describe('Full session flow', () => {
   })
 
   test.beforeEach(async ({ page }) => {
-    await resetCooldown()
+    await resetTestPlayers()
     await setIdentity(page, alice)
   })
 
@@ -207,7 +209,7 @@ test.describe('Session end — back navigation', () => {
   const bob = players[1]
 
   test('back button on recap restores previous input', async ({ page }) => {
-    await resetCooldown()
+    await resetTestPlayers()
     await setIdentity(page, alice)
 
     // Ensure a session is active — if previous test left one, go with it

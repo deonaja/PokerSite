@@ -23,6 +23,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   const [isPending, startTransition] = useTransition()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [dealerId, setDealerId] = useState<string | null>(null)
+  const [dealerManuallySet, setDealerManuallySet] = useState(false)
   const [noGajiDealerId, setNoGajiDealerId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
@@ -40,7 +41,10 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
       const next = new Set(prev)
       if (next.has(id)) {
         next.delete(id)
-        if (dealerId === id) setDealerId(null)
+        if (dealerId === id) {
+          setDealerId(null)
+          setDealerManuallySet(false)
+        }
       } else {
         next.add(id)
       }
@@ -63,11 +67,16 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   useEffect(() => {
     if (selectedPlayers.length < 2) {
       setDealerId(null)
+      setDealerManuallySet(false)
       return
     }
     const currentDealer = players.find((p) => p.id === dealerId)
-    if (!dealerId || !selectedIds.has(dealerId) || !currentDealer || !isDealerEligible(currentDealer)) {
+    const dealerStillValid = !!dealerId && selectedIds.has(dealerId) && !!currentDealer && isDealerEligible(currentDealer)
+    // Auto-recommend the lowest-balance eligible player unless the user picked one
+    // manually and that pick is still valid.
+    if (!dealerManuallySet || !dealerStillValid) {
       setDealerId(recommendedDealerId)
+      if (!dealerStillValid) setDealerManuallySet(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIds])
@@ -165,7 +174,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                     value={p.id}
                     checked={dealerId === p.id}
                     disabled={!isHydrated || isPending || !eligible}
-                    onChange={() => eligible && setDealerId(p.id)}
+                    onChange={() => { if (eligible) { setDealerId(p.id); setDealerManuallySet(true) } }}
                     style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
                   />
                   <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>

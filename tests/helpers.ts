@@ -74,3 +74,13 @@ export async function resetCooldown(playerIds?: string[]) {
     await sql`UPDATE players SET last_dealer_session_id = NULL WHERE name LIKE '[T%'`
   }
 }
+
+/**
+ * Reset all test players to a clean state: top up balance (so M2 won't disable
+ * their checkbox as low-balance) and clear dealer cooldown. Use in beforeEach of
+ * specs that start sessions, since balances are depleted by earlier specs.
+ */
+export async function resetTestPlayers(balance = 500) {
+  const sql = neon(process.env.DATABASE_URL!)
+  await sql`UPDATE players SET balance = ${balance}, last_dealer_session_id = NULL WHERE name LIKE '[T%'`
+}
