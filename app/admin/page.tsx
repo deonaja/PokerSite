@@ -5,6 +5,7 @@ import AddPlayerForm from './AddPlayerForm'
 import EditBalanceForm from './EditBalanceForm'
 import ForceEndSection from './ForceEndSection'
 import ResetPinForm from './ResetPinForm'
+import DebugSection from './DebugSection'
 
 const PAGE_SIZE = 20
 
@@ -109,6 +110,9 @@ export default async function AdminPage({
           <ForceEndSection sessionId={activeSessionId} />
         </section>
       )}
+
+      {/* Debug */}
+      <DebugSection />
 
       {/* Logs */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
