@@ -63,7 +63,7 @@ export default function DebugSection() {
 
       {/* Reset season */}
       <div style={card}>
-        <p style={rowLabel}>Reset season aktif (end season + sesi, biar bisa bikin baru)</p>
+        <p style={rowLabel}>Reset season — hapus semua season & sesi, numbering balik ke #1 (pemain & balance tetap)</p>
         {armed !== 'season' ? (
           <Button variant="secondary" fullWidth disabled={isPending} onClick={() => { setArmed('season'); setMsg(null) }}>
             Reset season

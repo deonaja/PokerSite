@@ -23,20 +23,28 @@ function revalidateAll() {
   revalidatePath('/session/setup')
 }
 
-/** End the active session (if any) and the active season, so a new one can be created. */
+/**
+ * Wipe ALL seasons + sessions (and their logs) but keep players, balances, and
+ * auth. After this the next season created starts again from #1.
+ */
 export async function debugResetSeason(): Promise<Result> {
   if (!(await isAdmin())) return { error: 'Unauthorized' }
   const client = createDbClient()
   await client.connect()
   try {
     await client.query('BEGIN')
-    await client.query(`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`)
-    const { rowCount } = await client.query(`UPDATE seasons SET status = 'ended', ended_at = now() WHERE status = 'active'`)
+    // Break players → sessions FK, then delete session/season rows in dependency order.
+    await client.query(`UPDATE players SET last_dealer_session_id = NULL`)
+    await client.query(`DELETE FROM edit_log WHERE session_id IS NOT NULL OR action = 'season_start'`)
+    await client.query(`DELETE FROM session_participants`)
+    await client.query(`DELETE FROM season_results`)
+    await client.query(`DELETE FROM sessions`)
+    await client.query(`DELETE FROM seasons`)
     await client.query('COMMIT')
     revalidateAll()
     return {
       success: true,
-      message: rowCount ? 'Season aktif di-end. Bikin season baru di /season/new.' : 'Tidak ada season aktif.',
+      message: 'Semua season & sesi dihapus. Season berikutnya mulai dari #1 (pemain & balance tetap).',
     }
   } catch (e) {
     await client.query('ROLLBACK')
