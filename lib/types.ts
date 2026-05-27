@@ -63,6 +63,7 @@ export interface PollParticipant {
   player_id: string
   player_name: string
   is_dealer: boolean
+  no_gaji_dealer: boolean
   rebuy_count: number
   final_stack: number | null
 }

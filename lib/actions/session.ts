@@ -294,19 +294,22 @@ export async function endSession({
 
 interface StartSessionInput {
   playerIds: string[]
+  // Whoever deals. If they're one of playerIds → paid dealer (free buy-in in
+  // Phase 1 / collects rake in Phase 2). If they're NOT a player → no-gaji
+  // dealer: they only deal, nobody is the paid dealer, everyone pays buy-in.
   dealerId: string
-  noGajiDealerId?: string | null
   actorPlayerId: string
 }
 
 export async function startSession({
   playerIds,
   dealerId,
-  noGajiDealerId,
   actorPlayerId: _actorPlayerId,
 }: StartSessionInput): Promise<{ sessionId: string } | { error: string }> {
   if (playerIds.length < 2) return { error: 'Minimal 2 pemain' }
-  if (!playerIds.includes(dealerId)) return { error: 'Dealer harus ikut bermain' }
+  if (!dealerId) return { error: 'Pilih dealer' }
+
+  const isNoGaji = !playerIds.includes(dealerId)
 
   const actorPlayerId = await getAuthenticatedPlayerId()
   const client = createDbClient()
@@ -343,9 +346,19 @@ export async function startSession({
     )
     const buyIn = season?.buy_in ?? 100
 
-    // Cooldown ONLY applies in Phase 1 (bootstrap) — that's where chips are printed,
-    // so anti-abuse matters. Phase 2 (steady) uses rake from actual play.
-    if (season?.current_phase === 'bootstrap') {
+    // No-gaji dealer must be a real player who isn't one of the playing participants.
+    if (isNoGaji) {
+      const { rows: [ngp] } = await client.query<{ id: string }>(
+        `SELECT id FROM players WHERE id = $1`,
+        [dealerId]
+      )
+      if (!ngp) { await client.query('ROLLBACK'); return { error: 'Dealer tidak ditemukan' } }
+    }
+
+    // Cooldown ONLY applies to a PAID dealer in Phase 1 (bootstrap) — that's where
+    // chips are printed, so anti-abuse matters. A no-gaji dealer earns nothing, and
+    // Phase 2 (steady) uses rake from actual play, so neither needs cooldown.
+    if (!isNoGaji && season?.current_phase === 'bootstrap') {
       const { rows: [dealerCooldown] } = await client.query<{ in_cooldown: boolean }>(
         `SELECT
            CASE
@@ -417,28 +430,21 @@ export async function startSession({
       }
     }
 
-    // No-gaji dealer: add to session without buy-in or salary
-    if (noGajiDealerId && !playerIds.includes(noGajiDealerId)) {
-      const { rows: [noGajiPlayer] } = await client.query<{ id: string }>(
-        `SELECT id FROM players WHERE id = $1`,
-        [noGajiDealerId]
+    // No-gaji dealer: deals only, no buy-in, no salary/rake. Nobody is the paid
+    // dealer this session (the loop above charged every player a buy-in).
+    if (isNoGaji) {
+      await client.query(
+        `INSERT INTO session_participants (session_id, player_id, is_dealer, no_gaji_dealer)
+         VALUES ($1, $2, false, true)`,
+        [sessionId, dealerId]
       )
-      if (noGajiPlayer) {
-        await client.query(
-          `INSERT INTO session_participants (session_id, player_id, is_dealer, no_gaji_dealer)
-           VALUES ($1, $2, false, true)`,
-          [sessionId, noGajiDealerId]
-        )
-        await client.query(
-          `INSERT INTO edit_log (session_id, player_id, actor_player_id, action)
-           VALUES ($1, $2, $3, 'buy_in_no_gaji_dealer')`,
-          [sessionId, noGajiDealerId, actorPlayerId]
-        )
-      }
-    }
-
-    // Update last_dealer_session_id only in Phase 1 (cooldown only relevant there)
-    if (!isPhase2) {
+      await client.query(
+        `INSERT INTO edit_log (session_id, player_id, actor_player_id, action)
+         VALUES ($1, $2, $3, 'buy_in_no_gaji_dealer')`,
+        [sessionId, dealerId, actorPlayerId]
+      )
+    } else if (!isPhase2) {
+      // Paid dealer in Phase 1: record cooldown anchor (only relevant in Phase 1)
       await client.query(
         `UPDATE players SET last_dealer_session_id = $1 WHERE id = $2`,
         [sessionId, dealerId]

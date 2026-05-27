@@ -14,11 +14,11 @@ export async function GET() {
   if (activeSessionRow) {
     const participants = await sql`
       SELECT sp.id AS participant_id, sp.player_id, p.name AS player_name,
-             sp.is_dealer, sp.rebuy_count, sp.final_stack
+             sp.is_dealer, sp.no_gaji_dealer, sp.rebuy_count, sp.final_stack
       FROM session_participants sp
       JOIN players p ON p.id = sp.player_id
       WHERE sp.session_id = ${activeSessionRow.id}
-      ORDER BY sp.is_dealer DESC, p.name ASC
+      ORDER BY sp.is_dealer DESC, sp.no_gaji_dealer ASC, p.name ASC
     `
     activeSession = {
       id: activeSessionRow.id,

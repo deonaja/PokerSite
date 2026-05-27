@@ -137,10 +137,11 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
               borderRadius: '8px',
               border: `1px solid ${p.is_dealer ? 'var(--accent-felt)' : 'var(--border-subtle)'}`,
               background: p.is_dealer ? 'var(--accent-felt-dim)' : 'var(--bg-surface)',
+              opacity: p.no_gaji_dealer ? 0.7 : 1,
             }}
           >
-            {/* Name + dealer badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            {/* Name + role badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: p.no_gaji_dealer ? 0 : '0.25rem' }}>
               <span style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-primary)' }}>
                 {p.player_name}
               </span>
@@ -159,40 +160,63 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
                   ★ DEALER
                 </span>
               )}
+              {p.no_gaji_dealer && (
+                <span
+                  style={{
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    border: '1px solid var(--border-strong)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  BAGI KARTU
+                </span>
+              )}
             </div>
 
-            {/* Rebuy count */}
-            <p
-              style={{
-                fontSize: '0.8125rem',
-                color: 'var(--text-secondary)',
-                marginBottom: '0.625rem',
-                fontFamily: 'var(--font-mono)',
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              Rebuy: {p.rebuy_count}
-            </p>
+            {p.no_gaji_dealer ? (
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: 0 }}>
+                Bagi kartu, tidak ikut taruhan
+              </p>
+            ) : (
+              <>
+                {/* Rebuy count */}
+                <p
+                  style={{
+                    fontSize: '0.8125rem',
+                    color: 'var(--text-secondary)',
+                    marginBottom: '0.625rem',
+                    fontFamily: 'var(--font-mono)',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  Rebuy: {p.rebuy_count}
+                </p>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Button
-                variant="secondary"
-                disabled={!isHydrated || isPending}
-                onClick={() => setRebuying(p)}
-                style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
-              >
-                Rebuy
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={!isHydrated || isPending || p.rebuy_count === 0}
-                onClick={() => handleUndo(p)}
-                style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
-              >
-                Undo
-              </Button>
-            </div>
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <Button
+                    variant="secondary"
+                    disabled={!isHydrated || isPending}
+                    onClick={() => setRebuying(p)}
+                    style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
+                  >
+                    Rebuy
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={!isHydrated || isPending || p.rebuy_count === 0}
+                    onClick={() => handleUndo(p)}
+                    style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
+                  >
+                    Undo
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         ))}
       </div>

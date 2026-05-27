@@ -46,11 +46,12 @@ test.describe('Balance non-negative enforcement', () => {
     await setIdentity(page, alice)
     await page.goto('/session/setup')
 
-    // Alice + Charlie play (Alice auto-recommended dealer); Bob deals for free
+    // Alice + Charlie play; Bob (broke) is picked as the no-gaji dealer.
+    // Picking a non-player as dealer means nobody is the paid dealer.
     await clickLabelFor(page, alice.name)
     await clickLabelFor(page, charlie.name)
 
-    const bobNoGaji = page.locator(`input[name="no-gaji-dealer"][value="${bob.id}"]`)
+    const bobNoGaji = page.locator(`input[name="dealer"][value="${bob.id}"]`)
     await bobNoGaji.check()
 
     await page.getByRole('button', { name: 'Mulai' }).click()
@@ -67,6 +68,12 @@ test.describe('Balance non-negative enforcement', () => {
       WHERE s.status = 'active' AND sp.player_id = ${bob.id}
     ` as { no_gaji_dealer: boolean }[]
     expect(participant?.no_gaji_dealer).toBe(true)
+
+    // Nobody is the paid dealer: both playing participants paid buy-in (500 → 400)
+    const [aliceRow] = await sql`SELECT balance FROM players WHERE id = ${alice.id}` as { balance: number }[]
+    const [charlieRow] = await sql`SELECT balance FROM players WHERE id = ${charlie.id}` as { balance: number }[]
+    expect(Number(aliceRow.balance)).toBe(400)
+    expect(Number(charlieRow.balance)).toBe(400)
   })
 
   test('player with balance 50 only pays 50 on rebuy — balance ends at 0, not negative', async ({ page }) => {
