@@ -55,7 +55,8 @@ test.describe('Admin - player management', () => {
 
     await expect(page.getByText('Pemain ditambahkan.')).toBeVisible()
     await expect(page.getByText(newName, { exact: true }).first()).toBeVisible()
-    const option = page.locator('select option', { hasText: newName })
+    // The new player appears in both the edit-balance and reset-PIN selects
+    const option = page.locator('select option', { hasText: newName }).first()
     await expect(option).toBeAttached()
   })
 
@@ -89,7 +90,8 @@ test.describe('Admin - player management', () => {
     const { players } = getTestData()
     const charlie = players[2]
     const resetCard = page.locator('div', { hasText: 'Set / reset PIN pemain' }).first()
-    await resetCard.locator('select').selectOption(charlie.id)
+    // ResetPinForm's select is the last <select> on the page (after edit-balance)
+    await page.locator('select').last().selectOption(charlie.id)
     await resetCard.getByPlaceholder('PIN baru (4-6 digit)').fill('5678')
     await resetCard.getByPlaceholder('Konfirmasi PIN baru').fill('5678')
     await resetCard.getByPlaceholder('Alasan reset PIN (wajib)').fill('player minta reset pin')

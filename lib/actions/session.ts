@@ -315,15 +315,10 @@ export async function startSession({
   try {
     await client.query('BEGIN')
 
-    const { rows: active } = await client.query(
-      `SELECT id FROM sessions WHERE status = 'active' LIMIT 1`
-    )
-    if (active.length > 0) {
-      await client.query('ROLLBACK')
-      return { error: 'Sudah ada sesi aktif' }
-    }
-
-    // All players who participate in the chip economy (paid players + dealer)
+    // Acquire player row locks FIRST. Concurrent starts that share a player
+    // serialize here, so the re-check below reliably sees a rival's committed
+    // session and fails with the right error (instead of falling through to,
+    // e.g., the cooldown check).
     const { rows: players } = await client.query<{ id: string; balance: number }>(
       `SELECT id, balance FROM players WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
       [playerIds]
@@ -331,6 +326,14 @@ export async function startSession({
     if (players.length !== playerIds.length) {
       await client.query('ROLLBACK')
       return { error: 'Beberapa pemain tidak ditemukan' }
+    }
+
+    const { rows: active } = await client.query(
+      `SELECT id FROM sessions WHERE status = 'active' LIMIT 1`
+    )
+    if (active.length > 0) {
+      await client.query('ROLLBACK')
+      return { error: 'Sudah ada sesi aktif' }
     }
 
     const { rows: [season] } = await client.query<{
