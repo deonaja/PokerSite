@@ -213,10 +213,12 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
             <p style={labelStyle}>Modal awal tiap pemain</p>
             <input
               type="number"
-              value={startingBalance}
-              onChange={(e) => setStartingBalance(Math.max(0, parseInt(e.target.value) || 0))}
+              inputMode="numeric"
+              value={startingBalance || ''}
+              onChange={(e) => setStartingBalance(Math.max(0, parseInt(e.target.value, 10) || 0))}
               min={10}
               max={100000}
+              placeholder="cth. 200"
               style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontSize: '1.25rem' }}
             />
           </div>
