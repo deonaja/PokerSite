@@ -20,6 +20,12 @@ function recommendBbSb(startingBalance: number): { bb: number; sb: number } {
   return { bb, sb }
 }
 
+// Keep only digits and drop leading zeros (so an empty field stays empty and
+// typing into "0" gives "400", not "0400"). A lone "0" is preserved.
+function digitsOnly(v: string): string {
+  return v.replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+}
+
 interface Props {
   seasonNumber: number
   existingPlayers: { id: string; name: string }[]
@@ -32,16 +38,16 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
   )
   const [startingBalance, setStartingBalance] = useState(200)
   const [preset, setPreset] = useState<PresetName>('standard')
-  const [custom, setCustom] = useState({ maxPool: 3500, maxSessions: 40, rakeRate: 10 })
+  const [custom, setCustom] = useState({ maxPool: '3500', maxSessions: '40', rakeRate: '10' })
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const { bb, sb } = recommendBbSb(startingBalance)
   const buyIn = Math.floor(startingBalance / 2)
   const activePreset = PRESETS.find((p) => p.name === preset)!
-  const maxPool = preset === 'custom' ? custom.maxPool : activePreset.maxPool
-  const maxSessions = preset === 'custom' ? custom.maxSessions : activePreset.maxSessions
-  const rakeRate = preset === 'custom' ? custom.rakeRate : activePreset.rakeRate
+  const maxPool = preset === 'custom' ? (parseInt(custom.maxPool, 10) || 0) : activePreset.maxPool
+  const maxSessions = preset === 'custom' ? (parseInt(custom.maxSessions, 10) || 0) : activePreset.maxSessions
+  const rakeRate = preset === 'custom' ? (parseInt(custom.rakeRate, 10) || 0) : activePreset.rakeRate
 
   const filledNames = playerNames.map((n) => n.trim()).filter(Boolean)
   const step1Valid = filledNames.length >= 2 && new Set(filledNames.map((n) => n.toLowerCase())).size === filledNames.length
@@ -301,8 +307,9 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                 <p style={labelStyle}>Max pool chip di sistem</p>
                 <input
                   type="number"
-                  value={custom.maxPool || ''}
-                  onChange={(e) => setCustom((c) => ({ ...c, maxPool: parseInt(e.target.value) || 0 }))}
+                  inputMode="numeric"
+                  value={custom.maxPool}
+                  onChange={(e) => setCustom((c) => ({ ...c, maxPool: digitsOnly(e.target.value) }))}
                   min={100}
                   style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
                   placeholder="cth. 3500"
@@ -312,8 +319,9 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                 <p style={labelStyle}>Max sesi</p>
                 <input
                   type="number"
-                  value={custom.maxSessions || ''}
-                  onChange={(e) => setCustom((c) => ({ ...c, maxSessions: parseInt(e.target.value) || 0 }))}
+                  inputMode="numeric"
+                  value={custom.maxSessions}
+                  onChange={(e) => setCustom((c) => ({ ...c, maxSessions: digitsOnly(e.target.value) }))}
                   min={1}
                   style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
                   placeholder="cth. 40"
@@ -323,8 +331,9 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                 <p style={labelStyle}>Rake rate (%)</p>
                 <input
                   type="number"
+                  inputMode="numeric"
                   value={custom.rakeRate}
-                  onChange={(e) => setCustom((c) => ({ ...c, rakeRate: parseInt(e.target.value) || 0 }))}
+                  onChange={(e) => setCustom((c) => ({ ...c, rakeRate: digitsOnly(e.target.value) }))}
                   min={0}
                   max={50}
                   style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
