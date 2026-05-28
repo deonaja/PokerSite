@@ -106,7 +106,9 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
   function handleBack() {
     setInputError(null)
     if (isRecap) {
-      setStep(totalSteps - 1)
+      // Back from the confirmation page goes to the active session. Inputs are
+      // already persisted to localStorage, so coming back lands here again.
+      router.push('/session')
       return
     }
     if (editingFromRecap) {

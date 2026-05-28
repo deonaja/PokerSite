@@ -208,7 +208,7 @@ test.describe('Session end — back navigation', () => {
   const alice = players[0]
   const bob = players[1]
 
-  test('back button on recap restores previous input', async ({ page }) => {
+  test('recap inputs persist across navigation; Back returns to /session', async ({ page }) => {
     await resetTestPlayers()
     await setIdentity(page, alice)
 
@@ -233,28 +233,22 @@ test.describe('Session end — back navigation', () => {
 
     await page.goto('/session/end')
 
-    // Step 1: input 150
+    // Fill both stacks and reach the recap
     await page.locator('input[type="number"]').fill('150')
     await page.getByRole('button', { name: 'Next →' }).click()
-
-    // Step 2: input 100
     await page.locator('input[type="number"]').fill('100')
     await page.getByRole('button', { name: /recap/ }).click()
+    await expect(page.getByText('RECAP')).toBeVisible()
 
-    // Now on recap — go back
+    // Back from the recap should return to /session
     await page.getByRole('button', { name: 'Back' }).click()
-    // Should restore 100 in the input
-    await expect(page.locator('input[type="number"]')).toHaveValue('100')
+    await page.waitForURL('**/session')
 
-    // Go back again
-    await page.getByRole('button', { name: '←' }).click()
-    // Should restore 150
-    await expect(page.locator('input[type="number"]')).toHaveValue('150')
+    // Navigating back to /session/end restores the saved state directly on the recap
+    await page.goto('/session/end')
+    await expect(page.getByText('RECAP')).toBeVisible()
 
     // Confirm to clean up
-    await page.getByRole('button', { name: 'Next →' }).click()
-    await page.locator('input[type="number"]').fill('100')
-    await page.getByRole('button', { name: /recap/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()
     await page.waitForURL('/')
   })
