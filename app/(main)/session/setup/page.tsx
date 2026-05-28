@@ -19,7 +19,7 @@ async function getSetupData(): Promise<{ players: PlayerWithMeta[]; buyIn: numbe
             WHERE s.started_at > (SELECT started_at FROM sessions WHERE id = p.last_dealer_session_id)
             AND s.status IN ('active', 'ended')
           ))
-        END AS cooldown_remaining
+        END::int AS cooldown_remaining
       FROM players p
       ORDER BY p.name ASC
     `,
