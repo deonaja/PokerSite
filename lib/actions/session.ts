@@ -43,8 +43,12 @@ export async function rebuy({
     )
     const buyIn = sessionSeason?.buy_in ?? 100
 
-    const deduction = Math.min(player.balance, buyIn)
-    await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [deduction, playerId])
+    if (player.balance < buyIn) {
+      await client.query('ROLLBACK')
+      return { error: 'Saldo tidak cukup untuk rebuy' }
+    }
+
+    await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [buyIn, playerId])
     const rebuyRow = await client.query(
       `UPDATE session_participants SET rebuy_count = rebuy_count + 1 WHERE id = $1`,
       [participant.id]
@@ -54,7 +58,7 @@ export async function rebuy({
     await client.query(
       `INSERT INTO edit_log (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
        VALUES ($1, $2, $3, 'rebuy', $4, $5, $6)`,
-      [sessionId, playerId, actorPlayerId, player.balance, player.balance - deduction, JSON.stringify({ buy_in: buyIn })]
+      [sessionId, playerId, actorPlayerId, player.balance, player.balance - buyIn, JSON.stringify({ buy_in: buyIn })]
     )
 
     await client.query('COMMIT')

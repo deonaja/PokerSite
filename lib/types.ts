@@ -66,6 +66,9 @@ export interface PollParticipant {
   no_gaji_dealer: boolean
   rebuy_count: number
   final_stack: number | null
+  // Player's live balance (post buy-in / rebuys) — surfaced so the active
+  // session view can show it and gate the rebuy button.
+  balance: number
 }
 
 export interface PollResponse {

@@ -15,7 +15,8 @@ async function getSessionInitial(): Promise<{ sessionId: string; buyIn: number; 
   const [participants, seasonRows] = await Promise.all([
     sql`
       SELECT sp.id AS participant_id, sp.player_id, p.name AS player_name,
-             sp.is_dealer, sp.no_gaji_dealer, sp.rebuy_count, sp.final_stack
+             sp.is_dealer, sp.no_gaji_dealer, sp.rebuy_count, sp.final_stack,
+             p.balance
       FROM session_participants sp
       JOIN players p ON p.id = sp.player_id
       WHERE sp.session_id = ${sessionRow.id}

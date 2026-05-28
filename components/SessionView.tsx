@@ -178,14 +178,21 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
             </div>
 
             {p.no_gaji_dealer ? (
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: 0 }}>
-                Bagi kartu, tidak ikut taruhan
-              </p>
+              <>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: 0, marginBottom: '0.25rem' }}>
+                  Bagi kartu, tidak ikut taruhan
+                </p>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
+                  Saldo: {p.balance}
+                </p>
+              </>
             ) : (
               <>
-                {/* Rebuy count */}
-                <p
+                {/* Saldo + Rebuy count */}
+                <div
                   style={{
+                    display: 'flex',
+                    gap: '0.875rem',
                     fontSize: '0.8125rem',
                     color: 'var(--text-secondary)',
                     marginBottom: '0.625rem',
@@ -193,18 +200,21 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  Rebuy: {p.rebuy_count}
-                </p>
+                  <span style={{ color: p.balance < buyIn ? 'var(--accent-warn)' : 'var(--text-secondary)' }}>
+                    Saldo: {p.balance}
+                  </span>
+                  <span>Rebuy: {p.rebuy_count}</span>
+                </div>
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <Button
                     variant="secondary"
-                    disabled={!isHydrated || isPending}
+                    disabled={!isHydrated || isPending || p.balance < buyIn}
                     onClick={() => setRebuying(p)}
                     style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
                   >
-                    Rebuy
+                    {p.balance < buyIn ? 'Saldo kurang' : 'Rebuy'}
                   </Button>
                   <Button
                     variant="secondary"

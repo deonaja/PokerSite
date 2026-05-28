@@ -71,7 +71,7 @@ test('concurrent rebuys on same player apply both correctly', async () => {
 
     // Read Bob's initial rebuy_count
     const bobCardSetup = pageA.locator('div').filter({
-      has: pageA.locator('p', { hasText: /^Rebuy: \d+$/ }),
+      has: pageA.locator('p, span', { hasText: /^Rebuy: \d+$/ }),
     }).filter({ hasText: bob.name }).last()
     const initialRebuyText = await bobCardSetup.getByText(/Rebuy: \d+/).innerText()
     expect(parseInt(initialRebuyText.replace('Rebuy: ', ''), 10)).toBe(0)
@@ -83,10 +83,10 @@ test('concurrent rebuys on same player apply both correctly', async () => {
     // ── CONCURRENT REBUY ─────────────────────────────────────────────────────
     // .last() picks the inner participant card div, not the outer container
     const bobCardA = pageA.locator('div').filter({
-      has: pageA.locator('p', { hasText: /^Rebuy: \d+$/ }),
+      has: pageA.locator('p, span', { hasText: /^Rebuy: \d+$/ }),
     }).filter({ hasText: bob.name }).last()
     const bobCardB = pageB.locator('div').filter({
-      has: pageB.locator('p', { hasText: /^Rebuy: \d+$/ }),
+      has: pageB.locator('p, span', { hasText: /^Rebuy: \d+$/ }),
     }).filter({ hasText: bob.name }).last()
 
     // Open rebuy sheet on both pages (retry handles pre-hydration dead-clicks)

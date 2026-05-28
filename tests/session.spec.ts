@@ -114,7 +114,7 @@ test.describe('Full session flow', () => {
     await page.goto('/session')
     // Participant cards are uniquely identified by having a "Rebuy: N" paragraph inside
     const bobCard = page.locator('div').filter({
-      has: page.locator('p', { hasText: /^Rebuy: \d+$/ }),
+      has: page.locator('p, span', { hasText: /^Rebuy: \d+$/ }),
     }).filter({ hasText: bob.name }).last()
 
     await openRebuySheet(page, bobCard)
@@ -128,7 +128,7 @@ test.describe('Full session flow', () => {
   test('undo rebuy: rebuy_count returns to 0', async ({ page }) => {
     await page.goto('/session')
     const bobCard = page.locator('div').filter({
-      has: page.locator('p', { hasText: /^Rebuy: \d+$/ }),
+      has: page.locator('p, span', { hasText: /^Rebuy: \d+$/ }),
     }).filter({ hasText: bob.name }).last()
 
     await bobCard.getByRole('button', { name: 'Undo' }).click()
@@ -138,7 +138,7 @@ test.describe('Full session flow', () => {
   test('undo button is disabled when rebuy_count is 0', async ({ page }) => {
     await page.goto('/session')
     const aliceCard = page.locator('div').filter({
-      has: page.locator('p', { hasText: /^Rebuy: \d+$/ }),
+      has: page.locator('p, span', { hasText: /^Rebuy: \d+$/ }),
     }).filter({ hasText: alice.name }).last()
 
     // Alice is dealer with 0 rebuys → Undo disabled
