@@ -28,6 +28,8 @@ interface Props {
   expectedTotal: number
 }
 
+const STORAGE_KEY = (sessionId: string) => `endSession:${sessionId}`
+
 export default function SessionEndWizard({ sessionId, participants, expectedTotal }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -36,11 +38,37 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
   const [currentInput, setCurrentInput] = useState('')
   const [inputError, setInputError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // True when the user clicked Edit on the recap — Next then returns to the
+  // recap (instead of advancing to the next player).
+  const [editingFromRecap, setEditingFromRecap] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const totalSteps = participants.length
   const isRecap = step >= totalSteps
   const current = participants[step] ?? null
+
+  // Restore inputs from localStorage. If every participant has a value, jump
+  // straight to the recap so the user can keep editing instead of restarting.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const saved = window.localStorage.getItem(STORAGE_KEY(sessionId))
+    if (!saved) return
+    try {
+      const parsed = JSON.parse(saved) as Record<string, string>
+      if (parsed && typeof parsed === 'object') {
+        setInputs(parsed)
+        const allFilled = participants.every((p) => typeof parsed[p.player_id] === 'string' && parsed[p.player_id] !== '')
+        if (allFilled) setStep(participants.length)
+      }
+    } catch { /* ignore corrupt storage */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId])
+
+  // Persist whenever we enter the recap (or inputs change while on it).
+  useEffect(() => {
+    if (!isRecap || typeof window === 'undefined') return
+    window.localStorage.setItem(STORAGE_KEY(sessionId), JSON.stringify(inputs))
+  }, [isRecap, inputs, sessionId])
 
   useEffect(() => {
     if (isRecap || !current) return
@@ -61,11 +89,17 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
 
     setInputs((prev) => ({ ...prev, [current.player_id]: rawVal }))
     setInputError(null)
-    setStep((s) => s + 1)
+    if (editingFromRecap) {
+      setEditingFromRecap(false)
+      setStep(totalSteps) // back to the recap
+    } else {
+      setStep((s) => s + 1)
+    }
   }
 
   function handleJumpTo(idx: number) {
     setInputError(null)
+    setEditingFromRecap(true)
     setStep(idx)
   }
 
@@ -73,6 +107,12 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
     setInputError(null)
     if (isRecap) {
       setStep(totalSteps - 1)
+      return
+    }
+    if (editingFromRecap) {
+      // Cancel edit, return to recap without saving the change
+      setEditingFromRecap(false)
+      setStep(totalSteps)
       return
     }
     if (step === 0) {
@@ -98,6 +138,9 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
       if ('error' in result) {
         setSubmitError(result.error)
         return
+      }
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(STORAGE_KEY(sessionId))
       }
       router.push('/')
     })
@@ -292,7 +335,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
 
       <div style={stickyBottom}>
         <Button fullWidth disabled={currentInput === ''} onClick={handleNext}>
-          {step === totalSteps - 1 ? 'Lihat recap' : 'Next →'}
+          {editingFromRecap ? 'Simpan' : (step === totalSteps - 1 ? 'Lihat recap' : 'Next →')}
         </Button>
       </div>
     </div>
