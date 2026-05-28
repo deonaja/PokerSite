@@ -347,6 +347,14 @@ export async function startSession({
     )
     const buyIn = season?.buy_in ?? 100
 
+    // Non-dealer players must be able to afford the buy-in. A low-balance player
+    // can only join as the dealer (where the salary chips let them play).
+    const brokeNonDealer = players.find((p) => p.id !== dealerId && p.balance < buyIn)
+    if (brokeNonDealer) {
+      await client.query('ROLLBACK')
+      return { error: 'Pemain balance kurang harus jadi dealer atau jangan dipilih' }
+    }
+
     // Check phase transition: bootstrap → steady
     let currentPhase = season?.current_phase ?? 'bootstrap'
     if (currentPhase === 'bootstrap' && season) {

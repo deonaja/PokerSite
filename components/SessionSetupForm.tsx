@@ -46,7 +46,10 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   }
 
   const selectedPlayers = players.filter((p) => selectedIds.has(p.id))
-  const canStart = selectedIds.size >= 2 && dealerId !== null
+  // A low-balance player can only join as the dealer. Selecting them as a
+  // non-dealer is blocked — they have nothing to ante.
+  const brokeNonDealers = selectedPlayers.filter((p) => p.id !== dealerId && p.balance < buyIn)
+  const canStart = selectedIds.size >= 2 && dealerId !== null && brokeNonDealers.length === 0
 
   // Recommend the lowest-balance player who isn't in cooldown (they'll actually
   // get the salary). Fall back to lowest balance overall if everyone's cooling down.
@@ -198,8 +201,14 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
           </div>
 
           {dealerHint && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: brokeNonDealers.length > 0 ? '0.5rem' : '1.5rem' }}>
               {dealerHint}
+            </p>
+          )}
+
+          {brokeNonDealers.length > 0 && (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--accent-warn)', marginBottom: '1.5rem' }}>
+              {brokeNonDealers.map((p) => p.name).join(', ')} balance kurang — harus jadi dealer atau batalin pilihannya.
             </p>
           )}
         </>
