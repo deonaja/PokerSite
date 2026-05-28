@@ -11,12 +11,15 @@ interface ParticipantRow {
   rebuy_count: number
   current_balance: number
   contributed: number
+  original_balance: number
 }
 
 async function getSessionData() {
-  // Per-participant `contributed` = chips actually put into the table
-  // (buy-in + rebuys − undos), summed from the edit_log. Handles free dealers,
-  // deals-only dealers, and partial low-balance buy-ins automatically.
+  // Per-participant accounting:
+  //   contributed       = chips this player put on the table this session
+  //                       (buy-in + rebuys − undos + dealer salary chips if Phase 1 dealer)
+  //   original_balance  = the balance they had BEFORE the session touched them,
+  //                       read from the balance_before of their first edit_log entry.
   const rows = (await sql`
     SELECT
       s.id          AS session_id,
@@ -26,13 +29,32 @@ async function getSessionData() {
       sp.rebuy_count,
       p.name        AS player_name,
       p.balance     AS current_balance,
+      (
+        COALESCE((
+          SELECT SUM(el.balance_before - el.balance_after)
+          FROM edit_log el
+          WHERE el.session_id = s.id
+            AND el.player_id = sp.player_id
+            AND el.action IN ('buy_in', 'buy_in_dealer_phase2', 'rebuy', 'rebuy_undo')
+        ), 0)
+        +
+        COALESCE((
+          SELECT COUNT(*) * COALESCE((SELECT buy_in FROM seasons WHERE id = s.season_id), 100)
+          FROM edit_log el
+          WHERE el.session_id = s.id
+            AND el.player_id = sp.player_id
+            AND el.action = 'dealer_salary_chips'
+        ), 0)
+      )::int AS contributed,
       COALESCE((
-        SELECT SUM(el.balance_before - el.balance_after)
+        SELECT el.balance_before
         FROM edit_log el
         WHERE el.session_id = s.id
           AND el.player_id = sp.player_id
-          AND el.action IN ('buy_in', 'buy_in_dealer_phase2', 'buy_in_dealer_free', 'rebuy', 'rebuy_undo')
-      ), 0)::int AS contributed
+          AND el.action IN ('buy_in', 'buy_in_dealer_phase2', 'buy_in_dealer_free', 'dealer_salary', 'buy_in_no_gaji_dealer')
+        ORDER BY el.created_at ASC
+        LIMIT 1
+      ), p.balance)::int AS original_balance
     FROM sessions s
     JOIN session_participants sp ON sp.session_id = s.id
     JOIN players p ON p.id = sp.player_id
@@ -54,6 +76,7 @@ async function getSessionData() {
       no_gaji_dealer: r.no_gaji_dealer,
       rebuy_count: r.rebuy_count,
       current_balance: r.current_balance,
+      original_balance: Number(r.original_balance),
       contributed: Number(r.contributed),
     })),
   }

@@ -392,20 +392,19 @@ export async function startSession({
     const sessionId = session.id
 
     let dealerGotSalary = false
+    let dealerGotSalaryChips = false
     for (const player of players) {
       const isDealer = player.id === dealerId
-      // `deduction` is what leaves the player's balance. Negative = a credit.
       let deduction = Math.min(player.balance, buyIn)
       let action = 'buy_in'
       let noGaji = false
 
       if (isDealer) {
         if (player.balance < buyIn) {
-          // Broke → deals only (no ante, doesn't play hands). Still earns the
-          // dealer salary for the service of dealing.
+          // Broke → deals only (no ante, doesn't play hands).
           noGaji = true
           if (dealerFreeEntry) {
-            // Phase 1 salary, paid as a direct credit (they can't play it).
+            // Phase 1 salary credited directly to balance (they can't play it).
             deduction = -buyIn
             action = 'dealer_salary'
             dealerGotSalary = true
@@ -414,15 +413,16 @@ export async function startSession({
             deduction = 0
             action = 'buy_in_no_gaji_dealer'
           }
-        } else if (dealerFreeEntry) {
-          // Can afford + Phase 1 + not cooldown → free entry (the salary), plays free.
-          deduction = 0
-          action = 'buy_in_dealer_free'
-          dealerGotSalary = true
         } else {
-          // Phase 2, or Phase 1 cooldown → pays buy-in like everyone, plays.
+          // Can afford → pays buy-in like everyone.
           deduction = buyIn
           action = 'buy_in_dealer_phase2'
+          if (dealerFreeEntry) {
+            // Phase 1 not in cooldown → ALSO gets +buy_in salary chips printed
+            // onto the table (logged separately below, no balance change).
+            dealerGotSalary = true
+            dealerGotSalaryChips = true
+          }
         }
       }
 
@@ -439,6 +439,19 @@ export async function startSession({
            (session_id, player_id, actor_player_id, action, balance_before, balance_after)
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [sessionId, player.id, actorPlayerId, action, player.balance, player.balance - deduction]
+      )
+    }
+
+    // Phase 1 dealer salary as printed chips: no balance change, but the chips
+    // ARE on the table — count them toward the end-session chip reconciliation.
+    if (dealerGotSalaryChips) {
+      const dealerPlayer = players.find((p) => p.id === dealerId)!
+      const dealerBalanceAfter = dealerPlayer.balance - buyIn
+      await client.query(
+        `INSERT INTO edit_log
+           (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
+         VALUES ($1, $2, $3, 'dealer_salary_chips', $4, $4, $5)`,
+        [sessionId, dealerId, actorPlayerId, dealerBalanceAfter, JSON.stringify({ chips: buyIn })]
       )
     }
 

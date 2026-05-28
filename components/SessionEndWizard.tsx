@@ -13,8 +13,11 @@ interface Participant {
   no_gaji_dealer: boolean
   rebuy_count: number
   current_balance: number
-  // Chips this player actually put into the table (buy-in + rebuys − undos).
-  // Free dealer = 0, deals-only dealer = 0, low-balance partial = what they paid.
+  // Balance the player had BEFORE this session touched them. Drives the recap
+  // delta so the +/- reflects net session result (not just the end-stack input).
+  original_balance: number
+  // Chips this player actually put into the table (buy-in + rebuys − undos +
+  // any printed dealer salary chips). Used for chip total reconciliation.
   contributed: number
 }
 
@@ -135,6 +138,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
             {participants.map((p, idx) => {
               const stack = parseInt(inputs[p.player_id] ?? '0', 10)
               const newBalance = p.current_balance + stack
+              const delta = newBalance - p.original_balance
 
               return (
                 <div key={p.player_id} style={{ padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
@@ -154,12 +158,12 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
                     </button>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem' }}>
-                    <BalanceDisplay balance={p.current_balance} />
+                    <BalanceDisplay balance={p.original_balance} />
                     <span style={{ color: 'var(--text-tertiary)' }}>→</span>
                     <BalanceDisplay balance={newBalance} />
-                    <span style={{ color: stack >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
-                      ({stack >= 0 ? '+' : ''}
-                      {stack})
+                    <span style={{ color: delta >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                      ({delta >= 0 ? '+' : ''}
+                      {delta})
                     </span>
                   </div>
                 </div>
