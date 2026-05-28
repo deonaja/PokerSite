@@ -81,8 +81,8 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
       else if (currentPhase === 'steady') dealerHint = `${dealer.name}: main + ambil rake.`
       else dealerHint = `${dealer.name}: bayar buy-in — cooldown, gak dapat gaji.`
     } else {
-      // Broke → deals only, doesn't play, but still earns the dealer salary
-      if (p1NoCooldown) dealerHint = `${dealer.name}: bagi kartu + dapet gaji dealer (gak ikut main).`
+      // Broke
+      if (p1NoCooldown) dealerHint = `${dealer.name}: main pake gaji dealer (+${buyIn} chip, gak bayar buy-in).`
       else if (currentPhase === 'steady') dealerHint = `${dealer.name}: bagi kartu + ambil rake (gak ikut main).`
       else dealerHint = `${dealer.name}: cuma bagi kartu — cooldown, gak dapat gaji.`
     }

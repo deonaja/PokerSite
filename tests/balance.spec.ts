@@ -20,17 +20,16 @@ test.describe('Balance non-negative enforcement', () => {
     await sql`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`
   })
 
-  // M2: a player with balance < buy_in deals only (no ante, no playing) but still
-  // earns the dealer salary. In Phase 1 that salary (buy_in = 100) is credited
-  // directly since they can't play it: 50 → 150.
-  test('low-balance dealer deals only but still earns the Phase 1 salary', async ({ page }) => {
+  // M2: a low-balance dealer in Phase 1 (not in cooldown) plays with the salary
+  // chips printed onto the table. They do NOT pay buy-in (broke), are NOT marked
+  // as deals-only, and the salary is chips on table (not a balance credit).
+  test('low-balance dealer in Phase 1 plays with salary chips, balance untouched', async ({ page }) => {
     const sql = neon(process.env.DATABASE_URL!)
     await sql`UPDATE players SET balance = 50 WHERE id = ${bob.id}`
 
     await setIdentity(page, alice)
     await page.goto('/session/setup')
 
-    // Low-balance Bob is still selectable (no disabling in the new model)
     const bobCheckbox = page.locator(`input[data-player-id="${bob.id}"]`)
     await expect(bobCheckbox).toBeEnabled()
 
@@ -41,9 +40,10 @@ test.describe('Balance non-negative enforcement', () => {
     await page.getByRole('button', { name: 'Mulai' }).click()
     await page.waitForURL('**/session')
 
-    // Bob deals only (no ante) but gets the Phase 1 salary credited: 50 + 100 = 150
+    // Bob plays as a normal dealer (not deals-only) with the printed salary chips.
+    // No buy-in deduction (he is broke) — his balance stays at 50.
     const [bobRow] = await sql`SELECT balance FROM players WHERE id = ${bob.id}` as { balance: number }[]
-    expect(Number(bobRow.balance)).toBe(150)
+    expect(Number(bobRow.balance)).toBe(50)
 
     const [participant] = await sql`
       SELECT sp.is_dealer, sp.no_gaji_dealer
@@ -52,9 +52,17 @@ test.describe('Balance non-negative enforcement', () => {
       WHERE s.status = 'active' AND sp.player_id = ${bob.id}
     ` as { is_dealer: boolean; no_gaji_dealer: boolean }[]
     expect(participant?.is_dealer).toBe(true)
-    expect(participant?.no_gaji_dealer).toBe(true)
+    expect(participant?.no_gaji_dealer).toBe(false)
 
-    // Alice (the actual player) paid buy-in: 500 → 400
+    // The salary chips were logged so the end-session chip total counts them.
+    const [salaryLog] = await sql`
+      SELECT 1 AS ok FROM edit_log
+      WHERE player_id = ${bob.id} AND action = 'dealer_salary_chips'
+        AND session_id = (SELECT id FROM sessions WHERE status = 'active' LIMIT 1)
+    ` as { ok: number }[]
+    expect(salaryLog?.ok).toBe(1)
+
+    // Alice (the non-dealer) paid buy-in: 500 → 400
     const [aliceRow] = await sql`SELECT balance FROM players WHERE id = ${alice.id}` as { balance: number }[]
     expect(Number(aliceRow.balance)).toBe(400)
   })

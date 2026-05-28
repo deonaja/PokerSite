@@ -400,29 +400,30 @@ export async function startSession({
       let noGaji = false
 
       if (isDealer) {
-        if (player.balance < buyIn) {
-          // Broke → deals only (no ante, doesn't play hands).
-          noGaji = true
-          if (dealerFreeEntry) {
-            // Phase 1 salary credited directly to balance (they can't play it).
-            deduction = -buyIn
-            action = 'dealer_salary'
-            dealerGotSalary = true
+        if (dealerFreeEntry) {
+          // Phase 1 not in cooldown — dealer always plays and gets +buy_in
+          // salary chips on the table (logged separately below).
+          if (player.balance >= buyIn) {
+            // Has balance → pays buy-in like everyone.
+            deduction = buyIn
+            action = 'buy_in_dealer_phase2'
           } else {
-            // Phase 2 → earns rake at end (via final stack); Phase 1 cooldown → no salary.
+            // Broke → can't pay buy-in, but plays with the salary chips alone.
+            // No deduction, balance unchanged.
             deduction = 0
-            action = 'buy_in_no_gaji_dealer'
+            action = 'buy_in_dealer_free'
           }
+          dealerGotSalary = true
+          dealerGotSalaryChips = true
+        } else if (player.balance < buyIn) {
+          // Phase 2 or Phase 1 cooldown + broke → deals only (no salary, no ante).
+          noGaji = true
+          deduction = 0
+          action = 'buy_in_no_gaji_dealer'
         } else {
-          // Can afford → pays buy-in like everyone.
+          // Phase 2 or Phase 1 cooldown, can afford → pays buy-in, plays.
           deduction = buyIn
           action = 'buy_in_dealer_phase2'
-          if (dealerFreeEntry) {
-            // Phase 1 not in cooldown → ALSO gets +buy_in salary chips printed
-            // onto the table (logged separately below, no balance change).
-            dealerGotSalary = true
-            dealerGotSalaryChips = true
-          }
         }
       }
 
