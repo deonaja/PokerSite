@@ -25,14 +25,10 @@ export default function IdentityPicker({ players, error }: Props) {
 
   return (
     <div className="flex flex-col px-4 pt-12 pb-8">
-      <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-        Pilih nama kamu
-      </p>
+      <p className="mb-6 text-sm text-muted-foreground">Pilih nama kamu</p>
 
       {players.length === 0 ? (
-        <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-          Belum ada pemain terdaftar.
-        </p>
+        <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
       ) : (
         <form
           method="post"
@@ -54,13 +50,10 @@ export default function IdentityPicker({ players, error }: Props) {
                   key={p.id}
                   type="button"
                   onClick={() => setSelectedId(p.id)}
-                  className="w-full text-left px-4 py-3 rounded-lg border transition-colors duration-150"
-                  style={{
-                    background: active ? 'var(--accent-felt-dim)' : 'var(--bg-surface)',
-                    borderColor: active ? 'var(--accent-felt)' : 'var(--border-subtle)',
-                    color: 'var(--text-primary)',
-                    minHeight: '44px',
-                  }}
+                  className={
+                    'min-h-11 w-full rounded-lg border px-4 py-3 text-left text-foreground transition-colors duration-150 ' +
+                    (active ? 'border-primary bg-accent' : 'border-border bg-card')
+                  }
                 >
                   {p.name}
                 </button>
@@ -77,25 +70,13 @@ export default function IdentityPicker({ players, error }: Props) {
             required
             autoComplete="one-time-code"
             placeholder="PIN (4-6 digit)"
-            style={{
-              width: '100%',
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              border: `1px solid ${errorMessage ? 'var(--accent-danger)' : 'var(--border-strong)'}`,
-              background: 'var(--bg-elevated)',
-              color: 'var(--text-primary)',
-              fontSize: '0.875rem',
-              fontFamily: 'var(--font-mono)',
-              fontVariantNumeric: 'tabular-nums',
-              outline: 'none',
-            }}
+            className={
+              'w-full rounded-lg border bg-[var(--bg-elevated)] px-4 py-3 font-mono text-sm text-foreground outline-none ' +
+              (errorMessage ? 'border-destructive' : 'border-input')
+            }
           />
 
-          {errorMessage && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--accent-danger)', margin: 0 }}>
-              {errorMessage}
-            </p>
-          )}
+          {errorMessage && <p className="m-0 text-[0.8125rem] text-destructive">{errorMessage}</p>}
 
           <Button type="submit" fullWidth disabled={!selectedId}>
             Masuk

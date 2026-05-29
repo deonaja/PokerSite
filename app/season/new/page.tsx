@@ -34,11 +34,8 @@ export default async function SeasonNewPage() {
   if (hasActiveSeason) redirect('/')
 
   return (
-    <div
-      className="min-h-dvh"
-      style={{ background: 'var(--bg-base)' }}
-    >
-      <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+    <div className="min-h-dvh bg-background">
+      <div className="mx-auto max-w-[480px]">
         <SeasonSetup
           seasonNumber={nextSeasonNumber}
           existingPlayers={existingPlayers}

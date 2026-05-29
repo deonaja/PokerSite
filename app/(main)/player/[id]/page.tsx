@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { sql } from '@/lib/db'
 import BalanceDisplay from '@/components/BalanceDisplay'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 interface PlayerRow {
   id: string
@@ -68,34 +70,29 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const totalLost = results.reduce((s, r) => s + r.total_lost, 0)
 
   return (
-    <div style={{ paddingBottom: '2rem' }}>
+    <div className="pb-8">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
         <Link
           href="/"
-          style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.125rem', cursor: 'pointer', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', textDecoration: 'none' }}
+          className="flex min-h-11 min-w-11 items-center text-lg text-muted-foreground no-underline"
         >
           ←
         </Link>
-        <div style={{ flex: 1 }}>
-          <p style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>{player.name}</p>
+        <div className="flex-1">
+          <p className="text-[0.9375rem] font-medium text-foreground">{player.name}</p>
         </div>
         <BalanceDisplay balance={player.balance} />
       </div>
 
-      <div style={{ padding: '1.25rem 1rem 0' }}>
+      <div className="px-4 pt-5">
         {/* Overall stats */}
         {totalSeasons > 0 && (
           <>
-            <p style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: '0.75rem' }}>
+            <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">
               STATISTIK KESELURUHAN
             </p>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '0.5rem',
-              marginBottom: '1.5rem',
-            }}>
+            <div className="mb-6 grid grid-cols-2 gap-2">
               <StatBox label="Musim dimainkan" value={totalSeasons} />
               <StatBox label="Rank terbaik" value={bestRank !== null ? `#${bestRank}` : '—'} />
               <StatBox label="Total sesi" value={totalSessions} />
@@ -107,75 +104,60 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         )}
 
         {/* Per-season breakdown */}
-        <p style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: '0.75rem' }}>
+        <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">
           PER MUSIM
         </p>
 
         {results.length === 0 ? (
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>Belum ada musim selesai.</p>
+          <p className="text-sm text-[var(--text-tertiary)]">Belum ada musim selesai.</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div className="flex flex-col gap-2">
             {results.map((r) => {
               const delta = r.final_balance - r.starting_balance
               return (
-                <div key={r.season_id} style={{
-                  padding: '0.875rem 1rem',
-                  borderRadius: '8px',
-                  border: `1px solid ${r.rank === 1 ? 'var(--accent-warn)' : 'var(--border-subtle)'}`,
-                  background: 'var(--bg-surface)',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                <Card
+                  key={r.season_id}
+                  className={`px-4 py-3.5 ${r.rank === 1 ? 'border-warn' : 'border-border'}`}
+                >
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">
                       Musim #{r.season_number}
                     </span>
                     {r.preset_name && (
-                      <span style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>{r.preset_name}</span>
+                      <span className="text-[0.6875rem] capitalize text-[var(--text-tertiary)]">{r.preset_name}</span>
                     )}
-                    <span style={{
-                      marginLeft: 'auto',
-                      fontSize: '0.75rem',
-                      fontFamily: 'var(--font-mono)',
-                      fontVariantNumeric: 'tabular-nums',
-                      color: r.rank === 1 ? 'var(--accent-warn)' : 'var(--text-tertiary)',
-                    }}>
+                    <Badge
+                      variant={r.rank === 1 ? 'warn' : 'secondary'}
+                      className="ml-auto font-mono normal-case tracking-normal"
+                    >
                       #{r.rank}
-                    </span>
+                    </Badge>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-4">
+                      <span className="text-xs text-[var(--text-tertiary)]">
                         {r.sessions_played} sesi · {r.times_dealer}× dealer
                       </span>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{
-                        display: 'block',
-                        fontFamily: 'var(--font-mono)',
-                        fontVariantNumeric: 'tabular-nums',
-                        fontSize: '0.875rem',
-                        color: 'var(--text-primary)',
-                      }}>
+                    <div className="text-right">
+                      <span className="block font-mono text-sm text-foreground">
                         {r.final_balance}
                       </span>
-                      <span style={{
-                        display: 'block',
-                        fontFamily: 'var(--font-mono)',
-                        fontVariantNumeric: 'tabular-nums',
-                        fontSize: '0.6875rem',
-                        color: delta >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)',
-                      }}>
+                      <span
+                        className={`block font-mono text-[0.6875rem] ${delta >= 0 ? 'text-success' : 'text-destructive'}`}
+                      >
                         {delta >= 0 ? '+' : ''}{delta}
                       </span>
                     </div>
                   </div>
 
                   {r.ended_at && (
-                    <p style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', margin: '0.375rem 0 0' }}>
+                    <p className="mt-1.5 text-[0.6875rem] text-[var(--text-tertiary)]">
                       {formatDate(r.ended_at)}
                     </p>
                   )}
-                </div>
+                </Card>
               )
             })}
           </div>
@@ -192,25 +174,13 @@ function StatBox({ label, value, mono, positive, negative }: {
   positive?: boolean
   negative?: boolean
 }) {
-  const color = positive ? 'var(--accent-success)' : negative ? 'var(--accent-danger)' : 'var(--text-primary)'
+  const color = positive ? 'text-success' : negative ? 'text-destructive' : 'text-foreground'
   return (
-    <div style={{
-      padding: '0.75rem',
-      borderRadius: '8px',
-      border: '1px solid var(--border-subtle)',
-      background: 'var(--bg-surface)',
-    }}>
-      <p style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', margin: '0 0 0.25rem', letterSpacing: '0.02em' }}>{label}</p>
-      <p style={{
-        fontSize: '1.125rem',
-        fontWeight: 500,
-        color,
-        margin: 0,
-        fontFamily: mono ? 'var(--font-mono)' : undefined,
-        fontVariantNumeric: mono ? 'tabular-nums' : undefined,
-      }}>
+    <Card className="p-3">
+      <p className="mb-1 text-[0.6875rem] tracking-[0.02em] text-[var(--text-tertiary)]">{label}</p>
+      <p className={`text-lg font-medium ${color} ${mono ? 'font-mono' : ''}`}>
         {value}
       </p>
-    </div>
+    </Card>
   )
 }

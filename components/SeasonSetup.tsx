@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { createSeason } from '@/lib/actions/season'
 import Button from './Button'
+import { Card } from './ui/card'
 
 const PRESETS = [
   { name: 'sprint',   label: 'Sprint',   desc: '~1 minggu',  maxPool: 1500, maxSessions: 15, rakeRate: 15 },
@@ -92,35 +93,20 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
     })
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '0.75rem 1rem',
-    borderRadius: '8px',
-    border: '1px solid var(--border-strong)',
-    background: 'var(--bg-elevated)',
-    color: 'var(--text-primary)',
-    fontSize: '0.875rem',
-    outline: 'none',
-    boxSizing: 'border-box',
-  }
+  const inputClass =
+    'w-full rounded-lg border border-input bg-[var(--bg-elevated)] px-4 py-3 text-sm text-foreground outline-none'
 
-  const labelStyle: React.CSSProperties = {
-    fontSize: '0.75rem',
-    fontWeight: 500,
-    color: 'var(--text-secondary)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    marginBottom: '0.5rem',
-  }
+  const labelClass =
+    'mb-2 text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground'
 
   return (
     <div className="flex flex-col px-4 pt-12 pb-8 gap-6">
       {/* Header */}
       <div>
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginBottom: '0.25rem' }}>
+        <p className="mb-1 text-xs text-[var(--text-tertiary)]">
           Season {seasonNumber}
         </p>
-        <h1 style={{ fontSize: '1.125rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>
+        <h1 className="m-0 text-lg font-medium text-foreground">
           {step === 1 && 'Siapa yang main?'}
           {step === 2 && 'Modal & blind'}
           {step === 3 && 'Durasi season'}
@@ -133,13 +119,10 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
         {[1, 2, 3, 4].map((s) => (
           <div
             key={s}
-            style={{
-              flex: 1,
-              height: '3px',
-              borderRadius: '2px',
-              background: s <= step ? 'var(--accent-felt)' : 'var(--border-subtle)',
-              transition: 'background 200ms',
-            }}
+            className={
+              'h-[3px] flex-1 rounded-sm transition-colors ' +
+              (s <= step ? 'bg-primary' : 'bg-border')
+            }
           />
         ))}
       </div>
@@ -148,12 +131,12 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
       {step === 1 && (
         <div className="flex flex-col gap-3">
           {seasonNumber > 1 && existingPlayers.length > 0 ? (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
-              Pemain dari musim sebelumnya — edit atau hapus sesuka kamu. PIN default pemain baru: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>1234</strong>
+            <p className="m-0 text-[0.8125rem] text-muted-foreground">
+              Pemain dari musim sebelumnya — edit atau hapus sesuka kamu. PIN default pemain baru: <strong className="font-mono text-foreground">1234</strong>
             </p>
           ) : (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
-              Pemain pertama = pembuat season. PIN default semua: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>1234</strong>
+            <p className="m-0 text-[0.8125rem] text-muted-foreground">
+              Pemain pertama = pembuat season. PIN default semua: <strong className="font-mono text-foreground">1234</strong>
             </p>
           )}
           <div className="flex flex-col gap-2">
@@ -165,26 +148,14 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                   onChange={(e) => updateName(i, e.target.value)}
                   placeholder={i === 0 ? 'Nama kamu (pembuat)' : `Pemain ${i + 1}`}
                   maxLength={50}
-                  style={{ ...inputStyle, flex: 1 }}
+                  className={inputClass + ' flex-1'}
                 />
                 {playerNames.length > 2 && (
                   <button
                     type="button"
                     disabled={!isHydrated || isPending}
                     onClick={() => removePlayer(i)}
-                    style={{
-                      minWidth: '44px',
-                      minHeight: '44px',
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-tertiary)',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
+                    className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent text-base text-[var(--text-tertiary)]"
                     aria-label="Hapus pemain"
                   >
                     ✕
@@ -199,22 +170,14 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
               type="button"
               disabled={!isHydrated || isPending}
               onClick={addPlayer}
-              style={{
-                minHeight: '44px',
-                background: 'none',
-                border: `1px dashed var(--border-strong)`,
-                borderRadius: '8px',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-              }}
+              className="min-h-11 cursor-pointer rounded-lg border border-dashed border-input bg-transparent text-sm text-muted-foreground"
             >
               + Tambah pemain
             </button>
           )}
 
           {filledNames.length >= 2 && new Set(filledNames.map((n) => n.toLowerCase())).size < filledNames.length && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--accent-danger)', margin: 0 }}>
+            <p className="m-0 text-[0.8125rem] text-destructive">
               Nama pemain harus unik.
             </p>
           )}
@@ -234,7 +197,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
       {step === 2 && (
         <div className="flex flex-col gap-4">
           <div>
-            <p style={labelStyle}>Modal awal tiap pemain</p>
+            <p className={labelClass}>Modal awal tiap pemain</p>
             <input
               type="number"
               inputMode="numeric"
@@ -244,35 +207,25 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
               min={10}
               max={100000}
               placeholder="cth. 200"
-              style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontSize: '1.25rem' }}
+              className={inputClass + ' font-mono text-xl'}
             />
           </div>
 
-          <div
-            style={{
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: '8px',
-              padding: '1rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.625rem',
-            }}
-          >
+          <Card className="flex flex-col gap-2.5 p-4">
             <Row label="Buy-in / dealer salary" value={buyIn} mono />
             <Row label="Big blind (BB)" value={bb} mono />
             <Row label="Small blind (SB)" value={sb} mono />
-          </div>
+          </Card>
 
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: 0 }}>
+          <p className="m-0 text-xs text-[var(--text-tertiary)]">
             BB/SB adalah rekomendasi. Bisa disesuaikan pas main.
           </p>
 
           <div className="flex gap-2">
-            <Button type="button" onClick={() => setStep(1)} disabled={!isHydrated || isPending} style={{ flex: 1 }}>
+            <Button type="button" onClick={() => setStep(1)} disabled={!isHydrated || isPending} className="flex-1">
               ← Kembali
             </Button>
-            <Button type="button" fullWidth disabled={!isHydrated || !step2Valid || isPending} onClick={() => setStep(3)} style={{ flex: 2 }}>
+            <Button type="button" fullWidth disabled={!isHydrated || !step2Valid || isPending} onClick={() => setStep(3)} className="flex-[2]">
               Lanjut →
             </Button>
           </div>
@@ -282,7 +235,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
       {/* Step 3: Preset */}
       {step === 3 && (
         <div className="flex flex-col gap-3">
-          <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
+          <p className="m-0 text-[0.8125rem] text-muted-foreground">
             Estimasi untuk {filledNames.length} pemain, 2–3x seminggu.
           </p>
 
@@ -295,24 +248,19 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                   type="button"
                   disabled={!isHydrated || isPending}
                   onClick={() => setPreset(p.name)}
-                  style={{
-                    textAlign: 'left',
-                    padding: '0.875rem 1rem',
-                    borderRadius: '8px',
-                    border: `1px solid ${active ? 'var(--accent-felt)' : 'var(--border-subtle)'}`,
-                    background: active ? 'var(--accent-felt-dim)' : 'var(--bg-surface)',
-                    cursor: 'pointer',
-                    minHeight: '44px',
-                  }}
+                  className={
+                    'min-h-11 cursor-pointer rounded-lg border px-4 py-3.5 text-left transition-colors ' +
+                    (active ? 'border-primary bg-accent' : 'border-border bg-card')
+                  }
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '0.875rem' }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">
                       {p.label}
                     </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>{p.desc}</span>
+                    <span className="text-xs text-[var(--text-tertiary)]">{p.desc}</span>
                   </div>
                   {p.name !== 'custom' && (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                    <div className="mt-1 font-mono text-xs text-muted-foreground">
                       Max pool {p.maxPool} · {p.maxSessions} sesi · rake {p.rakeRate}%
                     </div>
                   )}
@@ -322,9 +270,9 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
           </div>
 
           {preset === 'custom' && (
-            <div className="flex flex-col gap-3" style={{ marginTop: '0.5rem' }}>
+            <div className="mt-2 flex flex-col gap-3">
               <div>
-                <p style={labelStyle}>Max pool chip di sistem</p>
+                <p className={labelClass}>Max pool chip di sistem</p>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -332,12 +280,12 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                   disabled={!isHydrated || isPending}
                   onChange={(e) => setCustom((c) => ({ ...c, maxPool: digitsOnly(e.target.value) }))}
                   min={100}
-                  style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
+                  className={inputClass + ' font-mono'}
                   placeholder="cth. 3500"
                 />
               </div>
               <div>
-                <p style={labelStyle}>Max sesi</p>
+                <p className={labelClass}>Max sesi</p>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -345,12 +293,12 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                   disabled={!isHydrated || isPending}
                   onChange={(e) => setCustom((c) => ({ ...c, maxSessions: digitsOnly(e.target.value) }))}
                   min={1}
-                  style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
+                  className={inputClass + ' font-mono'}
                   placeholder="cth. 40"
                 />
               </div>
               <div>
-                <p style={labelStyle}>Rake rate (%)</p>
+                <p className={labelClass}>Rake rate (%)</p>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -359,7 +307,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                   onChange={(e) => setCustom((c) => ({ ...c, rakeRate: digitsOnly(e.target.value) }))}
                   min={0}
                   max={50}
-                  style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
+                  className={inputClass + ' font-mono'}
                   placeholder="cth. 10"
                 />
               </div>
@@ -367,10 +315,10 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
           )}
 
           <div className="flex gap-2">
-            <Button type="button" onClick={() => setStep(2)} disabled={!isHydrated || isPending} style={{ flex: 1 }}>
+            <Button type="button" onClick={() => setStep(2)} disabled={!isHydrated || isPending} className="flex-1">
               ← Kembali
             </Button>
-            <Button type="button" fullWidth disabled={!isHydrated || !step3Valid || isPending} onClick={() => setStep(4)} style={{ flex: 2 }}>
+            <Button type="button" fullWidth disabled={!isHydrated || !step3Valid || isPending} onClick={() => setStep(4)} className="flex-[2]">
               Lanjut →
             </Button>
           </div>
@@ -380,23 +328,13 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
       {/* Step 4: Confirmation */}
       {step === 4 && (
         <div className="flex flex-col gap-4">
-          <div
-            style={{
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: '8px',
-              padding: '1rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-            }}
-          >
+          <Card className="flex flex-col gap-4 p-4">
             <Section title="Pemain">
               {filledNames.map((name, i) => (
-                <div key={i} style={{ fontSize: '0.875rem', color: 'var(--text-primary)', padding: '0.125rem 0' }}>
+                <div key={i} className="py-0.5 text-sm text-foreground">
                   {name}
                   {i === 0 && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginLeft: '0.5rem' }}>
+                    <span className="ml-2 text-xs text-[var(--text-tertiary)]">
                       (pembuat)
                     </span>
                   )}
@@ -404,7 +342,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
               ))}
             </Section>
 
-            <div style={{ height: '1px', background: 'var(--border-subtle)' }} />
+            <div className="h-px bg-border" />
 
             <Section title="Ekonomi">
               <Row label="Modal awal" value={startingBalance} mono />
@@ -412,25 +350,25 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
               <Row label="BB / SB" value={`${bb} / ${sb}`} />
             </Section>
 
-            <div style={{ height: '1px', background: 'var(--border-subtle)' }} />
+            <div className="h-px bg-border" />
 
             <Section title={`Preset: ${activePreset.label}`}>
               <Row label="Max pool" value={maxPool} mono />
               <Row label="Max sesi" value={maxSessions} />
               <Row label="Rake rate" value={`${rakeRate}%`} />
             </Section>
-          </div>
+          </Card>
 
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: 0 }}>
-            Semua pemain baru mendapat PIN default <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>1234</span>. Ganti dari dashboard setelah login.
+          <p className="m-0 text-xs text-[var(--text-tertiary)]">
+            Semua pemain baru mendapat PIN default <span className="font-mono text-muted-foreground">1234</span>. Ganti dari dashboard setelah login.
           </p>
 
           {error && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--accent-danger)', margin: 0 }}>{error}</p>
+            <p className="m-0 text-[0.8125rem] text-destructive">{error}</p>
           )}
 
           <div className="flex gap-2">
-            <Button type="button" onClick={() => setStep(3)} disabled={!isHydrated || isPending} style={{ flex: 1 }}>
+            <Button type="button" onClick={() => setStep(3)} disabled={!isHydrated || isPending} className="flex-1">
               ← Kembali
             </Button>
             <Button
@@ -438,7 +376,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
               fullWidth
               disabled={!isHydrated || isPending}
               onClick={handleSubmit}
-              style={{ flex: 2 }}
+              className="flex-[2]"
             >
               {isPending ? 'Membuat…' : 'Mulai Season'}
             </Button>
@@ -451,16 +389,9 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
 
 function Row({ label, value, mono }: { label: string; value: string | number; mono?: boolean }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{label}</span>
-      <span
-        style={{
-          fontSize: '0.875rem',
-          color: 'var(--text-primary)',
-          fontFamily: mono ? 'var(--font-mono)' : undefined,
-          fontVariantNumeric: mono ? 'tabular-nums' : undefined,
-        }}
-      >
+    <div className="flex items-center justify-between">
+      <span className="text-[0.8125rem] text-muted-foreground">{label}</span>
+      <span className={'text-sm text-foreground' + (mono ? ' font-mono' : '')}>
         {value}
       </span>
     </div>
@@ -470,7 +401,7 @@ function Row({ label, value, mono }: { label: string; value: string | number; mo
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <p style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, fontWeight: 500 }}>
+      <p className="m-0 text-[0.6875rem] font-medium uppercase tracking-[0.05em] text-[var(--text-tertiary)]">
         {title}
       </p>
       {children}

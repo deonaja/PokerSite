@@ -10,12 +10,12 @@ flashy animation still banned. **Revert savepoint: git tag `v0.95-pre-redesign`.
 
 - [x] **Step 1 — foundation** (no visual change): deps (cva, clsx, tailwind-merge, tailwindcss-animate, lucide), `lib/utils.ts` cn(), `components.json`, tailwind tokens + globals.css aliases → felt-green. Build green, 71/71 tests pass. (commit `19187f8`)
 - [x] **Step 2 — pilot: Button + Sheet** → `components/ui/button.tsx` (shadcn cva) + `Button.tsx` adapter (legacy API preserved, 13 call-sites untouched); `Sheet.tsx` rebuilt on Radix Dialog. Build green, 71/71 pass. (commit `4025b16`)
-- [ ] **Step 3 — per-screen migration** (tests each checkpoint):
+- [x] **Step 3 — per-screen migration** (tests each checkpoint) — DONE 2026-05-30. Full e2e 71/71 green after every screen migrated.
   - [x] 3a dashboard → Card + Badge primitives, PlayerCard/BalanceDisplay on Tailwind tokens. 71/71 pass. (commit `ca24d4d`)
   - [x] 3b session active (`SessionView`) → Card + Badge primitives, inline styles → Tailwind felt-green tokens, Button/Sheet adapters kept. DOM text preserved. Build green, session specs 18/18 pass. (2026-05-30)
   - [x] 3c end-session wizard (`SessionEndWizard`) → Card for info/recap/rake boxes, Badge for dealer chips, sticky-bottom CTA pattern, inline styles → Tailwind tokens. All handlers/refs and DOM text (input[type=number], step counter, RECAP, KALKULATOR RAKE, button labels) preserved. Build green, 35/35 wizard specs pass. (2026-05-30)
   - [x] 3d session setup (`SessionSetupForm`) → rowClass helper (felt active / neutral surface), inline styles → Tailwind tokens, accent-primary checkboxes/radios. Hydration-sync effects + input attributes (`data-player-id`, `name="dealer"`, value) and label structure preserved for e2e. Build green, session + z-m2-coverage 31/31 pass. (2026-05-30)
-  - [ ] 3e admin + remaining (season/new, history, player, settings, identity)
+  - [x] 3e admin + remaining → identity (IdentityPicker + loading), admin cluster (page + AddPlayer/EditBalance/ForceEnd/ResetPin/Debug; dynamic ACTION_COLORS log badge kept as data-driven inline style), season/new (SeasonSetup 4-step), season/history (+ end + SeasonEndConfirm), player/[id], settings/pin (ChangePinForm). Inline styles → Tailwind felt-green tokens; primitives (Card/Badge/Button) where they map; all DOM text/attributes/handlers preserved. Build green, full e2e 71/71 pass. (2026-05-30; 4 screens via parallel subagents + identity by hand)
 
 ## Overall status
 

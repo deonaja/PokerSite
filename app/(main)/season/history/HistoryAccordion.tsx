@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Card } from '@/components/ui/card'
 
 interface SeasonResult {
   player_id: string
@@ -34,106 +35,75 @@ function SeasonCard({ season }: { season: Season }) {
   const winner = season.results[0]
 
   return (
-    <div style={{
-      borderRadius: '8px',
-      border: '1px solid var(--border-subtle)',
-      background: 'var(--bg-surface)',
-      overflow: 'hidden',
-    }}>
+    <Card className="overflow-hidden">
       {/* Header row — always visible */}
       <button
         onClick={() => setOpen((v) => !v)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          padding: '0.875rem 1rem',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          textAlign: 'left',
-          minHeight: '44px',
-        }}
+        className="flex min-h-11 w-full items-center gap-3 px-4 py-3.5 text-left"
       >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.125rem' }}>
-            <span style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+        <div className="min-w-0 flex-1">
+          <div className="mb-0.5 flex items-baseline gap-2">
+            <span className="text-[0.9375rem] font-medium text-foreground">
               Musim #{season.number}
             </span>
             {season.preset_name && (
-              <span style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>
+              <span className="text-[0.6875rem] capitalize text-[var(--text-tertiary)]">
                 {season.preset_name}
               </span>
             )}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+          <div className="text-xs text-[var(--text-tertiary)]">
             {season.sessions_played} sesi
             {season.ended_at ? ` · ${formatDate(season.ended_at)}` : ''}
             {winner ? ` · 🏆 ${winner.player_name}` : ''}
           </div>
         </div>
-        <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+        <span className="flex-shrink-0 text-sm text-[var(--text-tertiary)]">
           {open ? '▲' : '▼'}
         </span>
       </button>
 
       {/* Expandable leaderboard */}
       {open && (
-        <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '0.75rem 1rem' }}>
+        <div className="border-t border-border px-4 py-3">
           {season.results.length === 0 ? (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', margin: 0 }}>Tidak ada data hasil.</p>
+            <p className="m-0 text-[0.8125rem] text-[var(--text-tertiary)]">Tidak ada data hasil.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+            <div className="flex flex-col gap-1.5">
               {season.results.map((r) => {
                 const delta = r.final_balance - season.starting_balance
                 return (
                   <div
                     key={r.player_id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.625rem',
-                      padding: '0.5rem 0',
-                      borderBottom: '1px solid var(--border-subtle)',
-                    }}
+                    className="flex items-center gap-2.5 border-b border-border py-2"
                   >
-                    <span style={{
-                      fontSize: '0.75rem',
-                      fontFamily: 'var(--font-mono)',
-                      fontVariantNumeric: 'tabular-nums',
-                      color: r.rank === 1 ? 'var(--accent-warn)' : 'var(--text-tertiary)',
-                      width: '1.5rem',
-                      flexShrink: 0,
-                    }}>
+                    <span
+                      className={
+                        'w-6 flex-shrink-0 font-mono text-xs ' +
+                        (r.rank === 1 ? 'text-warn' : 'text-[var(--text-tertiary)]')
+                      }
+                    >
                       #{r.rank}
                     </span>
-                    <span style={{ flex: 1, fontSize: '0.875rem', color: 'var(--text-primary)' }}>{r.player_name}</span>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{
-                        display: 'block',
-                        fontFamily: 'var(--font-mono)',
-                        fontVariantNumeric: 'tabular-nums',
-                        fontSize: '0.875rem',
-                        color: 'var(--text-primary)',
-                      }}>
+                    <span className="flex-1 text-sm text-foreground">{r.player_name}</span>
+                    <div className="text-right">
+                      <span className="block font-mono text-sm text-foreground">
                         {r.final_balance}
                       </span>
-                      <span style={{
-                        display: 'block',
-                        fontFamily: 'var(--font-mono)',
-                        fontVariantNumeric: 'tabular-nums',
-                        fontSize: '0.6875rem',
-                        color: delta >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)',
-                      }}>
+                      <span
+                        className={
+                          'block font-mono text-[0.6875rem] ' +
+                          (delta >= 0 ? 'text-success' : 'text-destructive')
+                        }
+                      >
                         {delta >= 0 ? '+' : ''}{delta}
                       </span>
                     </div>
-                    <div style={{ textAlign: 'right', minWidth: '3rem' }}>
-                      <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>
+                    <div className="min-w-12 text-right">
+                      <span className="block text-[0.6875rem] text-[var(--text-tertiary)]">
                         {r.sessions_played}s
                       </span>
-                      <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>
+                      <span className="block text-[0.6875rem] text-[var(--text-tertiary)]">
                         {r.times_dealer}d
                       </span>
                     </div>
@@ -144,14 +114,14 @@ function SeasonCard({ season }: { season: Season }) {
           )}
 
           {/* Season summary */}
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.625rem', paddingTop: '0.375rem' }}>
-            <span style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>
+          <div className="mt-2.5 flex gap-4 pt-1.5">
+            <span className="text-[0.6875rem] text-[var(--text-tertiary)]">
               Start: {season.starting_balance} · Buy-in: {season.starting_balance / 2}
             </span>
           </div>
         </div>
       )}
-    </div>
+    </Card>
   )
 }
 
