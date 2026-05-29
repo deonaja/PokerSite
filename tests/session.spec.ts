@@ -185,7 +185,8 @@ test.describe('Full session flow', () => {
     await expect(page.getByText('Konfirmasi')).toBeVisible()
     await expect(page.getByText('RECAP')).toBeVisible()
 
-    // Total chip check — 2 players, dealer free + 1 non-dealer × 100 = 100 chips
+    // Total chip check — 2 players: dealer free (plays on 1×100 salary chips) +
+    // 1 non-dealer × 100 buy-in = 200 chips on the table.
     // Both input 200 = 400 total → mismatch warning expected
     await expect(page.getByText(/Selisih/)).toBeVisible()
 

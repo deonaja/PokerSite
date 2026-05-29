@@ -117,14 +117,16 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   if (dealer) {
     const canAfford = dealer.balance >= buyIn
     const p1NoCooldown = currentPhase === 'bootstrap' && dealer.cooldown_remaining === 0
-    if (canAfford) {
-      if (p1NoCooldown) dealerHint = `${dealer.name}: bayar buy-in + dapet gaji dealer (+${buyIn} chip di meja).`
-      else if (currentPhase === 'steady') dealerHint = `${dealer.name}: main + ambil rake.`
+    if (p1NoCooldown) {
+      // Phase 1, not cooling down → plays FREE on a 1× buy-in salary stack
+      // (no buy-in deduction). Same whether or not they can afford it.
+      dealerHint = `${dealer.name}: main gratis pake gaji dealer (+${buyIn} chip di meja, gak bayar buy-in).`
+    } else if (canAfford) {
+      if (currentPhase === 'steady') dealerHint = `${dealer.name}: main + ambil rake.`
       else dealerHint = `${dealer.name}: bayar buy-in — cooldown, gak dapat gaji.`
     } else {
       // Broke
-      if (p1NoCooldown) dealerHint = `${dealer.name}: main pake gaji dealer (+${buyIn} chip, gak bayar buy-in).`
-      else if (currentPhase === 'steady') dealerHint = `${dealer.name}: bagi kartu + ambil rake (gak ikut main).`
+      if (currentPhase === 'steady') dealerHint = `${dealer.name}: bagi kartu + ambil rake (gak ikut main).`
       else dealerHint = `${dealer.name}: cuma bagi kartu — cooldown, gak dapat gaji.`
     }
   }

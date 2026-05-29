@@ -453,11 +453,10 @@ Bagian ini **informational** — JANGAN diimplementasi di MVP. Tapi schema dan k
 Sistem ekonomi yang self-balancing dengan reset periodik (kayak "season" di game competitive).
 
 **Phase 1: Bootstrap** — `total_chip_in_system < max_pool`
-- Dealer dapet salary chips senilai `buy_in` yang **di-print ke meja** (bukan ke balance). Logged sebagai `dealer_salary_chips`.
-- Jika punya balance ≥ buy_in: bayar buy-in seperti biasa + terima salary chips → stack di meja = `2 × buy_in`.
-- Jika broke (balance < buy_in): tidak dipotong apa-apa, main dengan salary chips saja → stack = `1 × buy_in`.
+- Dealer (tidak cooldown) **main GRATIS**: balance-nya **tidak dipotong** sama sekali (ini gajinya), tapi dia tetap dapat stack `1 × buy_in` berupa salary chips yang **di-print ke meja**. Logged sebagai `dealer_salary_chips`. Sama untuk dealer berbalance maupun broke — stack di meja = `1 × buy_in`.
+- Konsekuensi: tiap kursi (termasuk dealer) memegang tepat 1 buy-in, jadi total chip di meja = `jumlah_pemain × buy_in` (bukan `+ 1 × buy_in` ekstra dari dealer). Mis. 3 pemain @ buy-in 200 → total 600.
 - Cooldown (sudah jadi dealer gratis di sesi sebelumnya): bayar buy-in biasa, tidak dapat salary chips.
-- Total chip di sistem naik tiap sesi.
+- Total chip di sistem tetap naik tiap sesi sebesar `1 × buy_in` (salary dealer = chip baru yang dicetak).
 
 **Phase 2: Steady-state** — `total_chip_in_system >= max_pool`
 - Salary chips tidak dicetak. Dealer bayar buy-in seperti semua pemain.

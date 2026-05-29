@@ -68,8 +68,8 @@ Treatment is derived at session start based on phase + cooldown + balance:
 
 | Phase | Cooldown | Balance | Behavior |
 |---|---|---|---|
-| 1 | no | ≥ buy_in | Pay buy-in + receive `+buy_in` salary chips printed on table (plays with 2× buy_in stack) |
-| 1 | no | < buy_in | No deduction, play with the salary chips alone (1× buy_in stack) |
+| 1 | no | ≥ buy_in | **Free entry — no buy-in deduction.** Receives `+buy_in` salary chips printed on table (plays with 1× buy_in stack) |
+| 1 | no | < buy_in | Free entry — no deduction, play with the salary chips (1× buy_in stack) |
 | 1 | yes | ≥ buy_in | Pay buy-in, no salary |
 | 1 | yes | < buy_in | Deals only (`no_gaji_dealer = true`), no salary |
 | 2 | n/a | ≥ buy_in | Pay buy-in, salary = rake (collected via end stack) |
@@ -150,10 +150,15 @@ These override the earlier `SPEC.md` text where they conflict:
 
 2. **Cooldown is Phase 1 only and does NOT block** — it just denies the Phase 1 free-entry salary. A cooled-down dealer in P1 pays buy-in; in P2 cooldown is irrelevant. Anchor set only when salary is granted.
 
-3. **Phase 1 salary = printed chips on table** (not free entry skip)
-   - Has balance: pays buy-in + receives `+buy_in` salary chips → `2*buy_in` stack
-   - Broke: no deduction, plays with `1*buy_in` salary chips alone
-   - Logged as `dealer_salary_chips` action (no balance change, counted in chip total)
+3. **Phase 1 salary = free entry + 1× buy_in printed chips** (updated 2026-05-29 per owner)
+   - Dealer (not cooldown) plays FREE: balance is NOT deducted (the salary), and they
+     receive `+buy_in` salary chips printed on the table → `1*buy_in` stack.
+   - Same for has-balance and broke dealers — every seat holds exactly one buy-in, so
+     table total = `n_players * buy_in` (e.g. 3 players @ 200 → 600, not 800).
+   - Logged as `buy_in_dealer_free` (0 deduction) + `dealer_salary_chips` (no balance change,
+     counted in chip total). System still injects `1*buy_in` new chips per session.
+   - **Prior model (reverted):** has-balance dealer paid buy-in AND got salary → `2*buy_in`
+     stack, table total 800. Owner flagged the inflated total as a bug.
 
 4. **Low-balance players can only join as the dealer** — server rejects a non-dealer with `balance < buy_in`. Form disables Mulai with a clear hint.
 
@@ -172,6 +177,7 @@ These override the earlier `SPEC.md` text where they conflict:
 - [ ] Migration filename collision: `002_identity_auth.sql` and `002_seasons.sql` both prefixed `002_` (cosmetic — alphabetical order still works)
 - [x] Admin log filter buttons updated — added `buy_in_dealer_phase2`, `buy_in_no_gaji_dealer`, `dealer_salary_chips`, `season_start`, `season_end`, `pin_change` with colors
 - [x] Mobile dev-mode hydration fix — Next.js 16's `blockCrossSiteDEV` was killing hydration on the phone (LAN IP origin not allowlisted). Added `allowedDevOrigins: ['192.168.18.*']` to `next.config.js`. Restart required after change.
+- [x] **Bugfix dealer chip inflation (2026-05-29)** — Phase 1 free-entry dealer was paying buy-in AND receiving `+buy_in` salary chips → 2× buy_in stack, inflating table total (3 players @ 200 → 800). Owner flagged: dealer should play FREE (no deduction) on a single 1× buy_in salary stack → table total = `n × buy_in` (→ 600). Fixed in `session.ts` (free-entry branch now `deduction=0`, action `buy_in_dealer_free`, unchanged-balance salary log). Updated `SessionSetupForm` hint, SPEC.md, memory, and 3 tests (z-m2-coverage P1 dealer balance/action + recap, z-m3 stats). Build + 71/71 green.
 
 ---
 

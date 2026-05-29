@@ -113,7 +113,7 @@ test.describe('M2 coverage: dealer/cooldown matrix', () => {
     await setSeasonBase(seasonId, { phase: 'bootstrap', buyIn: 100, maxPool: 100_000_000, rakeRate: 10 })
   })
 
-  test('Phase 1 + no cooldown + dealer can afford: pays buy-in + gets salary chips + cooldown anchor set', async ({ page }) => {
+  test('Phase 1 + no cooldown + dealer can afford: plays free (no buy-in) + gets salary chips + cooldown anchor set', async ({ page }) => {
     await startSessionFromSetup({
       page,
       actor: alice,
@@ -128,7 +128,8 @@ test.describe('M2 coverage: dealer/cooldown matrix', () => {
       balance: number
       last_dealer_session_id: string | null
     }[]
-    expect(Number(aliceBalance.balance)).toBe(400)
+    // Free-entry dealer pays no buy-in → balance stays at the 500 starting value.
+    expect(Number(aliceBalance.balance)).toBe(500)
     expect(aliceBalance.last_dealer_session_id).toBe(sessionId)
 
     const [participant] = await db()`
@@ -144,7 +145,7 @@ test.describe('M2 coverage: dealer/cooldown matrix', () => {
       WHERE session_id = ${sessionId} AND player_id = ${alice.id}
     ` as { action: string }[]
     const actions = new Set(logs.map((l) => l.action))
-    expect(actions.has('buy_in_dealer_phase2')).toBe(true)
+    expect(actions.has('buy_in_dealer_free')).toBe(true)
     expect(actions.has('dealer_salary_chips')).toBe(true)
   })
 
@@ -396,7 +397,10 @@ test.describe('M2 coverage: session-active + end-session details', () => {
     await page.getByRole('button', { name: /Lihat recap/ }).click()
 
     await expect(page.getByText('RECAP')).toBeVisible()
-    await expect(page.getByText(/500\s*→\s*650\s*\(\+150\)/)).toBeVisible()
+    // Alice is the Phase 1 free-entry dealer: balance not deducted (stays 500),
+    // plays on 100 salary chips, ends with 250 → 500 + 250 = 750 (+250).
+    await expect(page.getByText(/500\s*→\s*750\s*\(\+250\)/)).toBeVisible()
+    // Bob paid buy-in 100 + 1 rebuy 100 (balance 300), stack 150 → 450 (-50).
     await expect(page.getByText(/500\s*→\s*450\s*\(-50\)/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Edit' }).nth(1).click()
@@ -405,7 +409,9 @@ test.describe('M2 coverage: session-active + end-session details', () => {
     await page.getByRole('button', { name: 'Simpan' }).click()
 
     await expect(page.getByText('RECAP')).toBeVisible()
-    await expect(page.getByText(/Selisih -10/)).toBeVisible()
+    // expected total = 100 (Alice salary chips) + 200 (Bob buy-in+rebuy) = 300.
+    // input = 250 (Alice) + 140 (Bob edited) = 390 → Selisih +90.
+    await expect(page.getByText(/Selisih \+90/)).toBeVisible()
 
     await page.getByRole('button', { name: 'Confirm' }).click()
     await page.waitForURL('/')

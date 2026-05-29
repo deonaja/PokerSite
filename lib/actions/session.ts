@@ -313,7 +313,8 @@ export async function endSession({
 interface StartSessionInput {
   playerIds: string[]
   // The dealer must be one of the playing participants. Their treatment is derived:
-  //   - Phase 1 & not in cooldown → free entry (plays free; this is the salary)
+  //   - Phase 1 & not in cooldown → free entry: no buy-in deduction, plays with a
+  //     1× buy_in salary-chip stack on the table (this free stack IS the salary)
   //   - else if they can afford buy-in → pays buy-in and plays
   //   - else → deals only (no ante, no salary) — a "no-gaji" dealer
   dealerId: string
@@ -424,18 +425,13 @@ export async function startSession({
 
       if (isDealer) {
         if (dealerFreeEntry) {
-          // Phase 1 not in cooldown — dealer always plays and gets +buy_in
-          // salary chips on the table (logged separately below).
-          if (player.balance >= buyIn) {
-            // Has balance → pays buy-in like everyone.
-            deduction = buyIn
-            action = 'buy_in_dealer_phase2'
-          } else {
-            // Broke → can't pay buy-in, but plays with the salary chips alone.
-            // No deduction, balance unchanged.
-            deduction = 0
-            action = 'buy_in_dealer_free'
-          }
+          // Phase 1 not in cooldown — the dealer plays FREE (this is the salary):
+          // their balance is NOT deducted, and they receive a 1× buy_in stack as
+          // printed salary chips on the table (logged separately below). Same for
+          // both has-balance and broke dealers — every seat holds exactly one
+          // buy-in worth of chips, so the table total stays N × buy_in.
+          deduction = 0
+          action = 'buy_in_dealer_free'
           dealerGotSalary = true
           dealerGotSalaryChips = true
         } else if (player.balance < buyIn) {
@@ -470,12 +466,12 @@ export async function startSession({
     // ARE on the table — count them toward the end-session chip reconciliation.
     if (dealerGotSalaryChips) {
       const dealerPlayer = players.find((p) => p.id === dealerId)!
-      const dealerBalanceAfter = dealerPlayer.balance - buyIn
+      // Free-entry dealer pays no buy-in, so balance is unchanged here.
       await client.query(
         `INSERT INTO edit_log
            (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
          VALUES ($1, $2, $3, 'dealer_salary_chips', $4, $4, $5)`,
-        [sessionId, dealerId, actorPlayerId, dealerBalanceAfter, JSON.stringify({ chips: buyIn })]
+        [sessionId, dealerId, actorPlayerId, dealerPlayer.balance, JSON.stringify({ chips: buyIn })]
       )
     }
 

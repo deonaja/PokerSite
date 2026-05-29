@@ -193,8 +193,10 @@ test.describe('M3: season end, leaderboard, history', () => {
 
       expect(Number(aliceRes.sessions_played)).toBe(1)
       expect(Number(aliceRes.times_dealer)).toBe(1)
-      expect(Number(aliceRes.total_won)).toBe(0)
-      expect(Number(aliceRes.total_lost)).toBe(50)
+      // Alice is the Phase 1 free-entry dealer: no buy-in, contributed = 100 salary
+      // chips, end stack 150 → net +50 won.
+      expect(Number(aliceRes.total_won)).toBe(50)
+      expect(Number(aliceRes.total_lost)).toBe(0)
 
       expect(Number(bobRes.sessions_played)).toBe(1)
       expect(Number(bobRes.times_dealer)).toBe(0)
