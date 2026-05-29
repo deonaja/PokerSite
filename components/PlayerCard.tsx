@@ -10,21 +10,9 @@ export default function PlayerCard({ player }: Props) {
   return (
     <Link
       href={`/player/${player.id}`}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0.75rem 1rem',
-        borderRadius: '8px',
-        border: '1px solid var(--border-subtle)',
-        background: 'var(--bg-surface)',
-        minHeight: '44px',
-        textDecoration: 'none',
-      }}
+      className="flex min-h-11 items-center justify-between rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-input"
     >
-      <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
-        {player.name}
-      </span>
+      <span className="text-sm text-foreground">{player.name}</span>
       <BalanceDisplay balance={player.balance} />
     </Link>
   )

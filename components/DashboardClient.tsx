@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { usePoll } from '@/lib/usePoll'
 import PlayerCard from './PlayerCard'
 import Button from './Button'
+import { Card } from './ui/card'
+import { Badge } from './ui/badge'
 import type { PollResponse, Season } from '@/lib/types'
 
 interface Props {
@@ -15,70 +17,47 @@ export default function DashboardClient({ initial, season }: Props) {
   const { players, activeSession } = usePoll(initial)
 
   return (
-    <div style={{ paddingBottom: '6rem' }}>
+    <div className="pb-24">
       {/* Season info */}
       {season && (
-        <div style={{ padding: '1rem 1rem 0' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0.625rem 0.875rem',
-            borderRadius: '8px',
-            border: '1px solid var(--border-subtle)',
-            background: 'var(--bg-surface)',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+        <div className="px-4 pt-4">
+          <Card className="flex items-center justify-between px-3.5 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[0.8125rem] text-muted-foreground">
                 Season {season.number}
               </span>
-              <span style={{
-                fontSize: '0.625rem',
-                fontWeight: 600,
-                letterSpacing: '0.05em',
-                padding: '1px 5px',
-                borderRadius: '4px',
-                background: season.current_phase === 'steady' ? 'var(--accent-warn)' : 'var(--accent-felt)',
-                color: 'var(--text-primary)',
-              }}>
+              <Badge variant={season.current_phase === 'steady' ? 'warn' : 'default'}>
                 {season.current_phase === 'steady' ? 'STEADY' : 'BOOTSTRAP'}
-              </span>
+              </Badge>
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
+            <div className="flex gap-3 font-mono text-xs text-[var(--text-tertiary)]">
               <span>buy-in {season.buy_in}</span>
               <span>BB {season.bb}</span>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* History link */}
-      <div style={{ padding: '0.5rem 1rem 0', textAlign: 'right' }}>
-        <Link href="/season/history" style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textDecoration: 'none' }}>
+      <div className="px-4 pt-2 text-right">
+        <Link
+          href="/season/history"
+          className="text-xs text-[var(--text-tertiary)] transition-colors hover:text-muted-foreground"
+        >
           Riwayat musim →
         </Link>
       </div>
 
       {/* Player list */}
-      <div style={{ padding: '1rem 1rem 0' }}>
-        <p
-          style={{
-            fontSize: '0.75rem',
-            fontWeight: 500,
-            letterSpacing: '0.08em',
-            color: 'var(--text-tertiary)',
-            marginBottom: '0.75rem',
-          }}
-        >
+      <div className="px-4 pt-4">
+        <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">
           PEMAIN
         </p>
 
         {players.length === 0 ? (
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
-            Belum ada pemain terdaftar.
-          </p>
+          <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div className="flex flex-col gap-2">
             {players.map((p) => (
               <PlayerCard key={p.id} player={p} />
             ))}
@@ -88,21 +67,12 @@ export default function DashboardClient({ initial, season }: Props) {
 
       {/* Active session card */}
       {activeSession && (
-        <div style={{ padding: '1rem 1rem 0' }}>
+        <div className="px-4 pt-4">
           <Link
             href="/session"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              border: '1px solid var(--accent-felt)',
-              background: 'var(--accent-felt-dim)',
-              textDecoration: 'none',
-              minHeight: '44px',
-            }}
+            className="flex min-h-11 items-center rounded-lg border border-primary bg-accent px-4 py-3 transition-colors hover:bg-accent/80"
           >
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+            <span className="text-sm text-foreground">
               Sesi sedang berjalan — tap untuk lanjut
             </span>
           </Link>
@@ -110,26 +80,13 @@ export default function DashboardClient({ initial, season }: Props) {
       )}
 
       {/* Sticky CTA */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '480px',
-          padding: '0.75rem 1rem',
-          paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))',
-          borderTop: '1px solid var(--border-subtle)',
-          background: 'var(--bg-base)',
-        }}
-      >
+      <div className="fixed bottom-0 left-1/2 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {activeSession ? (
           <Button fullWidth disabled>
             Mulai sesi
           </Button>
         ) : (
-          <Link href="/session/setup" style={{ display: 'block' }}>
+          <Link href="/session/setup" className="block">
             <Button fullWidth>Mulai sesi</Button>
           </Link>
         )}
