@@ -30,7 +30,17 @@ test.describe('Identity flow', () => {
 
   test('tapping a player saves identity to localStorage and redirects to /', async ({ page }) => {
     await page.goto('/identity')
-    await page.getByRole('button', { name: alice.name }).click()
+    // The picker hydrates client-side; a tap before React attaches the click
+    // handler is dropped, leaving the default (alphabetically-first) selection —
+    // which, when the DB also holds non-test players, is NOT our seeded Alice.
+    // Use an exact-name match and retry the tap until the hidden playerId
+    // reflects our selection, so the test is deterministic regardless of
+    // hydration timing or which other players exist in the DB.
+    const playerButton = page.getByRole('button', { name: alice.name, exact: true })
+    await expect(async () => {
+      await playerButton.click()
+      await expect(page.locator('input[name="playerId"]')).toHaveValue(alice.id)
+    }).toPass({ timeout: 8000 })
     await page.getByPlaceholder('PIN (4-6 digit)').fill('1234')
     await page.getByRole('button', { name: 'Masuk' }).click()
     await page.waitForURL('/')
