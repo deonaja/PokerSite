@@ -1,6 +1,16 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-05-29 (test verification run)
+Last updated: 2026-05-29 (UI redesign — shadcn foundation)
+
+## 🎨 UI redesign (branch `redesign/shadcn`)
+
+Re-platforming the 13 custom components onto themed shadcn primitives. Felt-green
+identity preserved (anti "AI-ish"); shadcn ban lifted in SPEC/CLAUDE. Magic UI /
+flashy animation still banned. **Revert savepoint: git tag `v0.95-pre-redesign`.**
+
+- [x] **Step 1 — foundation** (no visual change): deps (cva, clsx, tailwind-merge, tailwindcss-animate, lucide), `lib/utils.ts` cn(), `components.json`, tailwind tokens + globals.css aliases → felt-green. Build green, 71/71 tests pass. (commit `19187f8`)
+- [ ] **Step 2 — pilot: Button + Sheet** (most-used primitives), re-run tests
+- [ ] **Step 3 — per-screen migration** (dashboard → session → end → setup → admin), tests each checkpoint
 
 ## Overall status
 

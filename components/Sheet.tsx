@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+
+import { cn } from '@/lib/utils'
 
 interface SheetProps {
   isOpen: boolean
@@ -9,55 +11,48 @@ interface SheetProps {
   children: React.ReactNode
 }
 
+// Controlled bottom sheet built on Radix Dialog. Same props as before so
+// call-sites don't change; gains focus-trap, Esc-to-close, scroll-lock, a11y.
 export default function Sheet({ isOpen, onClose, title, children }: SheetProps) {
-  useEffect(() => {
-    if (isOpen) document.body.style.overflow = 'hidden'
-    else document.body.style.overflow = ''
-    return () => { document.body.style.overflow = '' }
-  }, [isOpen])
-
-  if (!isOpen) return null
-
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.6)',
-          zIndex: 40,
-          opacity: 1,
-          pointerEvents: 'auto',
-          transition: 'opacity 150ms ease',
-        }}
-      />
-      {/* Sheet */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '480px',
-          background: 'var(--bg-elevated)',
-          borderRadius: '12px 12px 0 0',
-          borderTop: '1px solid var(--border-strong)',
-          padding: '1.25rem 1rem',
-          paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))',
-          zIndex: 50,
-          transition: 'transform 200ms ease',
-        }}
-      >
-        {title && (
-          <p style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '0.375rem' }}>
-            {title}
-          </p>
-        )}
-        {children}
-      </div>
-    </>
+    <DialogPrimitive.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay
+          className={cn(
+            'fixed inset-0 z-40 bg-black/60',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0',
+            'data-[state=open]:duration-150 data-[state=closed]:duration-150'
+          )}
+        />
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          className={cn(
+            'fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-[480px]',
+            'rounded-t-xl border-t border-input bg-popover',
+            'px-4 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]',
+            'focus:outline-none',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom',
+            'data-[state=open]:duration-200 data-[state=closed]:duration-150'
+          )}
+        >
+          <DialogPrimitive.Title
+            className={cn(
+              'mb-1.5 text-[0.9375rem] font-medium text-foreground',
+              !title && 'sr-only'
+            )}
+          >
+            {title ?? 'Konfirmasi'}
+          </DialogPrimitive.Title>
+          {children}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   )
 }
