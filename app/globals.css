@@ -16,6 +16,30 @@
   --accent-warn: #b8860b;
   --accent-danger: #a03030;
   --accent-success: #5a8a40;
+
+  /* ===== shadcn token aliases → felt-green palette (single source of truth) =====
+     Themed on purpose: primary & ring are felt-green (not default blue), radius
+     is tighter than shadcn default. Do NOT ship default shadcn neutrals. */
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+  --card: var(--bg-surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent-felt);
+  --primary-foreground: var(--text-primary);
+  --secondary: var(--bg-elevated);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--bg-surface);
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--accent-felt-dim);
+  --accent-foreground: var(--text-primary);
+  --destructive: var(--accent-danger);
+  --destructive-foreground: var(--text-primary);
+  --border: var(--border-subtle);
+  --input: var(--border-strong);
+  --ring: var(--accent-felt);
+  --radius: 0.5rem;
 }
 
 *,

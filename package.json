@@ -15,10 +15,15 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "@vercel/postgres": "^0.10.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "geist": "^1.7.0",
+    "lucide-react": "^1.16.0",
     "next": "^16.2.6",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react-dom": "^19.2.6",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

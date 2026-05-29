@@ -11,7 +11,9 @@ Web app buat tracking balance & chip pemain poker Texas Hold'em rumahan. Owner m
 - Polling 2 detik di client untuk sync (pake `useEffect` + `setInterval`, ga perlu SWR/React Query)
 - Package manager: `pnpm`
 
-Jangan pake: shadcn/ui (biar custom), Prisma (overkill), zustand/redux (state minimal), websocket.
+Jangan pake: Prisma (overkill), zustand/redux (state minimal), websocket.
+
+> **Update 2026-05-29 (UI redesign):** larangan `shadcn/ui` DICABUT owner. shadcn dipake sebagai **primitive berbasis Radix UI**, di-tema ke palet felt-green (lihat "Token mapping" di bawah). Tetap dilarang: Material UI / library all-in-one lain, dan Magic UI / animasi flashy (lawan mood). Baseline pra-redesign disimpan di git tag `v0.95-pre-redesign`.
 
 ## Aesthetic direction (wajib diikuti)
 
@@ -49,6 +51,22 @@ Jangan pake: shadcn/ui (biar custom), Prisma (overkill), zustand/redux (state mi
 - Confirmation dialogs: bottom sheet (slide dari bawah), bukan center modal.
 - End-session stack input: 1 pemain per screen, swipe atau "Next" button, bukan form panjang.
 - Transition: 150-200ms ease, jangan dramatis.
+
+**Token mapping (shadcn → felt-green) — wajib saat redesign:**
+Palet felt-green existing tetap jadi single source of truth. Token shadcn jadi *alias* yang nunjuk ke variabel itu — komponen shadcn, warna lo. Yang bikin ga "AI-ish": `--primary` = felt green (bukan biru default), `--ring` ikut hijau (bukan biru), radius lebih ketat dari default, kurangi shadow / perkuat border.
+
+```css
+--background: var(--bg-base);        --foreground: var(--text-primary);
+--card: var(--bg-surface);           --card-foreground: var(--text-primary);
+--popover: var(--bg-elevated);       --popover-foreground: var(--text-primary);
+--primary: var(--accent-felt);       --primary-foreground: var(--text-primary);
+--secondary: var(--bg-elevated);     --muted: var(--bg-surface);
+--muted-foreground: var(--text-secondary);
+--accent: var(--accent-felt-dim);    --destructive: var(--accent-danger);
+--border: var(--border-subtle);      --input: var(--border-strong);
+--ring: var(--accent-felt);          --radius: 0.5rem; /* button 6px / pill 4px override */
+```
+Angka tetap JetBrains Mono + `tabular-nums` (`className="font-mono"` di komponen shadcn yang nampilin angka). Transition 150–200ms, jangan dramatis — pakai transition Radix bawaan, JANGAN tambah Magic UI/Framer animasi flashy.
 
 **Detail aesthetic:**
 - Border-radius: 8px (card), 6px (button), 4px (chip pill).
