@@ -151,50 +151,37 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
     })
   }
 
-  const rowStyle = (active: boolean): React.CSSProperties => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-    padding: '0.75rem 1rem',
-    borderRadius: '8px',
-    border: `1px solid ${active ? 'var(--accent-felt)' : 'var(--border-subtle)'}`,
-    background: active ? 'var(--accent-felt-dim)' : 'var(--bg-surface)',
-    cursor: 'pointer',
-    minHeight: '44px',
-    touchAction: 'manipulation',
-    transition: 'border-color 150ms ease, background 150ms ease',
-  })
+  // Row style: felt-green active state, neutral surface otherwise. Min 44px tap
+  // target. transition-colors keeps the 150ms ease without a custom rule.
+  const rowClass = (active: boolean) =>
+    'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition-colors [touch-action:manipulation] ' +
+    (active ? 'border-primary bg-accent' : 'border-border bg-card')
 
-  const sectionLabel: React.CSSProperties = {
-    fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em',
-    color: 'var(--text-tertiary)', marginBottom: '0.75rem',
-  }
+  const sectionLabel = 'mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]'
 
   return (
-    <div style={{ padding: '1.5rem 1rem 0' }}>
+    <div className="px-4 pt-6">
       {/* Player checkboxes — everyone selectable */}
-      <p style={sectionLabel}>PILIH PEMAIN</p>
+      <p className={sectionLabel}>PILIH PEMAIN</p>
 
       {players.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
-          Belum ada pemain terdaftar.
-        </p>
+        <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+        <div className="mb-6 flex flex-col gap-2">
           {players.map((p) => {
             const lowBalance = p.balance < buyIn
             return (
-              <label key={p.id} style={rowStyle(selectedIds.has(p.id))}>
+              <label key={p.id} className={rowClass(selectedIds.has(p.id))}>
                 <input
                   type="checkbox"
                   data-player-id={p.id}
                   checked={selectedIds.has(p.id)}
                   disabled={isPending}
                   onChange={() => togglePlayer(p.id)}
-                  style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
+                  className="h-4 w-4 shrink-0 accent-primary"
                 />
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
-                <span style={{ fontSize: '0.8125rem', color: lowBalance ? 'var(--accent-warn)' : 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
+                <span className="text-sm text-foreground">{p.name}</span>
+                <span className={'font-mono text-[0.8125rem] ' + (lowBalance ? 'text-warn' : 'text-[var(--text-tertiary)]')}>
                   {p.balance}
                 </span>
               </label>
@@ -206,10 +193,10 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
       {/* Single dealer choice from the selected players */}
       {selectedPlayers.length > 0 && (
         <>
-          <p style={sectionLabel}>SIAPA YANG BAGI KARTU?</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <p className={sectionLabel}>SIAPA YANG BAGI KARTU?</p>
+          <div className="mb-3 flex flex-col gap-2">
             {selectedPlayers.map((p) => (
-              <label key={p.id} style={rowStyle(dealerId === p.id)}>
+              <label key={p.id} className={rowClass(dealerId === p.id)}>
                 <input
                   type="radio"
                   name="dealer"
@@ -217,23 +204,17 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   checked={dealerId === p.id}
                   disabled={isPending}
                   onChange={() => { setDealerId(p.id); setDealerManuallySet(true) }}
-                  style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
+                  className="h-4 w-4 shrink-0 accent-primary"
                 />
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', marginLeft: '0.25rem' }}>
-                  {p.balance}
-                </span>
+                <span className="text-sm text-foreground">{p.name}</span>
+                <span className="ml-1 font-mono text-[0.8125rem] text-[var(--text-tertiary)]">{p.balance}</span>
                 {p.cooldown_remaining > 0 && (
-                  <span style={{ fontSize: '0.6875rem', color: 'var(--accent-warn)', flexShrink: 0 }}>
+                  <span className="shrink-0 text-[0.6875rem] text-warn">
                     cooldown {p.cooldown_remaining} sesi
                   </span>
                 )}
                 {p.id === recommendedDealerId && (
-                  <span style={{
-                    marginLeft: 'auto', fontSize: '0.625rem', fontWeight: 500, letterSpacing: '0.05em',
-                    color: 'var(--accent-felt)', border: '1px solid var(--accent-felt)', borderRadius: '4px',
-                    padding: '1px 5px', flexShrink: 0,
-                  }}>
+                  <span className="ml-auto shrink-0 rounded-sm border border-primary px-1.5 py-px text-[0.625rem] font-medium tracking-[0.05em] text-primary">
                     REKOMENDASI
                   </span>
                 )}
@@ -242,40 +223,23 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
           </div>
 
           {dealerHint && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: brokeNonDealers.length > 0 ? '0.5rem' : '1.5rem' }}>
+            <p className={'text-[0.8125rem] text-muted-foreground ' + (brokeNonDealers.length > 0 ? 'mb-2' : 'mb-6')}>
               {dealerHint}
             </p>
           )}
 
           {brokeNonDealers.length > 0 && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--accent-warn)', marginBottom: '1.5rem' }}>
+            <p className="mb-6 text-[0.8125rem] text-warn">
               {brokeNonDealers.map((p) => p.name).join(', ')} balance kurang — harus jadi dealer atau batalin pilihannya.
             </p>
           )}
         </>
       )}
 
-      {error && (
-        <p style={{ fontSize: '0.875rem', color: 'var(--accent-danger)', marginBottom: '1rem' }}>
-          {error}
-        </p>
-      )}
+      {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
       {/* Sticky CTA */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '100%',
-          maxWidth: '480px',
-          padding: '0.75rem 1rem',
-          paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))',
-          borderTop: '1px solid var(--border-subtle)',
-          background: 'var(--bg-base)',
-        }}
-      >
+      <div className="fixed bottom-0 left-1/2 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <Button fullWidth disabled={!canStart || isPending} onClick={handleSubmit}>
           {isPending ? 'Memulai...' : 'Mulai'}
         </Button>
