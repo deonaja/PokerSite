@@ -13,28 +13,23 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   if (!authPlayer) redirect('/identity')
 
   return (
-    <div className="flex flex-col min-h-dvh">
-      <header
-        className="flex items-center justify-between px-4 py-3 border-b"
-        style={{ borderColor: 'var(--border-subtle)' }}
-      >
-        <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+    <div className="flex min-h-dvh flex-col">
+      <header className="flex items-center justify-between border-b border-border px-4 py-3">
+        <span className="text-sm text-foreground">
           Hi,{' '}
           <span className="font-medium">{authPlayer.name}</span>
         </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+        <div className="flex items-center gap-1">
           <Link
             href="/settings/pin"
-            className="text-xs transition-colors duration-150"
-            style={{ color: 'var(--text-tertiary)', minHeight: '44px', padding: '0 0.5rem', display: 'flex', alignItems: 'center', textDecoration: 'none' }}
+            className="flex min-h-11 items-center px-2 text-xs text-[var(--text-tertiary)] transition-colors duration-150 hover:text-muted-foreground"
           >
             ganti PIN
           </Link>
           <form method="post" action="/api/identity/logout">
             <button
               type="submit"
-              className="text-xs transition-colors duration-150"
-              style={{ color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', minHeight: '44px', padding: '0 0.25rem' }}
+              className="flex min-h-11 cursor-pointer items-center bg-transparent px-1 text-xs text-[var(--text-tertiary)] transition-colors duration-150 hover:text-muted-foreground"
             >
               ganti identitas
             </button>

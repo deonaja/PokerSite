@@ -2,24 +2,16 @@ export default function Loading() {
   return (
     <div>
       {/* Header skeleton */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0.875rem 1rem',
-          borderBottom: '1px solid var(--border-subtle)',
-        }}
-      >
-        <div style={{ height: '36px', width: '80px', borderRadius: '6px', background: 'var(--bg-elevated)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-        <div style={{ height: '1rem', width: '3rem', borderRadius: '4px', background: 'var(--bg-elevated)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
+        <div className="h-9 w-20 animate-pulse rounded-md bg-[var(--bg-elevated)]" />
+        <div className="h-4 w-12 animate-pulse rounded-sm bg-[var(--bg-elevated)]" />
       </div>
 
       {/* Content skeleton */}
-      <div style={{ padding: '2rem 1.5rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-        <div style={{ height: '1.5rem', width: '8rem', borderRadius: '4px', background: 'var(--bg-elevated)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-        <div style={{ height: '80px', width: '100%', borderRadius: '8px', background: 'var(--bg-surface)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '100ms' }} />
-        <div style={{ height: '72px', width: '100%', borderRadius: '8px', background: 'var(--bg-elevated)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '200ms' }} />
+      <div className="flex flex-col items-center gap-3 px-6 pt-8">
+        <div className="h-6 w-32 animate-pulse rounded-sm bg-[var(--bg-elevated)]" />
+        <div className="h-20 w-full animate-pulse rounded-lg bg-card" style={{ animationDelay: '100ms' }} />
+        <div className="h-[72px] w-full animate-pulse rounded-lg bg-[var(--bg-elevated)]" style={{ animationDelay: '200ms' }} />
       </div>
     </div>
   )

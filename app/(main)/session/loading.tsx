@@ -2,31 +2,18 @@ export default function Loading() {
   return (
     <div>
       {/* Sticky header skeleton */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0.625rem 1rem',
-          borderBottom: '1px solid var(--border-subtle)',
-        }}
-      >
-        <div style={{ height: '36px', width: '80px', borderRadius: '6px', background: 'var(--bg-elevated)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-        <div style={{ height: '36px', width: '56px', borderRadius: '6px', background: 'var(--bg-elevated)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+        <div className="h-9 w-20 animate-pulse rounded-md bg-[var(--bg-elevated)]" />
+        <div className="h-9 w-14 animate-pulse rounded-md bg-[var(--bg-elevated)]" />
       </div>
 
       {/* Participant card skeletons */}
-      <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <div className="flex flex-col gap-3 p-4">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            style={{
-              height: '104px',
-              borderRadius: '8px',
-              background: 'var(--bg-surface)',
-              animation: 'pulse 1.5s ease-in-out infinite',
-              animationDelay: `${i * 100}ms`,
-            }}
+            className="h-[104px] animate-pulse rounded-lg bg-card"
+            style={{ animationDelay: `${i * 100}ms` }}
           />
         ))}
       </div>

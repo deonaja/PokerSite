@@ -41,25 +41,15 @@ export default async function SessionSetupPage() {
   const { players, buyIn, currentPhase } = await getSetupData()
 
   return (
-    <div style={{ paddingBottom: '6rem' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          padding: '0.875rem 1rem',
-          borderBottom: '1px solid var(--border-subtle)',
-        }}
-      >
+    <div className="pb-24">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
         <Link
           href="/"
-          style={{ color: 'var(--text-secondary)', fontSize: '1.125rem', lineHeight: 1, minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center' }}
+          className="flex min-h-11 min-w-11 items-center text-lg leading-none text-muted-foreground"
         >
           ←
         </Link>
-        <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-          Setup sesi
-        </span>
+        <span className="text-sm font-medium text-foreground">Setup sesi</span>
       </div>
 
       <SessionSetupForm players={players} buyIn={buyIn} currentPhase={currentPhase} />

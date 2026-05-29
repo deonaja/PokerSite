@@ -1,27 +1,13 @@
 export default function Loading() {
   return (
-    <div style={{ padding: '1.5rem 1rem 0' }}>
-      <div
-        style={{
-          height: '1rem',
-          width: '4rem',
-          borderRadius: '4px',
-          background: 'var(--bg-elevated)',
-          marginBottom: '0.75rem',
-          animation: 'pulse 1.5s ease-in-out infinite',
-        }}
-      />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+    <div className="px-4 pt-6">
+      <div className="mb-3 h-4 w-16 animate-pulse rounded-sm bg-[var(--bg-elevated)]" />
+      <div className="flex flex-col gap-2">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            style={{
-              height: '44px',
-              borderRadius: '8px',
-              background: 'var(--bg-surface)',
-              animation: 'pulse 1.5s ease-in-out infinite',
-              animationDelay: `${i * 100}ms`,
-            }}
+            className="h-11 animate-pulse rounded-lg bg-card"
+            style={{ animationDelay: `${i * 100}ms` }}
           />
         ))}
       </div>
