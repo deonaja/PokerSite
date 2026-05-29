@@ -105,3 +105,118 @@ export async function createSeason(
 
   redirect('/identity')
 }
+
+export async function endSeason(seasonId: string): Promise<{ success: true } | { error: string }> {
+  const client = createDbClient()
+  await client.connect()
+  try {
+    await client.query('BEGIN')
+
+    const { rows: [season] } = await client.query<{
+      id: string; number: number; starting_balance: number; status: string
+    }>(
+      `SELECT id, number, starting_balance, status FROM seasons WHERE id = $1 FOR UPDATE`,
+      [seasonId]
+    )
+    if (!season) { await client.query('ROLLBACK'); return { error: 'Season tidak ditemukan' } }
+    if (season.status !== 'active') { await client.query('ROLLBACK'); return { error: 'Season sudah berakhir' } }
+
+    // Compute per-player stats across all ended sessions in this season.
+    const { rows: stats } = await client.query<{
+      player_id: string
+      sessions_played: number
+      times_dealer: number
+      total_won: number
+      total_lost: number
+    }>(
+      `WITH per_session AS (
+         SELECT
+           sp.player_id,
+           sp.session_id,
+           sp.is_dealer,
+           COALESCE(sp.final_stack, 0)::int AS final_stack,
+           COALESCE(SUM(
+             CASE
+               WHEN el.action IN ('buy_in', 'buy_in_dealer_phase2', 'rebuy')
+                 THEN (el.balance_before - el.balance_after)
+               WHEN el.action = 'rebuy_undo'
+                 THEN (el.balance_before - el.balance_after)
+               WHEN el.action = 'dealer_salary_chips'
+                 THEN (el.metadata->>'chips')::int
+               ELSE 0
+             END
+           ), 0)::int AS contributed
+         FROM sessions s
+         JOIN session_participants sp ON sp.session_id = s.id
+         LEFT JOIN edit_log el ON el.session_id = s.id
+           AND el.player_id = sp.player_id
+           AND el.action IN ('buy_in', 'buy_in_dealer_phase2', 'rebuy', 'rebuy_undo', 'dealer_salary_chips')
+         WHERE s.season_id = $1 AND s.status = 'ended'
+         GROUP BY sp.player_id, sp.session_id, sp.is_dealer, sp.final_stack
+       ),
+       player_stats AS (
+         SELECT
+           player_id,
+           COUNT(*)::int AS sessions_played,
+           COUNT(CASE WHEN is_dealer THEN 1 END)::int AS times_dealer,
+           COALESCE(SUM(CASE WHEN final_stack - contributed > 0 THEN final_stack - contributed ELSE 0 END), 0)::int AS total_won,
+           COALESCE(SUM(CASE WHEN final_stack - contributed < 0 THEN contributed - final_stack ELSE 0 END), 0)::int AS total_lost
+         FROM per_session
+         GROUP BY player_id
+       )
+       SELECT player_id, sessions_played, times_dealer, total_won, total_lost
+       FROM player_stats`,
+      [seasonId]
+    )
+
+    // Rank players by current balance (the final state before reset).
+    const { rows: players } = await client.query<{ id: string; balance: number }>(
+      `SELECT id, balance FROM players ORDER BY balance DESC, id ASC FOR UPDATE`
+    )
+
+    const statsMap = new Map(stats.map((s) => [s.player_id, s]))
+
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i]
+      const s = statsMap.get(p.id) ?? { sessions_played: 0, times_dealer: 0, total_won: 0, total_lost: 0 }
+      const rank = i + 1
+      await client.query(
+        `INSERT INTO season_results
+           (season_id, player_id, final_balance, rank, sessions_played, times_dealer, total_won, total_lost)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [seasonId, p.id, p.balance, rank, s.sessions_played, s.times_dealer, s.total_won, s.total_lost]
+      )
+    }
+
+    // Reset all player balances to starting_balance.
+    await client.query(
+      `UPDATE players SET balance = $1`,
+      [season.starting_balance]
+    )
+
+    // Log season_end for every player.
+    for (const p of players) {
+      await client.query(
+        `INSERT INTO edit_log (player_id, action, balance_before, balance_after, metadata)
+         VALUES ($1, 'season_end', $2, $3, $4)`,
+        [p.id, p.balance, season.starting_balance, JSON.stringify({ season_id: seasonId, season_number: season.number })]
+      )
+    }
+
+    await client.query(
+      `UPDATE seasons SET status = 'ended', ended_at = now() WHERE id = $1`,
+      [seasonId]
+    )
+
+    await client.query('COMMIT')
+    revalidatePath('/')
+    revalidatePath('/season/end')
+    return { success: true as const }
+  } catch (e) {
+    await client.query('ROLLBACK')
+    console.error('endSeason error:', e)
+    return { error: 'Gagal mengakhiri season' }
+  } finally {
+    await client.end()
+  }
+}

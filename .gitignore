@@ -45,3 +45,6 @@ yarn-error.log*
 /test-results/
 /playwright-report/
 .test-data.json
+
+# Claude Code local settings
+.claude/settings.local.json

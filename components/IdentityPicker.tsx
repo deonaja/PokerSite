@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import type { Player } from '@/lib/types'
 import Button from './Button'
+import { setLocalStorageItem } from '@/lib/safeStorage'
 
 interface Props {
   players: Player[]
@@ -39,8 +40,8 @@ export default function IdentityPicker({ players, error }: Props) {
           className="flex flex-col gap-3"
           onSubmit={() => {
             if (!selectedPlayer) return
-            localStorage.setItem('playerId', selectedPlayer.id)
-            localStorage.setItem('playerName', selectedPlayer.name)
+            setLocalStorageItem('playerId', selectedPlayer.id)
+            setLocalStorageItem('playerName', selectedPlayer.name)
           }}
         >
           <input type="hidden" name="playerId" value={selectedId} />

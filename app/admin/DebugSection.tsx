@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/Button'
 import {
+  adminForceEndSeason,
   debugResetSeason,
   debugSetPhase,
   debugResetBalances,
@@ -60,6 +61,25 @@ export default function DebugSection() {
           {msg.text}
         </p>
       )}
+
+      {/* Force end season (with snapshot) */}
+      <div style={{ ...card, border: '1px solid var(--accent-warn)' }}>
+        <p style={rowLabel}>
+          <strong style={{ color: 'var(--accent-warn)' }}>Akhiri season (proper)</strong> — snapshot hasil, reset balance, tutup season. Beda dengan debug reset yang hapus data.
+        </p>
+        {armed !== 'forceEnd' ? (
+          <Button variant="secondary" fullWidth disabled={isPending} onClick={() => { setArmed('forceEnd'); setMsg(null) }}>
+            Force end season
+          </Button>
+        ) : (
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Button variant="secondary" fullWidth disabled={isPending} onClick={() => setArmed(null)}>Batal</Button>
+            <Button variant="danger" fullWidth disabled={isPending} onClick={() => run('Force end season', adminForceEndSeason)}>
+              {isPending ? '…' : 'Yakin'}
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Reset season */}
       <div style={card}>

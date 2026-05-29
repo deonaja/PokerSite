@@ -9,6 +9,7 @@ import type { Player } from '@/lib/types'
 export default function ResetPinForm({ players }: { players: Player[] }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isHydrated, setIsHydrated] = useState(false)
   const [playerId, setPlayerId] = useState(players[0]?.id ?? '')
   const [pin, setPin] = useState('')
   const [pinConfirm, setPinConfirm] = useState('')
@@ -20,6 +21,10 @@ export default function ResetPinForm({ players }: { players: Player[] }) {
   useEffect(() => {
     const r = reasonRef.current?.value ?? ''
     if (r) setReason(r)
+  }, [])
+
+  useEffect(() => {
+    setIsHydrated(true)
   }, [])
 
   function handleSubmit() {
@@ -59,7 +64,12 @@ export default function ResetPinForm({ players }: { players: Player[] }) {
   return (
     <div style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
       <p style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-secondary)', margin: 0 }}>Set / reset PIN pemain</p>
-      <select style={{ ...inputStyle, appearance: 'auto' }} value={playerId} onChange={e => setPlayerId(e.target.value)}>
+      <select
+        style={{ ...inputStyle, appearance: 'auto' }}
+        value={playerId}
+        disabled={!isHydrated || isPending}
+        onChange={e => setPlayerId(e.target.value)}
+      >
         {players.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name}
@@ -71,6 +81,7 @@ export default function ResetPinForm({ players }: { players: Player[] }) {
         inputMode="numeric"
         maxLength={6}
         value={pin}
+        disabled={!isHydrated || isPending}
         onChange={(e) => setPin(e.target.value)}
         placeholder="PIN baru (4-6 digit)"
         style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}
@@ -80,12 +91,18 @@ export default function ResetPinForm({ players }: { players: Player[] }) {
         inputMode="numeric"
         maxLength={6}
         value={pinConfirm}
+        disabled={!isHydrated || isPending}
         onChange={(e) => setPinConfirm(e.target.value)}
         placeholder="Konfirmasi PIN baru"
         style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}
       />
       <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-        <input type="checkbox" checked={showPin} onChange={(e) => setShowPin(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={showPin}
+          disabled={!isHydrated || isPending}
+          onChange={(e) => setShowPin(e.target.checked)}
+        />
         Tampilkan PIN
       </label>
       <input
@@ -93,13 +110,14 @@ export default function ResetPinForm({ players }: { players: Player[] }) {
         style={inputStyle}
         placeholder="Alasan reset PIN (wajib)"
         defaultValue=""
+        disabled={!isHydrated || isPending}
         onChange={(e) => setReason(e.target.value)}
       />
       {msg && <p style={{ fontSize: '0.8125rem', color: msg.type === 'ok' ? 'var(--accent-success)' : 'var(--accent-danger)', margin: 0 }}>{msg.text}</p>}
       <Button
         fullWidth
         variant="secondary"
-        disabled={isPending || !reason.trim() || !pin || !pinConfirm}
+        disabled={!isHydrated || isPending || !reason.trim() || !pin || !pinConfirm}
         onClick={handleSubmit}
       >
         {isPending ? 'Menyimpan...' : 'Update PIN'}

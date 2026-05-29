@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import type { Player } from '@/lib/types'
 import BalanceDisplay from './BalanceDisplay'
 
@@ -7,7 +8,8 @@ interface Props {
 
 export default function PlayerCard({ player }: Props) {
   return (
-    <div
+    <Link
+      href={`/player/${player.id}`}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -17,12 +19,13 @@ export default function PlayerCard({ player }: Props) {
         border: '1px solid var(--border-subtle)',
         background: 'var(--bg-surface)',
         minHeight: '44px',
+        textDecoration: 'none',
       }}
     >
       <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
         {player.name}
       </span>
       <BalanceDisplay balance={player.balance} />
-    </div>
+    </Link>
   )
 }

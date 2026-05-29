@@ -119,7 +119,7 @@ test.describe('Admin - logs', () => {
   })
 
   test('filter all shows all log entries', async ({ page }) => {
-    await page.getByText('all').click()
+    await page.getByRole('link', { name: 'all' }).click()
     await page.waitForURL(/logAction=all/)
     await expect(page.locator('table')).toBeVisible()
   })

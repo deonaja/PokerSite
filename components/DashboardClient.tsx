@@ -52,8 +52,15 @@ export default function DashboardClient({ initial, season }: Props) {
         </div>
       )}
 
+      {/* History link */}
+      <div style={{ padding: '0.5rem 1rem 0', textAlign: 'right' }}>
+        <Link href="/season/history" style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textDecoration: 'none' }}>
+          Riwayat musim →
+        </Link>
+      </div>
+
       {/* Player list */}
-      <div style={{ padding: '1.5rem 1rem 0' }}>
+      <div style={{ padding: '1rem 1rem 0' }}>
         <p
           style={{
             fontSize: '0.75rem',

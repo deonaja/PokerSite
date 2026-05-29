@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { sql, createDbClient } from '@/lib/db'
+import { endSeason } from '@/lib/actions/season'
 
 type Result = { success: true; message: string } | { error: string }
 
@@ -86,6 +87,21 @@ export async function debugClearCooldowns(): Promise<Result> {
   await sql`UPDATE players SET last_dealer_session_id = NULL`
   revalidateAll()
   return { success: true, message: 'Cooldown dealer semua pemain di-reset.' }
+}
+
+/**
+ * Force-end the active season WITH snapshot — proper season close, not a debug wipe.
+ * Snapshots final balances to season_results, resets all balances, marks season ended.
+ */
+export async function adminForceEndSeason(): Promise<Result> {
+  if (!(await isAdmin())) return { error: 'Unauthorized' }
+  const rows = await sql`SELECT id FROM seasons WHERE status = 'active' LIMIT 1`
+  const season = rows[0] as { id: string } | undefined
+  if (!season) return { error: 'Tidak ada season aktif.' }
+  const result = await endSeason(season.id)
+  if ('error' in result) return result
+  revalidateAll()
+  return { success: true, message: 'Season berhasil diakhiri. Balance di-reset, hasil di-snapshot.' }
 }
 
 /** Wipe everything — back to a fresh install. */

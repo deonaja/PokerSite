@@ -1,0 +1,183 @@
+# Poker Chip Tracker — Progress & TODO
+
+Last updated: 2026-05-29 (test verification run)
+
+## Overall status
+
+| Milestone | Status | Weight |
+|---|---|---|
+| M1 — MVP tracking | ✅ 100% | ~40% |
+| M2 — Season system | ✅ 100% | ~35% |
+| M3 — Season end + leaderboard | ✅ 100% | ~15% |
+| M4 — Polish (stats, export) | ❌ 0% | ~10% |
+
+Roughly **95%** of the M1–M4 roadmap done.
+
+---
+
+## ✅ M1 — MVP (100%)
+
+- [x] Identity flow with PIN auth (7-day cookie session)
+- [x] Dashboard with 2s polling
+- [x] Session setup (player checkboxes, dealer radio, recommendation)
+- [x] Active session view with rebuy / undo (race-safe via `SELECT FOR UPDATE`)
+- [x] End-session wizard (per-player stack input, recap, validation)
+- [x] Admin endpoint (key-gated via cookie + middleware)
+- [x] Append-only edit log, paginated, filterable by action
+
+---
+
+## ✅ M2 — Season system (100%)
+
+### Done
+
+**Season creation flow** (`/season/new`)
+- [x] 4-step multi-step form (players → modal/buy-in → preset → confirm), unauthenticated
+- [x] `buy_in = starting_balance / 2`
+- [x] BB / SB recommendation (informational)
+- [x] Presets: Sprint / Quick / Standard / Marathon / Custom
+- [x] New players get default PIN `1234`
+
+**PIN self-service**
+- [x] `/settings/pin` change-PIN page (verify old → set new)
+- [x] Header link "ganti PIN" on `(main)` layout
+
+**Phase system**
+- [x] `seasons.current_phase` (`bootstrap` / `steady`)
+- [x] Auto-transition `bootstrap → steady` when `SUM(balance) >= max_pool` at session start
+- [x] Dashboard shows phase badge (BOOTSTRAP / STEADY) + season info card
+
+**Dealer model (heavily iterated)**
+
+Treatment is derived at session start based on phase + cooldown + balance:
+
+| Phase | Cooldown | Balance | Behavior |
+|---|---|---|---|
+| 1 | no | ≥ buy_in | Pay buy-in + receive `+buy_in` salary chips printed on table (plays with 2× buy_in stack) |
+| 1 | no | < buy_in | No deduction, play with the salary chips alone (1× buy_in stack) |
+| 1 | yes | ≥ buy_in | Pay buy-in, no salary |
+| 1 | yes | < buy_in | Deals only (`no_gaji_dealer = true`), no salary |
+| 2 | n/a | ≥ buy_in | Pay buy-in, salary = rake (collected via end stack) |
+| 2 | n/a | < buy_in | Deals only, no upfront salary (rake via end stack if any) |
+
+- [x] Cooldown does NOT block selection — it only denies the Phase 1 free-entry salary
+- [x] Cooldown anchor (`last_dealer_session_id`) set only when salary is actually granted
+- [x] Cooldown badge shows remaining sessions on setup
+- [x] Dealer recommendation prefers lowest-balance non-cooldown player
+- [x] Setup hint spells out per-case behavior in plain Indonesian
+- [x] Low-balance non-dealer is server-rejected (low balance can only join AS dealer)
+
+**Session-active UX**
+- [x] Each participant card shows live `Saldo: X` (polled)
+- [x] Rebuy button disabled with label "Saldo kurang" when `balance < buy_in`
+- [x] Rebuy server hard-rejects when balance insufficient (no more unlimited `Math.min(0, buy_in)` rebuys)
+- [x] No-gaji participant shows "BAGI KARTU" badge with no rebuy controls
+
+**End-session reconciliation**
+- [x] Per-participant `contributed` summed from `edit_log` deductions (handles free dealer, deals-only, partial low-balance, dealer salary chips)
+- [x] Recap shows `original_balance → new_balance (delta)` from `balance_before` of first edit-log entry — true net session result
+- [x] Inputs persist to `localStorage` keyed by `sessionId` once the recap loads
+- [x] Edit on a participant from the recap returns to the recap (not next player); button reads "Simpan"
+- [x] Back on recap goes to `/session`; returning to `/session/end` lands directly on the recap with saved inputs
+- [x] Storage entry cleared on successful Confirm
+
+**Admin debug panel**
+- [x] Reset season → wipe all seasons + sessions, numbering restarts at #1, players preserved
+- [x] Set phase (bootstrap / steady) on active season
+- [x] Reset balances (default = `starting_balance`, custom amount supported)
+- [x] Clear cooldowns (`last_dealer_session_id = NULL` for everyone)
+- [x] Nuke all data → fresh install
+- [x] Each destructive action requires a second confirm click
+- [x] Server-side guard re-verifies the `admin_key` cookie (not just page-level gating)
+
+### Done (100%)
+
+- [x] **Rake calculator UI (Phase 2 end session)** — dealer's step in end-session wizard shows "KALKULATOR RAKE" card with total chip, rake rate, and estimated rake (rounded to nearest 5). Informational only, no balance effect (Approach C).
+
+---
+
+## ✅ M3 — Season end + leaderboard (100%)
+
+### Done
+- [x] Auto-detect season over in `endSession` (`sessions_played >= max_sessions`)
+- [x] `endSeason` action — snapshot to `season_results` (rank, sessions_played, times_dealer, total_won, total_lost), reset balances to `starting_balance`, close season
+- [x] `/season/end` page — leaderboard of all players (ranked by balance, delta vs starting), two-tap "Akhiri Musim" confirm → redirects to `/season/new`
+- [x] `SessionEndWizard` redirects to `/season/end?id=xxx` when `seasonOver: true`
+- [x] Admin "Force end season" button in `/admin` (snapshot + reset, distinct from debug wipe)
+- [x] Per-season per-player stats: sessions_played, times_dealer, total_won, total_lost stored in `season_results`
+
+### Done (continued)
+- [x] Season history view — `/season/history` with accordion cards per ended season, shows rank, final balance, delta, sessions/dealer counts
+- [x] "Riwayat musim →" link on dashboard
+- [x] Season 2+ pre-fill — `/season/new` now queries players from last ended season (by rank), shows hint "dari musim sebelumnya"
+
+### Done (continued)
+- [x] Per-player stats view — `/player/[id]` with overall stats (seasons, best rank, total won/lost) + per-season breakdown; PlayerCard links to it
+- [x] Bug fix: `endSeason` CTE `rebuy_undo` formula was inverted (added instead of subtracted from contributed) → stats total_won/total_lost were wrong when undos exist
+- [x] Bug fix: `endSeason` was overwriting `current_phase = 'bootstrap'` on the ended season (losing historical phase data)
+
+---
+
+## ❌ M4 — Polish (0%)
+
+- [x] Per-player overall stats (cross-season) — `/player/[id]` (done in M3)
+- [ ] Achievement system
+- [ ] Export CSV (sessions, results, logs)
+- [ ] Additional UX polish (TBD)
+
+---
+
+## Key design decisions (this session)
+
+These override the earlier `SPEC.md` text where they conflict:
+
+1. **Rake = Approach C (no auto-credit in M2)** — Phase 2 dealer pays buy-in like everyone, collects rake into their own stack during play. App does NOT add rake to balance at session end. `rake_rate` is informational guidance. Will be revisited with the rake calculator.
+
+2. **Cooldown is Phase 1 only and does NOT block** — it just denies the Phase 1 free-entry salary. A cooled-down dealer in P1 pays buy-in; in P2 cooldown is irrelevant. Anchor set only when salary is granted.
+
+3. **Phase 1 salary = printed chips on table** (not free entry skip)
+   - Has balance: pays buy-in + receives `+buy_in` salary chips → `2*buy_in` stack
+   - Broke: no deduction, plays with `1*buy_in` salary chips alone
+   - Logged as `dealer_salary_chips` action (no balance change, counted in chip total)
+
+4. **Low-balance players can only join as the dealer** — server rejects a non-dealer with `balance < buy_in`. Form disables Mulai with a clear hint.
+
+5. **No "spectator" or "no-gaji dealer who only deals" concept anymore** — these were earlier experiments that got reverted. Now: the dealer always plays UNLESS Phase 2 + broke (or P1 cooldown + broke), in which case they're `no_gaji_dealer = true` and only deal.
+
+6. **End-session recap delta from pre-session balance** (not post-buy-in balance) — drives the +/- column. Sourced from the `balance_before` of the player's first edit_log entry.
+
+---
+
+## Tech debt & known issues
+
+- [x] `SPEC.md` synced — Phase 1 salary chips model, cooldown (no-block), Approach C rake, milestone status all updated
+- [x] Bugfix mobile setup sesi: kontrol pilih pemain/dealer tidak lagi di-disable saat hydration; disable hanya saat request pending (`isPending`) atau validasi bisnis gagal
+- [x] `dealer_salary` dead code removed — was a leftover IN-clause entry in `session/end/page.tsx:60`'s `original_balance` subquery from the old broke-deals-only-gets-credit flow. Never written by current code (only `dealer_salary_chips` is, at `session.ts:477`), so removing it is a no-op for current data. Cleaned 2026-05-29; build + 35 end-session tests still green.
+- [x] E2E test suite verified — clean `pnpm test` run on 2026-05-29: **71 passed (3.9m), 0 failures** across admin/balance/concurrency/identity/session/z-m2-coverage/z-m2-features/z-m3-features. No drift remaining.
+- [ ] Migration filename collision: `002_identity_auth.sql` and `002_seasons.sql` both prefixed `002_` (cosmetic — alphabetical order still works)
+- [x] Admin log filter buttons updated — added `buy_in_dealer_phase2`, `buy_in_no_gaji_dealer`, `dealer_salary_chips`, `season_start`, `season_end`, `pin_change` with colors
+- [x] Mobile dev-mode hydration fix — Next.js 16's `blockCrossSiteDEV` was killing hydration on the phone (LAN IP origin not allowlisted). Added `allowedDevOrigins: ['192.168.18.*']` to `next.config.js`. Restart required after change.
+
+---
+
+## Suggested next steps (in order of value)
+
+1. ~~Full `pnpm test` run~~ ✅ done 2026-05-29 — 71/71 pass, no regressions.
+2. ~~`dealer_salary` dead code~~ ✅ done 2026-05-29 — dihapus dari IN-clause `session/end/page.tsx:60`.
+3. **M4** — Export CSV, achievement system (bila owner mau lanjut).
+
+---
+
+## File pointers
+
+- Server actions: `lib/actions/session.ts`, `lib/actions/season.ts` (incl. `endSeason`), `lib/actions/players.ts`, `lib/actions/debug.ts` (incl. `adminForceEndSeason`)
+- Setup / end / session pages: `app/(main)/session/setup/page.tsx`, `app/(main)/session/end/page.tsx`, `app/(main)/session/page.tsx`
+- Wizard: `components/SessionEndWizard.tsx`, setup form: `components/SessionSetupForm.tsx`, active session: `components/SessionView.tsx`
+- Season end: `app/(main)/season/end/page.tsx`, `app/(main)/season/end/SeasonEndConfirm.tsx`
+- Season history: `app/(main)/season/history/page.tsx`, `app/(main)/season/history/HistoryAccordion.tsx`
+- Player stats: `app/(main)/player/[id]/page.tsx`
+- Season setup: `app/season/new/page.tsx`, `components/SeasonSetup.tsx`
+- Admin: `app/admin/page.tsx`, `app/admin/DebugSection.tsx`
+- DB schema: `db/migrations/001_init.sql`, `002_identity_auth.sql`, `002_seasons.sql`, `003_session_roles.sql`
+- Proxy / auth: `proxy.ts`, `lib/auth.ts`, `lib/auth-server.ts`
+- Tests: `tests/*.spec.ts` (admin, balance, concurrency, identity, session, z-m2-features)

@@ -6,7 +6,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', fullWidth, children, style, ...props }, ref) => {
+  ({ variant = 'primary', fullWidth, children, style, type = 'button', ...props }, ref) => {
     const variantStyles: Record<string, React.CSSProperties> = {
       primary: {
         background: 'var(--accent-felt)',
@@ -26,6 +26,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
+        type={type}
         style={{
           display: 'inline-flex',
           alignItems: 'center',

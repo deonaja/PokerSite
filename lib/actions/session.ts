@@ -197,7 +197,7 @@ export async function endSession({
   sessionId: string
   stacks: { playerId: string; finalStack: number }[]
   actorPlayerId: string
-}): Promise<{ success: true } | { error: string }> {
+}): Promise<{ success: true; seasonOver?: true; seasonId?: string } | { error: string }> {
   if (!stacks.length) return { error: 'Tidak ada data stack' }
   if (stacks.some((s) => !Number.isInteger(s.finalStack) || s.finalStack < 0)) {
     return { error: 'Stack harus angka >= 0' }
@@ -285,6 +285,21 @@ export async function endSession({
     revalidatePath('/')
     revalidatePath('/session')
     revalidatePath('/session/end')
+
+    // Check if the season is now over (sessions played >= max_sessions).
+    // This is a post-commit read — safe since the session is already ended.
+    const { rows: [seasonCheck] } = await client.query<{ season_id: string }>(
+      `SELECT se.id AS season_id
+       FROM seasons se
+       JOIN sessions s ON s.season_id = se.id AND s.id = $1
+       WHERE se.status = 'active'
+         AND (SELECT COUNT(*) FROM sessions s2 WHERE s2.season_id = se.id AND s2.status = 'ended') >= se.max_sessions
+       LIMIT 1`,
+      [sessionId]
+    )
+    if (seasonCheck) {
+      return { success: true, seasonOver: true, seasonId: seasonCheck.season_id }
+    }
     return { success: true }
   } catch (e) {
     await client.query('ROLLBACK')

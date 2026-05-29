@@ -44,6 +44,7 @@ Jangan pake: shadcn/ui (biar custom), Prisma (overkill), zustand/redux (state mi
 - Single column always. No multi-column grids.
 - Max viewport width 480px (centered di desktop, padding ke kiri-kanan).
 - Tap target minimum 44×44px.
+- Kontrol interaktif di setup sesi (checkbox/radio/tombol) tidak boleh di-disable hanya karena hydration belum selesai. Disable hanya saat `isPending` atau validasi bisnis gagal.
 - Primary CTA sticky bottom dengan `padding-bottom: env(safe-area-inset-bottom)`.
 - Confirmation dialogs: bottom sheet (slide dari bawah), bukan center modal.
 - End-session stack input: 1 pemain per screen, swipe atau "Next" button, bukan form panjang.
@@ -434,12 +435,16 @@ Bagian ini **informational** — JANGAN diimplementasi di MVP. Tapi schema dan k
 Sistem ekonomi yang self-balancing dengan reset periodik (kayak "season" di game competitive).
 
 **Phase 1: Bootstrap** — `total_chip_in_system < max_pool`
-- Dealer dapet flat salary 100 (di-print dari udara).
+- Dealer dapet salary chips senilai `buy_in` yang **di-print ke meja** (bukan ke balance). Logged sebagai `dealer_salary_chips`.
+- Jika punya balance ≥ buy_in: bayar buy-in seperti biasa + terima salary chips → stack di meja = `2 × buy_in`.
+- Jika broke (balance < buy_in): tidak dipotong apa-apa, main dengan salary chips saja → stack = `1 × buy_in`.
+- Cooldown (sudah jadi dealer gratis di sesi sebelumnya): bayar buy-in biasa, tidak dapat salary chips.
 - Total chip di sistem naik tiap sesi.
-- Pemain baru gampang catch up.
 
 **Phase 2: Steady-state** — `total_chip_in_system >= max_pool`
-- Print mode mati. Dealer salary di-switch ke **rake** (% dari total chip masuk meja per sesi).
+- Salary chips tidak dicetak. Dealer bayar buy-in seperti semua pemain.
+- Rake dikumpulkan dealer ke dalam chip stack-nya sendiri selama bermain (**Approach C** — tidak ada auto-credit di app; balance update = `balance += final_stack` sama untuk semua).
+- `rake_rate` ditampilkan sebagai panduan. Kalkulator rake di end-session menghitung perkiraan rake yang terkumpul (dibulatkan ke kelipatan 5).
 - Total chip di sistem konstan (zero-sum dari sini).
 - Kompetisi makin ketat, menang = orang lain rugi.
 
@@ -449,16 +454,15 @@ Sistem ekonomi yang self-balancing dengan reset periodik (kayak "season" di game
 - Per-player stats di-snapshot (sesi main, kali dealer, total menang/kalah).
 - All balance reset ke `starting_balance` season tersebut. Season counter naik. Phase balik ke 1.
 
-### Pemain low-balance (< buy_in) — sistem cooldown + spectator
+### Pemain low-balance (< buy_in) — cooldown
 
-Di phase manapun, pemain dengan `balance < buy_in` di awal sesi:
-- **Ga bisa main beneran** (ga cukup buy-in).
-- Pilihan: **spectator** (cuma nonton) ATAU **dealer-tanpa-gaji** (bagi kartu, ga ikut taruhan, ga dapet salary).
-- Pemain yang udah jadi dealer di sesi sebelumnya kena **cooldown 2 sesi** sebelum bisa jadi dealer (berbayar) lagi. Cegah abuse "stuck di 0 trus minta dealer terus".
+Pemain low-balance **hanya bisa bergabung sebagai dealer** (server menolak non-dealer dengan balance < buy_in). Tidak ada opsi spectator.
 
-Dealer eligibility (untuk dealer berbayar):
-1. `balance >= buy_in` (bisa bayar buy-in normal).
-2. Tidak dalam cooldown (`sessions_since_last_dealer >= 2`).
+**Cooldown** berlaku di Phase 1 saja dan **tidak memblokir** pemilihan dealer — ia hanya mencabut hak salary chips. Dealer yang sedang cooldown di Phase 1 tetap bisa dipilih, tapi bayar buy-in seperti pemain biasa (tanpa salary chips). Di Phase 2 cooldown tidak relevan.
+
+Cooldown anchor (`last_dealer_session_id`) di-set hanya ketika dealer benar-benar mendapat salary (Phase 1, tidak cooldown). Lamanya cooldown: 2 sesi setelah sesi terakhir dapat salary.
+
+Kasus dealer di Phase 1 + cooldown + broke: `no_gaji_dealer = true` — hanya bagi kartu, tidak ikut taruhan, tidak dapat salary.
 
 ### Season Creation Flow (M2)
 
@@ -537,22 +541,20 @@ ALTER TABLE sessions ADD COLUMN season_id UUID REFERENCES seasons(id);
 ALTER TABLE players ADD COLUMN last_dealer_session_id UUID REFERENCES sessions(id);
 ```
 
-### Implikasi ke MVP (yang dibangun sekarang)
+### Implikasi ke MVP — ✅ sudah diimplementasi
 
-Supaya schema sekarang ga ngeblokir migrasi nanti:
-
-1. **`sessions` table:** sisain ruang untuk `season_id` (nullable, akan di-backfill nanti pas season system aktif).
-2. **`players` table:** balance tetep di sini. Pas season end, balance di-snapshot ke `season_results` lalu di-reset.
-3. **`edit_log.action`:** JANGAN pake CHECK constraint pada kolom action. Pake TEXT bebas, validasi di app layer. Action enum bakal expand di milestone berikutnya: `'season_start'`, `'season_end'`, `'phase_transition'`, `'rake_collected'`, `'spectator_session'`.
-4. **Validasi total chip** (di fase end session): MVP cukup hitung kayak spec sekarang. Nanti pas phase 2 aktif, formula bakal include rake deduction.
-5. **Logic dealer di MVP:** dealer gratis buy-in, flat 100. **Belum perlu** implement cooldown, balance check, atau rake. Tapi pas bikin UI selector dealer, sisain ruang buat "indicator" (misal disabled state + tooltip) yang di milestone 2 akan dipake buat indicate "cooldown" atau "balance insufficient". Di M2, buy-in dan dealer salary berubah jadi `seasons.buy_in` (= `starting_balance / 2`), tidak lagi flat 100.
+1. **`sessions.season_id`** — sudah ada (nullable). Semua sesi terhubung ke season aktif.
+2. **`players.balance`** — tetap di sini. Season end: di-snapshot ke `season_results`, lalu di-reset ke `starting_balance`.
+3. **`edit_log.action`** — TEXT bebas tanpa CHECK constraint. Actions yang ada: `buy_in`, `buy_in_dealer_free`, `buy_in_dealer_phase2`, `buy_in_no_gaji_dealer`, `dealer_salary_chips`, `rebuy`, `rebuy_undo`, `session_end`, `season_start`, `season_end`, `admin_balance_edit`, `admin_player_add`, `admin_session_force_end`, `admin_pin_reset`, `pin_change`.
+4. **Validasi total chip** — menggunakan deduction-based `contributed` dari edit_log (bukan formula flat). Otomatis handle semua kasus dealer.
+5. **Dealer logic** — fully implemented di M2: salary chips model, cooldown, balance check, Phase 1 vs Phase 2 treatment.
 
 ### Milestone ordering
 
-- **M1 (MVP, current spec):** Basic tracking, sesi, rebuy/undo, end session, admin. **Build this first. Deploy. Play.**
-- **M2:** Season creation flow (player-initiated, unauthenticated), buy-in = `starting_balance / 2`, BB/SB informational, default PIN `1234`, ganti PIN dari dashboard, phase system (bootstrap → steady), rake calculation, cooldown dealer, balance < `buy_in` → spectator/dealer-no-gaji.
-- **M3:** Season end (max sessions → snapshot → reset), leaderboard, season history, season 2+ pre-fill players.
-- **M4:** Per-player stats, achievements, export CSV, polish.
+- **M1 ✅:** Basic tracking, sesi, rebuy/undo, end session, admin.
+- **M2 ✅:** Season creation, buy-in = `starting_balance / 2`, PIN system, phase system (bootstrap → steady), dealer salary chips model, cooldown, low-balance dealer-only rule, rake calculator (Approach C).
+- **M3 ✅ (hampir selesai):** Season end (snapshot → reset), leaderboard `/season/end`, season history `/season/history`, season 2+ pre-fill, per-player stats `/player/[id]`.
+- **M4:** Export CSV, achievement system, additional polish.
 
 Tiap milestone independent-ish — bisa skip M2 dan langsung ke M3 kalau owner mau, dengan adjustment.
 

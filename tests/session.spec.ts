@@ -29,6 +29,24 @@ test.describe('Session setup — validation', () => {
     await expect(page.getByRole('button', { name: 'Mulai' })).toBeDisabled()
   })
 
+  test('player and dealer controls are tappable in setup (no hydration lock)', async ({ page }) => {
+    const bob = players[1]
+    const aliceCheckbox = page.locator(`input[data-player-id="${alice.id}"]`)
+    const bobCheckbox = page.locator(`input[data-player-id="${bob.id}"]`)
+
+    await expect(aliceCheckbox).toBeEnabled()
+    await expect(bobCheckbox).toBeEnabled()
+
+    await aliceCheckbox.check()
+    await bobCheckbox.check()
+
+    const aliceDealerRadio = page.locator(`input[name="dealer"][value="${alice.id}"]`)
+    await expect(aliceDealerRadio).toBeEnabled()
+    await aliceDealerRadio.check()
+
+    await expect(page.getByRole('button', { name: 'Mulai' })).toBeEnabled()
+  })
+
   test('selecting 2 players auto-recommends a dealer and enables start', async ({ page }) => {
     await clickLabelFor(page, players[0].name)
     await clickLabelFor(page, players[1].name)

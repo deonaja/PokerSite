@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { createSeason } from '@/lib/actions/season'
 import Button from './Button'
 
@@ -41,6 +41,11 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
   const [custom, setCustom] = useState({ maxPool: '3500', maxSessions: '40', rakeRate: '10' })
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
 
   const { bb, sb } = recommendBbSb(startingBalance)
   const buyIn = Math.floor(startingBalance / 2)
@@ -55,18 +60,22 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
   const step3Valid = preset !== 'custom' || (maxPool > 0 && maxSessions > 0 && rakeRate >= 0)
 
   function addPlayer() {
+    if (!isHydrated || isPending) return
     setPlayerNames((prev) => [...prev, ''])
   }
 
   function removePlayer(i: number) {
+    if (!isHydrated || isPending) return
     setPlayerNames((prev) => prev.filter((_, idx) => idx !== i))
   }
 
   function updateName(i: number, val: string) {
+    if (!isHydrated || isPending) return
     setPlayerNames((prev) => prev.map((n, idx) => (idx === i ? val : n)))
   }
 
   function handleSubmit() {
+    if (!isHydrated || isPending) return
     setError(null)
     startTransition(async () => {
       const result = await createSeason({
@@ -138,14 +147,21 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
       {/* Step 1: Players */}
       {step === 1 && (
         <div className="flex flex-col gap-3">
-          <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
-            Pemain pertama = pembuat season. PIN default semua: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>1234</strong>
-          </p>
+          {seasonNumber > 1 && existingPlayers.length > 0 ? (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
+              Pemain dari musim sebelumnya — edit atau hapus sesuka kamu. PIN default pemain baru: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>1234</strong>
+            </p>
+          ) : (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }}>
+              Pemain pertama = pembuat season. PIN default semua: <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>1234</strong>
+            </p>
+          )}
           <div className="flex flex-col gap-2">
             {playerNames.map((name, i) => (
               <div key={i} className="flex gap-2 items-center">
                 <input
                   value={name}
+                  disabled={!isHydrated || isPending}
                   onChange={(e) => updateName(i, e.target.value)}
                   placeholder={i === 0 ? 'Nama kamu (pembuat)' : `Pemain ${i + 1}`}
                   maxLength={50}
@@ -154,6 +170,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                 {playerNames.length > 2 && (
                   <button
                     type="button"
+                    disabled={!isHydrated || isPending}
                     onClick={() => removePlayer(i)}
                     style={{
                       minWidth: '44px',
@@ -180,6 +197,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
           {playerNames.length < 8 && (
             <button
               type="button"
+              disabled={!isHydrated || isPending}
               onClick={addPlayer}
               style={{
                 minHeight: '44px',
@@ -204,7 +222,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
           <Button
             type="button"
             fullWidth
-            disabled={!step1Valid}
+            disabled={!isHydrated || !step1Valid || isPending}
             onClick={() => setStep(2)}
           >
             Lanjut →
@@ -221,6 +239,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
               type="number"
               inputMode="numeric"
               value={startingBalance || ''}
+              disabled={!isHydrated || isPending}
               onChange={(e) => setStartingBalance(Math.max(0, parseInt(e.target.value, 10) || 0))}
               min={10}
               max={100000}
@@ -250,10 +269,10 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
           </p>
 
           <div className="flex gap-2">
-            <Button type="button" onClick={() => setStep(1)} style={{ flex: 1 }}>
+            <Button type="button" onClick={() => setStep(1)} disabled={!isHydrated || isPending} style={{ flex: 1 }}>
               ← Kembali
             </Button>
-            <Button type="button" fullWidth disabled={!step2Valid} onClick={() => setStep(3)} style={{ flex: 2 }}>
+            <Button type="button" fullWidth disabled={!isHydrated || !step2Valid || isPending} onClick={() => setStep(3)} style={{ flex: 2 }}>
               Lanjut →
             </Button>
           </div>
@@ -274,6 +293,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                 <button
                   key={p.name}
                   type="button"
+                  disabled={!isHydrated || isPending}
                   onClick={() => setPreset(p.name)}
                   style={{
                     textAlign: 'left',
@@ -309,6 +329,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                   type="number"
                   inputMode="numeric"
                   value={custom.maxPool}
+                  disabled={!isHydrated || isPending}
                   onChange={(e) => setCustom((c) => ({ ...c, maxPool: digitsOnly(e.target.value) }))}
                   min={100}
                   style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
@@ -321,6 +342,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                   type="number"
                   inputMode="numeric"
                   value={custom.maxSessions}
+                  disabled={!isHydrated || isPending}
                   onChange={(e) => setCustom((c) => ({ ...c, maxSessions: digitsOnly(e.target.value) }))}
                   min={1}
                   style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
@@ -333,6 +355,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                   type="number"
                   inputMode="numeric"
                   value={custom.rakeRate}
+                  disabled={!isHydrated || isPending}
                   onChange={(e) => setCustom((c) => ({ ...c, rakeRate: digitsOnly(e.target.value) }))}
                   min={0}
                   max={50}
@@ -344,10 +367,10 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
           )}
 
           <div className="flex gap-2">
-            <Button type="button" onClick={() => setStep(2)} style={{ flex: 1 }}>
+            <Button type="button" onClick={() => setStep(2)} disabled={!isHydrated || isPending} style={{ flex: 1 }}>
               ← Kembali
             </Button>
-            <Button type="button" fullWidth disabled={!step3Valid} onClick={() => setStep(4)} style={{ flex: 2 }}>
+            <Button type="button" fullWidth disabled={!isHydrated || !step3Valid || isPending} onClick={() => setStep(4)} style={{ flex: 2 }}>
               Lanjut →
             </Button>
           </div>
@@ -407,13 +430,13 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
           )}
 
           <div className="flex gap-2">
-            <Button type="button" onClick={() => setStep(3)} disabled={isPending} style={{ flex: 1 }}>
+            <Button type="button" onClick={() => setStep(3)} disabled={!isHydrated || isPending} style={{ flex: 1 }}>
               ← Kembali
             </Button>
             <Button
               type="button"
               fullWidth
-              disabled={isPending}
+              disabled={!isHydrated || isPending}
               onClick={handleSubmit}
               style={{ flex: 2 }}
             >

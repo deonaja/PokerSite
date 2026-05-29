@@ -12,16 +12,31 @@ const PAGE_SIZE = 20
 const ACTION_COLORS: Record<string, string> = {
   buy_in: 'var(--accent-felt)',
   buy_in_dealer_free: 'var(--accent-success)',
+  buy_in_dealer_phase2: 'var(--accent-felt)',
+  buy_in_no_gaji_dealer: 'var(--text-tertiary)',
+  dealer_salary_chips: 'var(--accent-success)',
   rebuy: 'var(--accent-warn)',
   rebuy_undo: 'var(--text-tertiary)',
   session_end: '#4a7ab5',
+  season_start: 'var(--accent-felt)',
+  season_end: '#4a7ab5',
+  pin_change: '#5f4ab5',
   admin_balance_edit: 'var(--accent-danger)',
   admin_pin_reset: '#5f4ab5',
   admin_player_add: '#7a4ab5',
   admin_session_force_end: 'var(--accent-danger)',
 }
 
-const ACTION_TYPES = ['all', 'buy_in', 'buy_in_dealer_free', 'rebuy', 'rebuy_undo', 'session_end', 'admin_balance_edit', 'admin_pin_reset', 'admin_player_add', 'admin_session_force_end']
+const ACTION_TYPES = [
+  'all',
+  'buy_in', 'buy_in_dealer_free', 'buy_in_dealer_phase2', 'buy_in_no_gaji_dealer',
+  'dealer_salary_chips',
+  'rebuy', 'rebuy_undo',
+  'session_end',
+  'season_start', 'season_end',
+  'pin_change',
+  'admin_balance_edit', 'admin_pin_reset', 'admin_player_add', 'admin_session_force_end',
+]
 
 interface SearchParams {
   logPage?: string

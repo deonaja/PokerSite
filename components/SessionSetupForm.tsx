@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { Player } from '@/lib/types'
 import Button from './Button'
 import { startSession } from '@/lib/actions/session'
+import { getLocalStorageItem } from '@/lib/safeStorage'
 
 interface PlayerWithMeta extends Player {
   cooldown_remaining: number
@@ -23,10 +24,47 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   const [dealerId, setDealerId] = useState<string | null>(null)
   const [dealerManuallySet, setDealerManuallySet] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isHydrated, setIsHydrated] = useState(false)
 
+  // On slower mobile devices, users can tap checkboxes before React hydration
+  // fully attaches handlers. Sync any already-checked DOM inputs into state so
+  // setup logic (dealer radios/start button) stays consistent.
   useEffect(() => {
-    setIsHydrated(true)
+    const preHydrationChecked = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[data-player-id]:checked')
+    )
+      .map((el) => el.dataset.playerId)
+      .filter((id): id is string => !!id)
+
+    if (preHydrationChecked.length > 0) {
+      setSelectedIds(new Set(preHydrationChecked))
+    }
+  }, [])
+
+  // Keep state in sync with native checkbox state for a short window after mount.
+  // This prevents a "checked but no dealer options" edge case on slower phones
+  // where taps can happen around hydration timing.
+  useEffect(() => {
+    const readCheckedIds = () => {
+      const ids = Array.from(document.querySelectorAll<HTMLInputElement>('input[data-player-id]:checked'))
+        .map((el) => el.dataset.playerId)
+        .filter((id): id is string => !!id)
+      const next = new Set(ids)
+      setSelectedIds((prev) => {
+        if (prev.size === next.size && [...prev].every((id) => next.has(id))) return prev
+        return next
+      })
+    }
+
+    readCheckedIds()
+    const startedAt = Date.now()
+    const timer = window.setInterval(() => {
+      readCheckedIds()
+      if (Date.now() - startedAt >= 10_000) {
+        window.clearInterval(timer)
+      }
+    }, 200)
+
+    return () => window.clearInterval(timer)
   }, [])
 
   function togglePlayer(id: string) {
@@ -95,7 +133,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
     if (!canStart || isPending) return
     setError(null)
 
-    const actorPlayerId = localStorage.getItem('playerId') ?? ''
+    const actorPlayerId = getLocalStorageItem('playerId') ?? ''
 
     startTransition(async () => {
       const result = await startSession({
@@ -121,6 +159,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
     background: active ? 'var(--accent-felt-dim)' : 'var(--bg-surface)',
     cursor: 'pointer',
     minHeight: '44px',
+    touchAction: 'manipulation',
     transition: 'border-color 150ms ease, background 150ms ease',
   })
 
@@ -148,7 +187,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   type="checkbox"
                   data-player-id={p.id}
                   checked={selectedIds.has(p.id)}
-                  disabled={!isHydrated || isPending}
+                  disabled={isPending}
                   onChange={() => togglePlayer(p.id)}
                   style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
                 />
@@ -174,7 +213,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   name="dealer"
                   value={p.id}
                   checked={dealerId === p.id}
-                  disabled={!isHydrated || isPending}
+                  disabled={isPending}
                   onChange={() => { setDealerId(p.id); setDealerManuallySet(true) }}
                   style={{ accentColor: 'var(--accent-felt)', width: '16px', height: '16px', flexShrink: 0 }}
                 />
@@ -235,7 +274,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
           background: 'var(--bg-base)',
         }}
       >
-        <Button fullWidth disabled={!isHydrated || !canStart || isPending} onClick={handleSubmit}>
+        <Button fullWidth disabled={!canStart || isPending} onClick={handleSubmit}>
           {isPending ? 'Memulai...' : 'Mulai'}
         </Button>
       </div>

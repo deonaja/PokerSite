@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { changePin } from '@/lib/actions/players'
 import Button from './Button'
@@ -13,6 +13,11 @@ export default function ChangePinForm() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -93,6 +98,7 @@ export default function ChangePinForm() {
             inputMode="numeric"
             maxLength={6}
             value={oldPin}
+            disabled={!isHydrated || isPending}
             onChange={(e) => setOldPin(e.target.value)}
             placeholder="PIN saat ini"
             autoComplete="current-password"
@@ -109,6 +115,7 @@ export default function ChangePinForm() {
             inputMode="numeric"
             maxLength={6}
             value={newPin}
+            disabled={!isHydrated || isPending}
             onChange={(e) => setNewPin(e.target.value)}
             placeholder="4–6 digit"
             autoComplete="new-password"
@@ -125,6 +132,7 @@ export default function ChangePinForm() {
             inputMode="numeric"
             maxLength={6}
             value={newPinConfirm}
+            disabled={!isHydrated || isPending}
             onChange={(e) => setNewPinConfirm(e.target.value)}
             placeholder="Ulangi PIN baru"
             autoComplete="new-password"
@@ -139,7 +147,7 @@ export default function ChangePinForm() {
         <Button
           type="button"
           fullWidth
-          disabled={isPending || !oldPin || !newPin || !newPinConfirm}
+          disabled={!isHydrated || isPending || !oldPin || !newPin || !newPinConfirm}
           onClick={handleSubmit}
         >
           {isPending ? 'Menyimpan…' : 'Simpan PIN'}

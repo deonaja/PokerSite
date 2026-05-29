@@ -8,6 +8,7 @@ import { usePoll } from '@/lib/usePoll'
 import Sheet from './Sheet'
 import Button from './Button'
 import type { PollParticipant, PollResponse } from '@/lib/types'
+import { getLocalStorageItem } from '@/lib/safeStorage'
 
 interface Props {
   sessionId: string
@@ -31,7 +32,7 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
 
   function confirmRebuy() {
     if (!rebuying || isPending) return
-    const actorPlayerId = localStorage.getItem('playerId') ?? ''
+    const actorPlayerId = getLocalStorageItem('playerId') ?? ''
     startTransition(async () => {
       const result = await rebuy({ sessionId, playerId: rebuying.player_id, actorPlayerId })
       setRebuying(null)
@@ -42,7 +43,7 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
 
   function handleUndo(p: PollParticipant) {
     if (isPending) return
-    const actorPlayerId = localStorage.getItem('playerId') ?? ''
+    const actorPlayerId = getLocalStorageItem('playerId') ?? ''
     startTransition(async () => {
       const result = await undoRebuy({ sessionId, playerId: p.player_id, actorPlayerId })
       if ('error' in result) setError(result.error)

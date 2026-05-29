@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { endSession } from '@/lib/actions/session'
 import BalanceDisplay from './BalanceDisplay'
 import Button from './Button'
+import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '@/lib/safeStorage'
 
 interface Participant {
   player_id: string
@@ -26,11 +27,13 @@ interface Props {
   participants: Participant[]
   // Total chips on the table, summed from actual buy-in/rebuy deductions.
   expectedTotal: number
+  // Present only in Phase 2 (steady). Used to show the rake calculator on the dealer's step.
+  rakeInfo: { rakeRate: number } | null
 }
 
 const STORAGE_KEY = (sessionId: string) => `endSession:${sessionId}`
 
-export default function SessionEndWizard({ sessionId, participants, expectedTotal }: Props) {
+export default function SessionEndWizard({ sessionId, participants, expectedTotal, rakeInfo }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [step, setStep] = useState(0)
@@ -51,7 +54,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
   // straight to the recap so the user can keep editing instead of restarting.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const saved = window.localStorage.getItem(STORAGE_KEY(sessionId))
+    const saved = getLocalStorageItem(STORAGE_KEY(sessionId))
     if (!saved) return
     try {
       const parsed = JSON.parse(saved) as Record<string, string>
@@ -67,7 +70,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
   // Persist whenever we enter the recap (or inputs change while on it).
   useEffect(() => {
     if (!isRecap || typeof window === 'undefined') return
-    window.localStorage.setItem(STORAGE_KEY(sessionId), JSON.stringify(inputs))
+    setLocalStorageItem(STORAGE_KEY(sessionId), JSON.stringify(inputs))
   }, [isRecap, inputs, sessionId])
 
   useEffect(() => {
@@ -129,7 +132,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
 
   function handleConfirm() {
     setSubmitError(null)
-    const actorPlayerId = localStorage.getItem('playerId') ?? ''
+    const actorPlayerId = getLocalStorageItem('playerId') ?? ''
     const stacks = participants.map((p) => ({
       playerId: p.player_id,
       finalStack: parseInt(inputs[p.player_id] ?? '0', 10),
@@ -142,9 +145,13 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
         return
       }
       if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(STORAGE_KEY(sessionId))
+        removeLocalStorageItem(STORAGE_KEY(sessionId))
       }
-      router.push('/')
+      if (result.seasonOver && result.seasonId) {
+        router.push(`/season/end?id=${result.seasonId}`)
+      } else {
+        router.push('/')
+      }
     })
   }
 
@@ -301,6 +308,32 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
           )}
         </div>
       </div>
+
+      {rakeInfo && current.is_dealer && (
+        <div style={{ padding: '1rem 1.5rem 0' }}>
+          <div style={{ padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--accent-felt-dim)', background: 'var(--bg-surface)' }}>
+            <p style={{ fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.08em', color: 'var(--accent-felt)', marginBottom: '0.5rem' }}>
+              KALKULATOR RAKE
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Total chip di meja</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{expectedTotal}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Rake rate</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{rakeInfo.rakeRate}%</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.375rem', marginTop: '0.125rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Perkiraan rake</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontWeight: 500, color: 'var(--accent-felt)' }}>
+                  {Math.round(expectedTotal * rakeInfo.rakeRate / 100 / 5) * 5} chip
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ padding: '1.25rem 1.5rem 0' }}>
         <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Stack akhir:</p>

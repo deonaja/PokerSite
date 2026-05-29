@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
 import { getAuthenticatedPlayer } from '@/lib/auth-server'
+import LocalStorageSync from '@/components/LocalStorageSync'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const [activeSeason, authPlayer] = await Promise.all([
@@ -42,6 +43,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
       </header>
 
       <main className="flex-1">
+        <LocalStorageSync playerId={authPlayer.id} playerName={authPlayer.name} />
         {children}
       </main>
     </div>
