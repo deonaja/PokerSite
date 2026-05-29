@@ -9,7 +9,7 @@ identity preserved (anti "AI-ish"); shadcn ban lifted in SPEC/CLAUDE. Magic UI /
 flashy animation still banned. **Revert savepoint: git tag `v0.95-pre-redesign`.**
 
 - [x] **Step 1 — foundation** (no visual change): deps (cva, clsx, tailwind-merge, tailwindcss-animate, lucide), `lib/utils.ts` cn(), `components.json`, tailwind tokens + globals.css aliases → felt-green. Build green, 71/71 tests pass. (commit `19187f8`)
-- [ ] **Step 2 — pilot: Button + Sheet** (most-used primitives), re-run tests
+- [x] **Step 2 — pilot: Button + Sheet** → `components/ui/button.tsx` (shadcn cva) + `Button.tsx` adapter (legacy API preserved, 13 call-sites untouched); `Sheet.tsx` rebuilt on Radix Dialog. Build green, 71/71 pass. (commit `4025b16`)
 - [ ] **Step 3 — per-screen migration** (dashboard → session → end → setup → admin), tests each checkpoint
 
 ## Overall status
