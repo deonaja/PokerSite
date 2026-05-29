@@ -10,7 +10,12 @@ flashy animation still banned. **Revert savepoint: git tag `v0.95-pre-redesign`.
 
 - [x] **Step 1 — foundation** (no visual change): deps (cva, clsx, tailwind-merge, tailwindcss-animate, lucide), `lib/utils.ts` cn(), `components.json`, tailwind tokens + globals.css aliases → felt-green. Build green, 71/71 tests pass. (commit `19187f8`)
 - [x] **Step 2 — pilot: Button + Sheet** → `components/ui/button.tsx` (shadcn cva) + `Button.tsx` adapter (legacy API preserved, 13 call-sites untouched); `Sheet.tsx` rebuilt on Radix Dialog. Build green, 71/71 pass. (commit `4025b16`)
-- [ ] **Step 3 — per-screen migration** (dashboard → session → end → setup → admin), tests each checkpoint
+- [ ] **Step 3 — per-screen migration** (tests each checkpoint):
+  - [x] 3a dashboard → Card + Badge primitives, PlayerCard/BalanceDisplay on Tailwind tokens. 71/71 pass. (commit `ca24d4d`)
+  - [ ] 3b session active (`SessionView`)
+  - [ ] 3c end-session wizard (`SessionEndWizard`)
+  - [ ] 3d session setup (`SessionSetupForm`)
+  - [ ] 3e admin + remaining (season/new, history, player, settings, identity)
 
 ## Overall status
 
