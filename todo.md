@@ -12,7 +12,7 @@ flashy animation still banned. **Revert savepoint: git tag `v0.95-pre-redesign`.
 - [x] **Step 2 — pilot: Button + Sheet** → `components/ui/button.tsx` (shadcn cva) + `Button.tsx` adapter (legacy API preserved, 13 call-sites untouched); `Sheet.tsx` rebuilt on Radix Dialog. Build green, 71/71 pass. (commit `4025b16`)
 - [ ] **Step 3 — per-screen migration** (tests each checkpoint):
   - [x] 3a dashboard → Card + Badge primitives, PlayerCard/BalanceDisplay on Tailwind tokens. 71/71 pass. (commit `ca24d4d`)
-  - [ ] 3b session active (`SessionView`)
+  - [x] 3b session active (`SessionView`) → Card + Badge primitives, inline styles → Tailwind felt-green tokens, Button/Sheet adapters kept. DOM text preserved. Build green, session specs 18/18 pass. (2026-05-30)
   - [ ] 3c end-session wizard (`SessionEndWizard`)
   - [ ] 3d session setup (`SessionSetupForm`)
   - [ ] 3e admin + remaining (season/new, history, player, settings, identity)
@@ -175,6 +175,7 @@ These override the earlier `SPEC.md` text where they conflict:
 - [x] `dealer_salary` dead code removed — was a leftover IN-clause entry in `session/end/page.tsx:60`'s `original_balance` subquery from the old broke-deals-only-gets-credit flow. Never written by current code (only `dealer_salary_chips` is, at `session.ts:477`), so removing it is a no-op for current data. Cleaned 2026-05-29; build + 35 end-session tests still green.
 - [x] E2E test suite verified — clean `pnpm test` run on 2026-05-29: **71 passed (3.9m), 0 failures** across admin/balance/concurrency/identity/session/z-m2-coverage/z-m2-features/z-m3-features. No drift remaining.
 - [ ] Migration filename collision: `002_identity_auth.sql` and `002_seasons.sql` both prefixed `002_` (cosmetic — alphabetical order still works)
+- [ ] **Flaky `identity.spec.ts:31` (env, not code)** — "tapping a player saves identity… redirects to /" intermittently logs in as a REAL player (e.g. JAGO, balance 200) instead of the seeded `[T…] Alice`. The shared Neon test DB contains real (non-`[T…]`) players + a lingering auth/identity session, so login resolves to the wrong player. Reproduced on a clean `HEAD` (stash test 2026-05-30) → pre-existing, unrelated to the dealer fix or shadcn migration. Fix idea: isolate the test DB (separate Neon branch) or have the test sign out / clear cookies + assert against the just-clicked player only.
 - [x] Admin log filter buttons updated — added `buy_in_dealer_phase2`, `buy_in_no_gaji_dealer`, `dealer_salary_chips`, `season_start`, `season_end`, `pin_change` with colors
 - [x] Mobile dev-mode hydration fix — Next.js 16's `blockCrossSiteDEV` was killing hydration on the phone (LAN IP origin not allowlisted). Added `allowedDevOrigins: ['192.168.18.*']` to `next.config.js`. Restart required after change.
 - [x] **Bugfix dealer chip inflation (2026-05-29)** — Phase 1 free-entry dealer was paying buy-in AND receiving `+buy_in` salary chips → 2× buy_in stack, inflating table total (3 players @ 200 → 800). Owner flagged: dealer should play FREE (no deduction) on a single 1× buy_in salary stack → table total = `n × buy_in` (→ 600). Fixed in `session.ts` (free-entry branch now `deduction=0`, action `buy_in_dealer_free`, unchanged-balance salary log). Updated `SessionSetupForm` hint, SPEC.md, memory, and 3 tests (z-m2-coverage P1 dealer balance/action + recap, z-m3 stats). Build + 71/71 green.
