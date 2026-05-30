@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePoll } from '@/lib/usePoll'
 import PlayerCard from './PlayerCard'
 import Button from './Button'
-import { Card } from './ui/card'
 import { Badge } from './ui/badge'
 import type { PollResponse, Season } from '@/lib/types'
 
@@ -18,35 +17,28 @@ export default function DashboardClient({ initial, season }: Props) {
 
   return (
     <div className="pb-24">
-      {/* Season info */}
+      {/* Season strip — airy header, not a dense card */}
       {season && (
-        <div className="px-4 pt-4">
-          <Card className="flex items-center justify-between px-3.5 py-2.5">
-            <div className="flex items-center gap-2">
-              <span className="text-[0.8125rem] text-muted-foreground">
-                Season {season.number}
-              </span>
+        <div className="px-4 pt-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-baseline gap-2">
+              <span className="text-base font-medium text-foreground">Season {season.number}</span>
               <Badge variant={season.current_phase === 'steady' ? 'warn' : 'default'}>
                 {season.current_phase === 'steady' ? 'STEADY' : 'BOOTSTRAP'}
               </Badge>
             </div>
-            <div className="flex gap-3 font-mono text-xs text-[var(--text-tertiary)]">
-              <span>buy-in {season.buy_in}</span>
-              <span>BB {season.bb}</span>
-            </div>
-          </Card>
+            <Link
+              href="/season/history"
+              className="text-xs text-[var(--text-tertiary)] transition-colors hover:text-muted-foreground"
+            >
+              Riwayat musim →
+            </Link>
+          </div>
+          <p className="mt-1 font-mono text-xs text-[var(--text-tertiary)]">
+            buy-in {season.buy_in} · BB {season.bb}/{season.sb}
+          </p>
         </div>
       )}
-
-      {/* History link */}
-      <div className="px-4 pt-2 text-right">
-        <Link
-          href="/season/history"
-          className="text-xs text-[var(--text-tertiary)] transition-colors hover:text-muted-foreground"
-        >
-          Riwayat musim →
-        </Link>
-      </div>
 
       {/* Player list */}
       <div className="px-4 pt-4">
@@ -59,7 +51,7 @@ export default function DashboardClient({ initial, season }: Props) {
         ) : (
           <div className="flex flex-col gap-2">
             {players.map((p) => (
-              <PlayerCard key={p.id} player={p} />
+              <PlayerCard key={p.id} player={p} buyIn={season?.buy_in} />
             ))}
           </div>
         )}
@@ -82,12 +74,14 @@ export default function DashboardClient({ initial, season }: Props) {
       {/* Sticky CTA */}
       <div className="fixed bottom-0 left-1/2 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {activeSession ? (
-          <Button fullWidth disabled>
+          <Button fullWidth disabled className="h-12 text-base font-semibold uppercase tracking-wide">
             Mulai sesi
           </Button>
         ) : (
           <Link href="/session/setup" className="block">
-            <Button fullWidth>Mulai sesi</Button>
+            <Button fullWidth className="h-12 text-base font-semibold uppercase tracking-wide">
+              Mulai sesi
+            </Button>
           </Link>
         )}
       </div>

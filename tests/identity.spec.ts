@@ -63,7 +63,17 @@ test.describe('Identity flow', () => {
   test('"ganti identitas" navigates back to /identity', async ({ page }) => {
     await setIdentity(page, alice)
     await page.goto('/')
-    await page.getByText('ganti identitas').click()
+    // Account actions now live in a bottom sheet behind the avatar/greeting.
+    // The trigger hydrates client-side, so retry opening until the sheet is up
+    // (only tap while it's closed — once open the overlay would intercept).
+    const gantiIdentitas = page.getByRole('button', { name: 'Ganti identitas' })
+    await expect(async () => {
+      if (!(await gantiIdentitas.isVisible())) {
+        await page.getByRole('button', { name: 'Akun' }).click()
+      }
+      await expect(gantiIdentitas).toBeVisible()
+    }).toPass({ timeout: 8000 })
+    await gantiIdentitas.click()
     await page.waitForURL('**/identity')
     await expect(page).toHaveURL(/\/identity/)
   })
