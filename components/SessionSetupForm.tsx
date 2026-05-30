@@ -11,6 +11,16 @@ interface PlayerWithMeta extends Player {
   cooldown_remaining: number
 }
 
+const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
+
+function Avatar({ name }: { name: string }) {
+  return (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground">
+      {initialOf(name)}
+    </span>
+  )
+}
+
 interface Props {
   players: PlayerWithMeta[]
   buyIn: number
@@ -180,7 +190,8 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   onChange={() => togglePlayer(p.id)}
                   className="h-4 w-4 shrink-0 accent-primary"
                 />
-                <span className="text-sm text-foreground">{p.name}</span>
+                <Avatar name={p.name} />
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{p.name}</span>
                 <span className={'font-mono text-[0.8125rem] ' + (lowBalance ? 'text-warn' : 'text-[var(--text-tertiary)]')}>
                   {p.balance}
                 </span>
@@ -206,15 +217,16 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   onChange={() => { setDealerId(p.id); setDealerManuallySet(true) }}
                   className="h-4 w-4 shrink-0 accent-primary"
                 />
-                <span className="text-sm text-foreground">{p.name}</span>
-                <span className="ml-1 font-mono text-[0.8125rem] text-[var(--text-tertiary)]">{p.balance}</span>
+                <Avatar name={p.name} />
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{p.name}</span>
+                <span className="shrink-0 font-mono text-[0.8125rem] text-[var(--text-tertiary)]">{p.balance}</span>
                 {p.cooldown_remaining > 0 && (
                   <span className="shrink-0 text-[0.6875rem] text-warn">
                     cooldown {p.cooldown_remaining} sesi
                   </span>
                 )}
                 {p.id === recommendedDealerId && (
-                  <span className="ml-auto shrink-0 rounded-sm border border-primary px-1.5 py-px text-[0.625rem] font-medium tracking-[0.05em] text-primary">
+                  <span className="shrink-0 rounded-sm border border-primary px-1.5 py-px text-[0.625rem] font-medium tracking-[0.05em] text-primary">
                     REKOMENDASI
                   </span>
                 )}
@@ -240,7 +252,12 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
 
       {/* Sticky CTA */}
       <div className="fixed bottom-0 left-1/2 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <Button fullWidth disabled={!canStart || isPending} onClick={handleSubmit}>
+        <Button
+          fullWidth
+          disabled={!canStart || isPending}
+          onClick={handleSubmit}
+          className="h-12 text-base font-semibold uppercase tracking-wide"
+        >
           {isPending ? 'Memulai...' : 'Mulai'}
         </Button>
       </div>
