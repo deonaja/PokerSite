@@ -9,6 +9,8 @@ import DebugSection from './DebugSection'
 
 const PAGE_SIZE = 20
 
+const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
+
 const ACTION_COLORS: Record<string, string> = {
   buy_in: 'var(--accent-felt)',
   buy_in_dealer_free: 'var(--accent-success)',
@@ -106,8 +108,11 @@ export default async function AdminPage({
         ) : (
           <div className="overflow-hidden rounded-lg border border-border">
             {playerList.map((p, i) => (
-              <div key={p.id} className={'flex items-center justify-between bg-card px-4 py-3 ' + (i < players.length - 1 ? 'border-b border-border' : '')}>
-                <span className="text-sm text-foreground">{p.name}</span>
+              <div key={p.id} className={'flex items-center gap-3 bg-card px-4 py-3 ' + (i < players.length - 1 ? 'border-b border-border' : '')}>
+                <span aria-hidden className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground">
+                  {initialOf(p.name)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{p.name}</span>
                 <BalanceDisplay balance={p.balance} />
               </div>
             ))}
