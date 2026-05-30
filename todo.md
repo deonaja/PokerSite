@@ -8,6 +8,10 @@ Re-platforming the 13 custom components onto themed shadcn primitives. Felt-gree
 identity preserved (anti "AI-ish"); shadcn ban lifted in SPEC/CLAUDE. Magic UI /
 flashy animation still banned. **Revert savepoint: git tag `v0.95-pre-redesign`.**
 
+> **✅ MERGED TO `main` 2026-05-31** (merge commit `47f639c`, --no-ff). Re-platform
+> + full felt-green visual redesign + bug fixes + test-infra fixes all live on main.
+> Build green, 71/71 e2e. Next: M4 (achievement / export CSV).
+
 - [x] **Step 1 — foundation** (no visual change): deps (cva, clsx, tailwind-merge, tailwindcss-animate, lucide), `lib/utils.ts` cn(), `components.json`, tailwind tokens + globals.css aliases → felt-green. Build green, 71/71 tests pass. (commit `19187f8`)
 - [x] **Step 2 — pilot: Button + Sheet** → `components/ui/button.tsx` (shadcn cva) + `Button.tsx` adapter (legacy API preserved, 13 call-sites untouched); `Sheet.tsx` rebuilt on Radix Dialog. Build green, 71/71 pass. (commit `4025b16`)
 - [x] **Step 3 — per-screen migration** (tests each checkpoint) — DONE 2026-05-30. Full e2e 71/71 green after every screen migrated.
