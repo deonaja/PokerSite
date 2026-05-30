@@ -9,7 +9,7 @@ Lo (Claude Code) bakal bangun aplikasi ini dari nol berdasarkan `SPEC.md`. Ikuti
    - `edit_log.action` jangan pake CHECK constraint (validasi di app layer).
    - Jangan rename/restructure kolom yang nanti dipake M2.
 3. **Tanya owner kalau ada ambiguitas yang ga ke-cover spec.** Jangan improvise.
-4. **Mobile-first, dark mode only.** Spec aesthetic ada di SPEC.md bagian "Aesthetic direction". Jangan pake shadcn/ui — bikin component custom.
+4. **Mobile-first, dark mode only.** Spec aesthetic ada di SPEC.md bagian "Aesthetic direction". **Update (2026-05-29):** larangan shadcn/ui DICABUT oleh owner. shadcn boleh dipake sebagai **primitive (basis Radix UI)**, TAPI wajib di-tema ke palet felt-green existing (lihat token mapping di SPEC.md "Aesthetic direction") — jangan ship default shadcn (zinc/slate + primary biru + radius/shadow default) karena itu yang bikin "AI-ish". Identitas felt-green underground harus dipertahankan.
 5. **Stack:** Next.js 15 App Router, TypeScript, Tailwind, `@vercel/postgres`, `pnpm`. Jangan tambah library lain tanpa konfirmasi.
 6. **Ikuti file structure** yang udah dispesifik di SPEC.md bagian "Routes & file structure".
 7. **Test mental tiap server action:** "kalau 2 device klik bareng, apa yang terjadi?" — pake DB transaction.
@@ -38,7 +38,7 @@ Sebelum nyatakan screen "selesai", pastikan ada:
 
 ## Yang dilarang
 
-- Pake shadcn/ui, Material UI, atau component library lain.
+- ~~Pake shadcn/ui~~ — **dicabut 2026-05-29.** shadcn boleh, sebagai primitive yang di-tema (lihat rule 4). Material UI / Chakra / library "all-in-one" lain TETAP dilarang. Magic UI / animasi flashy juga dilarang (lawan mood SPEC).
 - Pake Prisma, Drizzle, atau ORM. Plain SQL aja via `@vercel/postgres`.
 - Pake state management library (zustand, redux, jotai). React state cukup.
 - Pake SWR/React Query/TanStack Query. Polling pake `useEffect` + `setInterval` sesuai spec.

@@ -9,6 +9,8 @@ import DebugSection from './DebugSection'
 
 const PAGE_SIZE = 20
 
+const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
+
 const ACTION_COLORS: Record<string, string> = {
   buy_in: 'var(--accent-felt)',
   buy_in_dealer_free: 'var(--accent-success)',
@@ -92,22 +94,25 @@ export default async function AdminPage({
 
   const baseUrl = '/admin'
 
-  const cell: React.CSSProperties = { padding: '0.625rem 0.75rem', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'top' }
+  const cellClass = 'border-b border-border px-3 py-2.5 align-top text-xs text-muted-foreground'
 
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--bg-base)', minHeight: '100dvh' }}>
-      <h1 style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>Admin</h1>
+    <div className="mx-auto flex min-h-[100dvh] max-w-[480px] flex-col gap-6 bg-background p-4">
+      <h1 className="text-base font-medium text-foreground">Admin</h1>
 
       {/* Players */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-        <p style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', color: 'var(--text-tertiary)', margin: 0 }}>PEMAIN</p>
+      <section className="flex flex-col gap-2.5">
+        <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">PEMAIN</p>
         {playerList.length === 0 ? (
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>Belum ada pemain.</p>
+          <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain.</p>
         ) : (
-          <div style={{ borderRadius: '8px', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+          <div className="overflow-hidden rounded-lg border border-border">
             {playerList.map((p, i) => (
-              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderBottom: i < players.length - 1 ? '1px solid var(--border-subtle)' : 'none', background: 'var(--bg-surface)' }}>
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{p.name}</span>
+              <div key={p.id} className={'flex items-center gap-3 bg-card px-4 py-3 ' + (i < players.length - 1 ? 'border-b border-border' : '')}>
+                <span aria-hidden className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground">
+                  {initialOf(p.name)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{p.name}</span>
                 <BalanceDisplay balance={p.balance} />
               </div>
             ))}
@@ -120,8 +125,8 @@ export default async function AdminPage({
 
       {/* Active session */}
       {activeSessionId && (
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-          <p style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', color: 'var(--text-tertiary)', margin: 0 }}>SESI AKTIF</p>
+        <section className="flex flex-col gap-2.5">
+          <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">SESI AKTIF</p>
           <ForceEndSection sessionId={activeSessionId} />
         </section>
       )}
@@ -130,15 +135,15 @@ export default async function AdminPage({
       <DebugSection />
 
       {/* Logs */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-        <p style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', color: 'var(--text-tertiary)', margin: 0 }}>LOG</p>
+      <section className="flex flex-col gap-2.5">
+        <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">LOG</p>
 
         {/* Filter */}
-        <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+        <div className="flex flex-wrap gap-1.5">
           {ACTION_TYPES.map((a) => {
             const active = (rawAction) === a
             return (
-              <a key={a} href={`${baseUrl}?logAction=${a}&logPage=1`} style={{ padding: '3px 8px', borderRadius: '4px', fontSize: '0.6875rem', fontWeight: active ? 600 : 400, background: active ? 'var(--accent-felt)' : 'var(--bg-elevated)', color: active ? 'var(--text-primary)' : 'var(--text-secondary)', border: '1px solid var(--border-subtle)', textDecoration: 'none' }}>
+              <a key={a} href={`${baseUrl}?logAction=${a}&logPage=1`} className={'rounded-sm border border-border px-2 py-[3px] text-[0.6875rem] no-underline ' + (active ? 'bg-primary font-semibold text-primary-foreground' : 'bg-[var(--bg-elevated)] text-muted-foreground')}>
                 {a}
               </a>
             )
@@ -146,33 +151,33 @@ export default async function AdminPage({
         </div>
 
         {/* Log table */}
-        <div style={{ borderRadius: '8px', border: '1px solid var(--border-subtle)', overflow: 'hidden' }}>
+        <div className="overflow-hidden rounded-lg border border-border">
           {(logs as unknown as Record<string, unknown>[]).length === 0 ? (
-            <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-tertiary)', margin: 0 }}>Belum ada log.</p>
+            <p className="p-4 text-sm text-[var(--text-tertiary)]">Belum ada log.</p>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="w-full border-collapse">
               <tbody>
                 {(logs as unknown as Record<string, unknown>[]).map((log) => {
                   const meta = log.metadata as Record<string, unknown> | null
                   return (
-                    <tr key={log.id as string} style={{ opacity: log.voided ? 0.45 : 1 }}>
-                      <td style={cell}>
-                        <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6875rem', fontWeight: 600, background: ACTION_COLORS[log.action as string] ?? 'var(--bg-elevated)', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                    <tr key={log.id as string} className={log.voided ? 'opacity-45' : ''}>
+                      <td className={cellClass}>
+                        <span className="mb-1 inline-block rounded-sm px-1.5 py-px text-[0.6875rem] font-semibold text-foreground" style={{ background: ACTION_COLORS[log.action as string] ?? 'var(--bg-elevated)' }}>
                           {log.action as string}
                         </span>
-                        {!!log.voided && <span style={{ marginLeft: '0.375rem', fontSize: '0.625rem', color: 'var(--text-tertiary)' }}>voided</span>}
-                        <div style={{ color: 'var(--text-primary)' }}>{(log.player_name as string) ?? '—'}</div>
-                        {meta?.reason ? <div style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>{meta.reason as string}</div> : null}
+                        {!!log.voided && <span className="ml-1.5 text-[0.625rem] text-[var(--text-tertiary)]">voided</span>}
+                        <div className="text-foreground">{(log.player_name as string) ?? '—'}</div>
+                        {meta?.reason ? <div className="italic text-[var(--text-tertiary)]">{meta.reason as string}</div> : null}
                       </td>
-                      <td style={{ ...cell, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <td className={cellClass + ' whitespace-nowrap text-right font-mono'}>
                         {log.balance_before != null ? (
                           <span>
-                            <span style={{ color: 'var(--text-secondary)' }}>{log.balance_before as number}</span>
-                            <span style={{ color: 'var(--text-tertiary)' }}> → </span>
-                            <span style={{ color: 'var(--text-primary)' }}>{log.balance_after as number}</span>
+                            <span className="text-muted-foreground">{log.balance_before as number}</span>
+                            <span className="text-[var(--text-tertiary)]"> → </span>
+                            <span className="text-foreground">{log.balance_after as number}</span>
                           </span>
                         ) : '—'}
-                        <div style={{ color: 'var(--text-tertiary)', fontSize: '0.625rem', marginTop: '0.25rem' }}>
+                        <div className="mt-1 text-[0.625rem] text-[var(--text-tertiary)]">
                           {new Date(log.created_at as string).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
                         </div>
                       </td>
@@ -185,14 +190,14 @@ export default async function AdminPage({
         </div>
 
         {/* Pagination */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-          <span style={{ color: 'var(--text-tertiary)' }}>Hal {logPage}/{totalPages}</span>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="flex items-center justify-between text-[0.8125rem]">
+          <span className="text-[var(--text-tertiary)]">Hal {logPage}/{totalPages}</span>
+          <div className="flex gap-2">
             {logPage > 1 && (
-              <a href={`${baseUrl}?logAction=${rawAction}&logPage=${logPage - 1}`} style={{ color: 'var(--text-secondary)', textDecoration: 'none', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>← Prev</a>
+              <a href={`${baseUrl}?logAction=${rawAction}&logPage=${logPage - 1}`} className="rounded-sm border border-border px-2 py-1 text-muted-foreground no-underline">← Prev</a>
             )}
             {logPage < totalPages && (
-              <a href={`${baseUrl}?logAction=${rawAction}&logPage=${logPage + 1}`} style={{ color: 'var(--text-secondary)', textDecoration: 'none', padding: '0.25rem 0.5rem', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>Next →</a>
+              <a href={`${baseUrl}?logAction=${rawAction}&logPage=${logPage + 1}`} className="rounded-sm border border-border px-2 py-1 text-muted-foreground no-underline">Next →</a>
             )}
           </div>
         </div>

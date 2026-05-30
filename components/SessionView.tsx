@@ -7,6 +7,7 @@ import { rebuy, undoRebuy } from '@/lib/actions/session'
 import { usePoll } from '@/lib/usePoll'
 import Sheet from './Sheet'
 import Button from './Button'
+import { Badge } from './ui/badge'
 import type { PollParticipant, PollResponse } from '@/lib/types'
 import { getLocalStorageItem } from '@/lib/safeStorage'
 
@@ -14,9 +15,12 @@ interface Props {
   sessionId: string
   initial: PollResponse
   buyIn?: number
+  currentPlayerId?: string | null
 }
 
-export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) {
+const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
+
+export default function SessionView({ sessionId, initial, buyIn = 100, currentPlayerId = null }: Props) {
   const router = useRouter()
   const { activeSession } = usePoll(initial)
   const participants: PollParticipant[] = activeSession?.participants ?? []
@@ -54,52 +58,16 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
   return (
     <>
       {/* Sticky header */}
-      <div
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0.625rem 1rem',
-          borderBottom: '1px solid var(--border-subtle)',
-          background: 'var(--bg-base)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Link
-            href="/"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minWidth: '44px',
-              minHeight: '44px',
-              fontSize: '1.125rem',
-              color: 'var(--text-secondary)',
-            }}
-          >
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <Link href="/" className="flex min-h-11 min-w-11 items-center justify-center text-lg text-muted-foreground">
             ←
           </Link>
-          <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-            Sesi aktif
-          </span>
+          <span className="text-sm font-medium text-foreground">Sesi aktif</span>
         </div>
         <Link
           href="/session/end"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0 0.875rem',
-            minHeight: '36px',
-            borderRadius: '6px',
-            fontSize: '0.875rem',
-            fontWeight: 500,
-            background: 'var(--accent-danger)',
-            color: 'var(--text-primary)',
-          }}
+          className="flex min-h-9 items-center justify-center rounded-md bg-destructive px-3.5 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
         >
           End
         </Link>
@@ -107,21 +75,11 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
 
       {/* Error banner */}
       {error && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0.75rem 1rem',
-            background: 'var(--accent-danger)',
-            fontSize: '0.875rem',
-            color: 'var(--text-primary)',
-          }}
-        >
+        <div className="flex items-center justify-between bg-destructive px-4 py-3 text-sm text-destructive-foreground">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
-            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0 0.25rem', fontSize: '1rem' }}
+            className="cursor-pointer border-none bg-transparent px-1 text-base text-inherit"
           >
             ×
           </button>
@@ -129,107 +87,78 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
       )}
 
       {/* Participants */}
-      <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        {participants.map((p) => (
-          <div
-            key={p.participant_id}
-            style={{
-              padding: '0.875rem 1rem',
-              borderRadius: '8px',
-              border: `1px solid ${p.is_dealer ? 'var(--accent-felt)' : 'var(--border-subtle)'}`,
-              background: p.is_dealer ? 'var(--accent-felt-dim)' : 'var(--bg-surface)',
-              opacity: p.no_gaji_dealer ? 0.7 : 1,
-            }}
-          >
-            {/* Name + role badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: p.no_gaji_dealer ? 0 : '0.25rem' }}>
-              <span style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-                {p.player_name}
-              </span>
-              {p.is_dealer && (
+      <div className="flex flex-col gap-3 p-4">
+        {participants.map((p) => {
+          const isMe = currentPlayerId != null && p.player_id === currentPlayerId
+          const lowBalance = p.balance < buyIn
+          return (
+            <div
+              key={p.participant_id}
+              className={
+                'rounded-lg border px-4 py-3.5 ' +
+                (p.is_dealer ? 'border-primary bg-accent ' : 'border-border bg-card ') +
+                (p.no_gaji_dealer ? 'opacity-70' : '')
+              }
+            >
+              {/* Avatar + name + role */}
+              <div className="flex items-center gap-2.5">
                 <span
-                  style={{
-                    fontSize: '0.6875rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.05em',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    background: 'var(--accent-felt)',
-                    color: 'var(--text-primary)',
-                  }}
+                  className={
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card font-mono text-sm font-medium text-foreground ' +
+                    (isMe ? 'border-2 border-primary ring-2 ring-primary/40' : 'border border-border')
+                  }
                 >
-                  ★ DEALER
+                  {initialOf(p.player_name)}
                 </span>
-              )}
-              {p.no_gaji_dealer && (
-                <span
-                  style={{
-                    fontSize: '0.6875rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.05em',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    border: '1px solid var(--border-strong)',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  BAGI KARTU
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium text-foreground">
+                  {p.player_name}
                 </span>
+                {isMe && (
+                  <Badge variant="outline" className="border-primary text-primary">kamu</Badge>
+                )}
+                {p.is_dealer && <Badge>★ DEALER</Badge>}
+                {p.no_gaji_dealer && (
+                  <Badge variant="outline" className="border-input text-muted-foreground">BAGI KARTU</Badge>
+                )}
+              </div>
+
+              {p.no_gaji_dealer ? (
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-xs text-[var(--text-tertiary)]">Bagi kartu, tidak ikut taruhan</span>
+                  <span className="font-mono text-[0.8125rem] text-muted-foreground">Saldo: {p.balance}</span>
+                </div>
+              ) : (
+                <>
+                  {/* Saldo + rebuy count */}
+                  <div className="mt-2 mb-2.5 flex gap-3.5 font-mono text-[0.8125rem] text-muted-foreground">
+                    <span className={lowBalance ? 'text-warn' : 'text-muted-foreground'}>Saldo: {p.balance}</span>
+                    <span>Rebuy: {p.rebuy_count}</span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      disabled={!isHydrated || isPending || lowBalance}
+                      onClick={() => setRebuying(p)}
+                      className="min-h-[38px] flex-1 text-[0.8125rem]"
+                    >
+                      {lowBalance ? 'Saldo kurang' : 'Rebuy'}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={!isHydrated || isPending || p.rebuy_count === 0}
+                      onClick={() => handleUndo(p)}
+                      className="min-h-[38px] flex-1 text-[0.8125rem]"
+                    >
+                      Undo
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
-
-            {p.no_gaji_dealer ? (
-              <>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: 0, marginBottom: '0.25rem' }}>
-                  Bagi kartu, tidak ikut taruhan
-                </p>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
-                  Saldo: {p.balance}
-                </p>
-              </>
-            ) : (
-              <>
-                {/* Saldo + Rebuy count */}
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '0.875rem',
-                    fontSize: '0.8125rem',
-                    color: 'var(--text-secondary)',
-                    marginBottom: '0.625rem',
-                    fontFamily: 'var(--font-mono)',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  <span style={{ color: p.balance < buyIn ? 'var(--accent-warn)' : 'var(--text-secondary)' }}>
-                    Saldo: {p.balance}
-                  </span>
-                  <span>Rebuy: {p.rebuy_count}</span>
-                </div>
-
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <Button
-                    variant="secondary"
-                    disabled={!isHydrated || isPending || p.balance < buyIn}
-                    onClick={() => setRebuying(p)}
-                    style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
-                  >
-                    {p.balance < buyIn ? 'Saldo kurang' : 'Rebuy'}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={!isHydrated || isPending || p.rebuy_count === 0}
-                    onClick={() => handleUndo(p)}
-                    style={{ flex: 1, fontSize: '0.8125rem', minHeight: '38px' }}
-                  >
-                    Undo
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Rebuy confirmation sheet */}
@@ -238,10 +167,8 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
         onClose={() => !isPending && isHydrated && setRebuying(null)}
         title={`Rebuy ${rebuying?.player_name ?? ''}?`}
       >
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-          Balance kepotong {buyIn}.
-        </p>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <p className="mb-5 text-sm text-muted-foreground">Balance kepotong {buyIn}.</p>
+        <div className="flex gap-3">
           <Button variant="secondary" fullWidth disabled={!isHydrated || isPending} onClick={() => setRebuying(null)}>
             Cancel
           </Button>

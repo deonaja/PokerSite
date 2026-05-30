@@ -55,20 +55,16 @@ export default function AddPlayerForm({ defaultBalance = 200 }: { defaultBalance
     })
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '0.625rem 0.75rem', borderRadius: '6px',
-    border: '1px solid var(--border-strong)', background: 'var(--bg-elevated)',
-    color: 'var(--text-primary)', fontSize: '0.875rem', outline: 'none',
-  }
+  const inputClass = 'w-full rounded-lg border border-input bg-[var(--bg-elevated)] px-3 py-2.5 text-sm text-foreground outline-none'
 
   return (
-    <div style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-      <p style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-secondary)', margin: 0 }}>Tambah pemain</p>
-      <input ref={nameRef} style={inputStyle} placeholder="Nama" defaultValue="" onChange={e => setName(e.target.value)} />
-      <input ref={balanceRef} style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }} type="number" placeholder={`Balance awal (default ${defaultBalance})`} defaultValue={String(defaultBalance)} onChange={e => setBalance(e.target.value)} />
+    <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-card p-4">
+      <p className="text-[0.8125rem] font-medium text-muted-foreground">Tambah pemain</p>
+      <input ref={nameRef} className={inputClass} placeholder="Nama" defaultValue="" onChange={e => setName(e.target.value)} />
+      <input ref={balanceRef} className={inputClass + ' font-mono'} type="number" placeholder={`Balance awal (default ${defaultBalance})`} defaultValue={String(defaultBalance)} onChange={e => setBalance(e.target.value)} />
       <input
         ref={pinRef}
-        style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}
+        className={inputClass + ' font-mono'}
         type="password"
         inputMode="numeric"
         maxLength={6}
@@ -78,7 +74,7 @@ export default function AddPlayerForm({ defaultBalance = 200 }: { defaultBalance
       />
       <input
         ref={pinConfirmRef}
-        style={{ ...inputStyle, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}
+        className={inputClass + ' font-mono'}
         type="password"
         inputMode="numeric"
         maxLength={6}
@@ -86,7 +82,7 @@ export default function AddPlayerForm({ defaultBalance = 200 }: { defaultBalance
         defaultValue=""
         onChange={e => setPinConfirm(e.target.value)}
       />
-      {msg && <p style={{ fontSize: '0.8125rem', color: msg.type === 'ok' ? 'var(--accent-success)' : 'var(--accent-danger)', margin: 0 }}>{msg.text}</p>}
+      {msg && <p className={'text-[0.8125rem] ' + (msg.type === 'ok' ? 'text-success' : 'text-destructive')}>{msg.text}</p>}
       <Button fullWidth disabled={isPending || !name.trim() || !pin || !pinConfirm} onClick={handleSubmit}>
         {isPending ? 'Menyimpan...' : '+ Tambah'}
       </Button>

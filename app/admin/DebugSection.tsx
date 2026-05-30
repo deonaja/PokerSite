@@ -34,45 +34,33 @@ export default function DebugSection() {
     })
   }
 
-  const card: React.CSSProperties = {
-    padding: '0.875rem 1rem',
-    borderRadius: '8px',
-    border: '1px solid var(--border-subtle)',
-    background: 'var(--bg-surface)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  }
-  const rowLabel: React.CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: 0 }
-  const inputStyle: React.CSSProperties = {
-    flex: 1, minWidth: 0, boxSizing: 'border-box', padding: '0.5rem 0.75rem', borderRadius: '6px',
-    border: '1px solid var(--border-strong)', background: 'var(--bg-elevated)',
-    color: 'var(--text-primary)', fontSize: '0.875rem', fontFamily: 'var(--font-mono)', outline: 'none',
-  }
+  const cardClass = 'flex flex-col gap-2 rounded-lg border border-border bg-card px-4 py-3.5'
+  const rowLabelClass = 'text-[0.8125rem] text-muted-foreground'
+  const inputClass = 'min-w-0 flex-1 box-border rounded-lg border border-input bg-[var(--bg-elevated)] px-3 py-2 text-sm font-mono text-foreground outline-none'
 
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-      <p style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', color: 'var(--accent-warn)', margin: 0 }}>
+    <section className="flex flex-col gap-2.5">
+      <p className="text-xs font-medium tracking-[0.08em] text-warn">
         DEBUG
       </p>
 
       {msg && (
-        <p style={{ fontSize: '0.8125rem', color: msg.type === 'ok' ? 'var(--accent-success)' : 'var(--accent-danger)', margin: 0 }}>
+        <p className={'text-[0.8125rem] ' + (msg.type === 'ok' ? 'text-success' : 'text-destructive')}>
           {msg.text}
         </p>
       )}
 
       {/* Force end season (with snapshot) */}
-      <div style={{ ...card, border: '1px solid var(--accent-warn)' }}>
-        <p style={rowLabel}>
-          <strong style={{ color: 'var(--accent-warn)' }}>Akhiri season (proper)</strong> — snapshot hasil, reset balance, tutup season. Beda dengan debug reset yang hapus data.
+      <div className={cardClass + ' border-warn'}>
+        <p className={rowLabelClass}>
+          <strong className="text-warn">Akhiri season (proper)</strong> — snapshot hasil, reset balance, tutup season. Beda dengan debug reset yang hapus data.
         </p>
         {armed !== 'forceEnd' ? (
           <Button variant="secondary" fullWidth disabled={isPending} onClick={() => { setArmed('forceEnd'); setMsg(null) }}>
             Force end season
           </Button>
         ) : (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="flex gap-2">
             <Button variant="secondary" fullWidth disabled={isPending} onClick={() => setArmed(null)}>Batal</Button>
             <Button variant="danger" fullWidth disabled={isPending} onClick={() => run('Force end season', adminForceEndSeason)}>
               {isPending ? '…' : 'Yakin'}
@@ -82,14 +70,14 @@ export default function DebugSection() {
       </div>
 
       {/* Reset season */}
-      <div style={card}>
-        <p style={rowLabel}>Reset season — hapus semua season & sesi, numbering balik ke #1 (pemain & balance tetap)</p>
+      <div className={cardClass}>
+        <p className={rowLabelClass}>Reset season — hapus semua season & sesi, numbering balik ke #1 (pemain & balance tetap)</p>
         {armed !== 'season' ? (
           <Button variant="secondary" fullWidth disabled={isPending} onClick={() => { setArmed('season'); setMsg(null) }}>
             Reset season
           </Button>
         ) : (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="flex gap-2">
             <Button variant="secondary" fullWidth disabled={isPending} onClick={() => setArmed(null)}>Batal</Button>
             <Button variant="danger" fullWidth disabled={isPending} onClick={() => run('Reset season', debugResetSeason)}>
               {isPending ? '…' : 'Yakin'}
@@ -99,9 +87,9 @@ export default function DebugSection() {
       </div>
 
       {/* Set phase */}
-      <div style={card}>
-        <p style={rowLabel}>Set phase season aktif</p>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div className={cardClass}>
+        <p className={rowLabelClass}>Set phase season aktif</p>
+        <div className="flex gap-2">
           <Button variant="secondary" fullWidth disabled={isPending} onClick={() => run('Set phase', () => debugSetPhase('bootstrap'))}>
             → Bootstrap
           </Button>
@@ -112,11 +100,11 @@ export default function DebugSection() {
       </div>
 
       {/* Reset balances */}
-      <div style={card}>
-        <p style={rowLabel}>Reset semua balance (kosong = starting_balance season)</p>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div className={cardClass}>
+        <p className={rowLabelClass}>Reset semua balance (kosong = starting_balance season)</p>
+        <div className="flex gap-2">
           <input
-            style={inputStyle}
+            className={inputClass}
             type="number"
             inputMode="numeric"
             placeholder="starting_balance"
@@ -126,7 +114,7 @@ export default function DebugSection() {
           <Button
             variant="secondary"
             disabled={isPending}
-            style={{ flexShrink: 0 }}
+            className="shrink-0"
             onClick={() => run('Reset balance', () => debugResetBalances(balanceAmount === '' ? undefined : parseInt(balanceAmount, 10)))}
           >
             Set
@@ -135,24 +123,24 @@ export default function DebugSection() {
       </div>
 
       {/* Clear cooldowns */}
-      <div style={card}>
-        <p style={rowLabel}>Reset cooldown dealer semua pemain</p>
+      <div className={cardClass}>
+        <p className={rowLabelClass}>Reset cooldown dealer semua pemain</p>
         <Button variant="secondary" fullWidth disabled={isPending} onClick={() => run('Clear cooldown', debugClearCooldowns)}>
           Clear cooldown
         </Button>
       </div>
 
       {/* Nuke */}
-      <div style={{ ...card, border: '1px solid var(--accent-danger)' }}>
-        <p style={rowLabel}>
-          <strong style={{ color: 'var(--accent-danger)' }}>Nuke semua data</strong> — hapus pemain, sesi, season, log. Balik ke fresh install.
+      <div className={cardClass + ' border-destructive'}>
+        <p className={rowLabelClass}>
+          <strong className="text-destructive">Nuke semua data</strong> — hapus pemain, sesi, season, log. Balik ke fresh install.
         </p>
         {armed !== 'nuke' ? (
           <Button variant="danger" fullWidth disabled={isPending} onClick={() => { setArmed('nuke'); setMsg(null) }}>
             Nuke semua data
           </Button>
         ) : (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="flex gap-2">
             <Button variant="secondary" fullWidth disabled={isPending} onClick={() => setArmed(null)}>Batal</Button>
             <Button variant="danger" fullWidth disabled={isPending} onClick={() => run('Nuke', debugNukeAll)}>
               {isPending ? '…' : 'HAPUS SEMUA'}

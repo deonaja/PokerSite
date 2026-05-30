@@ -10,6 +10,8 @@ interface Props {
   error?: string
 }
 
+const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
+
 export default function IdentityPicker({ players, error }: Props) {
   const [selectedId, setSelectedId] = useState<string>(players[0]?.id ?? '')
 
@@ -25,14 +27,10 @@ export default function IdentityPicker({ players, error }: Props) {
 
   return (
     <div className="flex flex-col px-4 pt-12 pb-8">
-      <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-        Pilih nama kamu
-      </p>
+      <p className="mb-6 text-sm text-muted-foreground">Pilih nama kamu</p>
 
       {players.length === 0 ? (
-        <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-          Belum ada pemain terdaftar.
-        </p>
+        <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
       ) : (
         <form
           method="post"
@@ -54,15 +52,18 @@ export default function IdentityPicker({ players, error }: Props) {
                   key={p.id}
                   type="button"
                   onClick={() => setSelectedId(p.id)}
-                  className="w-full text-left px-4 py-3 rounded-lg border transition-colors duration-150"
-                  style={{
-                    background: active ? 'var(--accent-felt-dim)' : 'var(--bg-surface)',
-                    borderColor: active ? 'var(--accent-felt)' : 'var(--border-subtle)',
-                    color: 'var(--text-primary)',
-                    minHeight: '44px',
-                  }}
+                  className={
+                    'flex min-h-11 w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors duration-150 ' +
+                    (active ? 'border-primary bg-accent' : 'border-border bg-card')
+                  }
                 >
-                  {p.name}
+                  <span
+                    aria-hidden
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground"
+                  >
+                    {initialOf(p.name)}
+                  </span>
+                  <span className="truncate text-foreground">{p.name}</span>
                 </button>
               )
             })}
@@ -77,27 +78,15 @@ export default function IdentityPicker({ players, error }: Props) {
             required
             autoComplete="one-time-code"
             placeholder="PIN (4-6 digit)"
-            style={{
-              width: '100%',
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              border: `1px solid ${errorMessage ? 'var(--accent-danger)' : 'var(--border-strong)'}`,
-              background: 'var(--bg-elevated)',
-              color: 'var(--text-primary)',
-              fontSize: '0.875rem',
-              fontFamily: 'var(--font-mono)',
-              fontVariantNumeric: 'tabular-nums',
-              outline: 'none',
-            }}
+            className={
+              'w-full rounded-lg border bg-[var(--bg-elevated)] px-4 py-3 font-mono text-sm text-foreground outline-none ' +
+              (errorMessage ? 'border-destructive' : 'border-input')
+            }
           />
 
-          {errorMessage && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--accent-danger)', margin: 0 }}>
-              {errorMessage}
-            </p>
-          )}
+          {errorMessage && <p className="m-0 text-[0.8125rem] text-destructive">{errorMessage}</p>}
 
-          <Button type="submit" fullWidth disabled={!selectedId}>
+          <Button type="submit" fullWidth disabled={!selectedId} className="h-12 text-base font-semibold uppercase tracking-wide">
             Masuk
           </Button>
         </form>

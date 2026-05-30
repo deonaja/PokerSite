@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { endSession } from '@/lib/actions/session'
 import BalanceDisplay from './BalanceDisplay'
 import Button from './Button'
+import { Card } from './ui/card'
+import { Badge } from './ui/badge'
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '@/lib/safeStorage'
 
 interface Participant {
@@ -32,6 +34,12 @@ interface Props {
 }
 
 const STORAGE_KEY = (sessionId: string) => `endSession:${sessionId}`
+
+// Sticky bottom CTA bar — matches the dashboard pattern (safe-area aware).
+const STICKY_BOTTOM =
+  'fixed bottom-0 left-1/2 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]'
+
+const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
 export default function SessionEndWizard({ sessionId, participants, expectedTotal, rakeInfo }: Props) {
   const router = useRouter()
@@ -155,99 +163,93 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
     })
   }
 
-  const stickyBottom: React.CSSProperties = {
-    position: 'fixed',
-    bottom: 0,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    width: '100%',
-    maxWidth: '480px',
-    padding: '0.75rem 1rem',
-    paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))',
-    borderTop: '1px solid var(--border-subtle)',
-    background: 'var(--bg-base)',
-  }
+  const backButton = (
+    <button
+      onClick={handleBack}
+      className="flex min-h-11 min-w-11 items-center bg-transparent text-lg text-muted-foreground"
+    >
+      ←
+    </button>
+  )
 
   if (isRecap) {
     return (
-      <div style={{ paddingBottom: '6rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
-          <button
-            onClick={handleBack}
-            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.125rem', cursor: 'pointer', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center' }}
-          >
-            ←
-          </button>
-          <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Konfirmasi</span>
+      <div className="pb-24">
+        <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
+          {backButton}
+          <span className="text-sm font-medium text-foreground">Konfirmasi</span>
         </div>
 
-        <div style={{ padding: '1.25rem 1rem 0' }}>
-          <p style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: '0.75rem' }}>
-            RECAP
-          </p>
+        <div className="px-4 pt-5">
+          <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">RECAP</p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', marginBottom: '1.25rem' }}>
+          <div className="mb-5 flex flex-col gap-2.5">
             {participants.map((p, idx) => {
               const stack = parseInt(inputs[p.player_id] ?? '0', 10)
               const newBalance = p.current_balance + stack
               const delta = newBalance - p.original_balance
 
               return (
-                <div key={p.player_id} style={{ padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>{p.player_name}</span>
-                    {p.is_dealer && (
-                      <span style={{ fontSize: '0.6875rem', padding: '1px 5px', borderRadius: '4px', background: 'var(--accent-felt)', color: 'var(--text-primary)' }}>★</span>
-                    )}
+                <Card key={p.player_id} className="px-4 py-3">
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground">
+                      {initialOf(p.player_name)}
+                    </span>
+                    <span className="min-w-0 truncate text-sm font-medium text-foreground">{p.player_name}</span>
+                    {p.is_dealer && <Badge className="px-1.5 py-0.5">★</Badge>}
                     {p.no_gaji_dealer && (
-                      <span style={{ fontSize: '0.625rem', color: 'var(--text-tertiary)' }}>bagi kartu</span>
+                      <span className="text-[0.625rem] text-[var(--text-tertiary)]">bagi kartu</span>
                     )}
                     <button
                       onClick={() => handleJumpTo(idx)}
-                      style={{ marginLeft: 'auto', background: 'none', border: '1px solid var(--border-strong)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer', padding: '2px 8px', minHeight: '28px', lineHeight: 1 }}
+                      className="ml-auto min-h-7 rounded-sm border border-input px-2 py-0.5 text-xs leading-none text-muted-foreground"
                     >
                       Edit
                     </button>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem' }}>
+                  <div className="flex items-center gap-1.5 font-mono text-sm">
                     <BalanceDisplay balance={p.original_balance} />
-                    <span style={{ color: 'var(--text-tertiary)' }}>→</span>
+                    <span className="text-[var(--text-tertiary)]">→</span>
                     <BalanceDisplay balance={newBalance} />
-                    <span style={{ color: delta >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                    <span className={delta >= 0 ? 'text-success' : 'text-destructive'}>
                       ({delta >= 0 ? '+' : ''}
                       {delta})
                     </span>
                   </div>
-                </div>
+                </Card>
               )
             })}
           </div>
 
-          <div style={{ padding: '0.875rem 1rem', borderRadius: '8px', border: `1px solid ${chipDiff !== 0 ? 'var(--accent-warn)' : 'var(--border-subtle)'}`, background: 'var(--bg-surface)', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Total chip seharusnya</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{expectedTotal}</span>
+          <Card className={'mb-4 px-4 py-3.5' + (chipDiff !== 0 ? ' border-warn' : '')}>
+            <div className="mb-1 flex justify-between text-[0.8125rem]">
+              <span className="text-muted-foreground">Total chip seharusnya</span>
+              <span className="font-mono text-foreground">{expectedTotal}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: chipDiff !== 0 ? '0.5rem' : 0 }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Total input</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{inputTotal}</span>
+            <div className={'flex justify-between text-[0.8125rem]' + (chipDiff !== 0 ? ' mb-2' : '')}>
+              <span className="text-muted-foreground">Total input</span>
+              <span className="font-mono text-foreground">{inputTotal}</span>
             </div>
             {chipDiff !== 0 && (
-              <p style={{ fontSize: '0.8125rem', color: 'var(--accent-warn)', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.5rem', margin: 0 }}>
+              <p className="m-0 border-t border-border pt-2 text-[0.8125rem] text-warn">
                 ⚠ Selisih {chipDiff > 0 ? '+' : ''}
                 {chipDiff}. Confirm tetap atau revisi?
               </p>
             )}
-          </div>
+          </Card>
 
-          {submitError && (
-            <p style={{ fontSize: '0.875rem', color: 'var(--accent-danger)', marginBottom: '1rem' }}>{submitError}</p>
-          )}
+          {submitError && <p className="mb-4 text-sm text-destructive">{submitError}</p>}
         </div>
 
-        <div style={{ ...stickyBottom, display: 'flex', gap: '0.75rem' }}>
+        <div className={STICKY_BOTTOM + ' flex gap-3'}>
           <Button variant="secondary" fullWidth disabled={isPending} onClick={handleBack}>Back</Button>
-          <Button variant="primary" fullWidth disabled={isPending} onClick={handleConfirm}>
+          <Button
+            variant="primary"
+            fullWidth
+            disabled={isPending}
+            onClick={handleConfirm}
+            className="h-12 font-semibold uppercase tracking-wide"
+          >
             {isPending ? 'Menyimpan...' : 'Confirm'}
           </Button>
         </div>
@@ -258,85 +260,77 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
   if (!current) return null
 
   return (
-    <div style={{ paddingBottom: '6rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button
-            onClick={handleBack}
-            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.125rem', cursor: 'pointer', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center' }}
-          >
-            ←
-          </button>
-          <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>End sesi</span>
+    <div className="pb-24">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
+        <div className="flex items-center gap-3">
+          {backButton}
+          <span className="text-sm font-medium text-foreground">End sesi</span>
         </div>
-        <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
+        <span className="font-mono text-sm text-[var(--text-tertiary)]">
           {step + 1} / {totalSteps}
         </span>
       </div>
 
-      <div style={{ padding: '2rem 1.5rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.375rem' }}>
-        <p style={{ fontSize: '1.25rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>{current.player_name}</p>
+      <div className="flex flex-col items-center gap-1.5 px-6 pt-8">
+        <span className="mb-1 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xl font-medium text-foreground">
+          {initialOf(current.player_name)}
+        </span>
+        <p className="m-0 text-xl font-medium text-foreground">{current.player_name}</p>
         {current.is_dealer && (
-          <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.05em', padding: '2px 8px', borderRadius: '4px', background: 'var(--accent-felt)', color: 'var(--text-primary)' }}>
+          <Badge className="px-2 py-0.5 text-xs tracking-wider">
             ★ DEALER{current.no_gaji_dealer ? ' (BAGI KARTU)' : ''}
-          </span>
+          </Badge>
         )}
       </div>
 
-      <div style={{ padding: '1.25rem 1.5rem 0' }}>
-        <div style={{ padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+      <div className="px-6 pt-5">
+        <Card className="flex flex-col gap-[0.3rem] px-4 py-3">
           {current.no_gaji_dealer ? (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Bagi kartu (gak ante)</span>
-              <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)' }}>rake/tip</span>
+            <div className="flex justify-between text-[0.8125rem]">
+              <span className="text-muted-foreground">Bagi kartu (gak ante)</span>
+              <span className="font-mono text-[var(--text-tertiary)]">rake/tip</span>
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Chip masuk (buy-in + rebuy)</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
-                  {current.contributed}
-                </span>
+              <div className="flex justify-between text-[0.8125rem]">
+                <span className="text-muted-foreground">Chip masuk (buy-in + rebuy)</span>
+                <span className="font-mono text-foreground">{current.contributed}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Rebuy</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>
-                  {current.rebuy_count}×
-                </span>
+              <div className="flex justify-between text-[0.8125rem]">
+                <span className="text-muted-foreground">Rebuy</span>
+                <span className="font-mono text-foreground">{current.rebuy_count}×</span>
               </div>
             </>
           )}
-        </div>
+        </Card>
       </div>
 
       {rakeInfo && current.is_dealer && (
-        <div style={{ padding: '1rem 1.5rem 0' }}>
-          <div style={{ padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--accent-felt-dim)', background: 'var(--bg-surface)' }}>
-            <p style={{ fontSize: '0.6875rem', fontWeight: 500, letterSpacing: '0.08em', color: 'var(--accent-felt)', marginBottom: '0.5rem' }}>
-              KALKULATOR RAKE
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Total chip di meja</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{expectedTotal}</span>
+        <div className="px-6 pt-4">
+          <Card className="border-[var(--accent-felt-dim)] px-4 py-3">
+            <p className="mb-2 text-[0.6875rem] font-medium tracking-[0.08em] text-primary">KALKULATOR RAKE</p>
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between text-[0.8125rem]">
+                <span className="text-muted-foreground">Total chip di meja</span>
+                <span className="font-mono text-foreground">{expectedTotal}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Rake rate</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', color: 'var(--text-primary)' }}>{rakeInfo.rakeRate}%</span>
+              <div className="flex justify-between text-[0.8125rem]">
+                <span className="text-muted-foreground">Rake rate</span>
+                <span className="font-mono text-foreground">{rakeInfo.rakeRate}%</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.375rem', marginTop: '0.125rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Perkiraan rake</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontWeight: 500, color: 'var(--accent-felt)' }}>
+              <div className="mt-0.5 flex justify-between border-t border-border pt-1.5 text-[0.8125rem]">
+                <span className="text-muted-foreground">Perkiraan rake</span>
+                <span className="font-mono font-medium text-primary">
                   {Math.round(expectedTotal * rakeInfo.rakeRate / 100 / 5) * 5} chip
                 </span>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
-      <div style={{ padding: '1.25rem 1.5rem 0' }}>
-        <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Stack akhir:</p>
+      <div className="px-6 pt-5">
+        <p className="mb-2 text-[0.8125rem] text-muted-foreground">Stack akhir:</p>
         <input
           key={current.player_id}
           ref={inputRef}
@@ -350,25 +344,15 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
           }}
           onKeyDown={(e) => e.key === 'Enter' && handleNext()}
           placeholder="0"
-          style={{
-            width: '100%',
-            padding: '0.875rem 1rem',
-            borderRadius: '8px',
-            border: `1px solid ${inputError ? 'var(--accent-danger)' : 'var(--border-strong)'}`,
-            background: 'var(--bg-elevated)',
-            color: 'var(--text-primary)',
-            fontSize: '2rem',
-            fontFamily: 'var(--font-mono)',
-            fontVariantNumeric: 'tabular-nums',
-            textAlign: 'center',
-            outline: 'none',
-            appearance: 'textfield',
-          }}
+          className={
+            'w-full rounded-lg border bg-[var(--bg-elevated)] px-4 py-3.5 text-center font-mono text-[2rem] text-foreground outline-none [appearance:textfield] ' +
+            (inputError ? 'border-destructive' : 'border-input')
+          }
         />
-        {inputError && <p style={{ fontSize: '0.8125rem', color: 'var(--accent-danger)', marginTop: '0.375rem' }}>{inputError}</p>}
+        {inputError && <p className="mt-1.5 text-[0.8125rem] text-destructive">{inputError}</p>}
       </div>
 
-      <div style={stickyBottom}>
+      <div className={STICKY_BOTTOM}>
         <Button fullWidth disabled={currentInput === ''} onClick={handleNext}>
           {editingFromRecap ? 'Simpan' : (step === totalSteps - 1 ? 'Lihat recap' : 'Next →')}
         </Button>

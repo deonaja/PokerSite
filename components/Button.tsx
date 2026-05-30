@@ -1,55 +1,30 @@
 import { forwardRef } from 'react'
 
+import { Button as UIButton } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger'
   fullWidth?: boolean
 }
 
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', fullWidth, children, style, type = 'button', ...props }, ref) => {
-    const variantStyles: Record<string, React.CSSProperties> = {
-      primary: {
-        background: 'var(--accent-felt)',
-        color: 'var(--text-primary)',
-      },
-      secondary: {
-        background: 'transparent',
-        border: '1px solid var(--border-strong)',
-        color: 'var(--text-primary)',
-      },
-      danger: {
-        background: 'var(--accent-danger)',
-        color: 'var(--text-primary)',
-      },
-    }
+// Legacy API kept so the 13 existing call-sites don't change.
+// Maps the old variant names onto the shadcn button.
+const variantMap = {
+  primary: 'default',
+  secondary: 'outline',
+  danger: 'destructive',
+} as const
 
-    return (
-      <button
-        ref={ref}
-        type={type}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: '6px',
-          fontSize: '0.875rem',
-          fontWeight: 500,
-          minHeight: '44px',
-          padding: '0 1rem',
-          width: fullWidth ? '100%' : undefined,
-          transition: 'opacity 150ms ease',
-          cursor: props.disabled ? 'not-allowed' : 'pointer',
-          opacity: props.disabled ? 0.4 : 1,
-          border: 'none',
-          ...variantStyles[variant ?? 'primary'],
-          ...style,
-        }}
-        {...props}
-      >
-        {children}
-      </button>
-    )
-  }
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant = 'primary', fullWidth, className, ...props }, ref) => (
+    <UIButton
+      ref={ref}
+      variant={variantMap[variant]}
+      className={cn(fullWidth && 'w-full', className)}
+      {...props}
+    />
+  )
 )
 
 Button.displayName = 'Button'

@@ -32,6 +32,8 @@ async function globalTeardown() {
   const sessionIds = sessionRows.map((r) => r.session_id)
 
   if (sessionIds.length > 0) {
+    // A real player may reference a test session as their last dealt session.
+    await sql`UPDATE players SET last_dealer_session_id = NULL WHERE last_dealer_session_id = ANY(${sessionIds}::uuid[])`
     await sql`DELETE FROM edit_log WHERE session_id = ANY(${sessionIds}::uuid[])`
     await sql`DELETE FROM session_participants WHERE session_id = ANY(${sessionIds}::uuid[])`
     await sql`DELETE FROM sessions WHERE id = ANY(${sessionIds}::uuid[])`
@@ -39,6 +41,9 @@ async function globalTeardown() {
 
   // Delete edit logs tied directly to test players (admin actions)
   await sql`DELETE FROM edit_log WHERE player_id = ANY(${playerIds}::uuid[])`
+
+  // season_results FK-references players (M3) — must go before deleting players.
+  await sql`DELETE FROM season_results WHERE player_id = ANY(${playerIds}::uuid[])`
 
   // Delete test players
   await sql`DELETE FROM players WHERE id = ANY(${playerIds}::uuid[])`
@@ -53,13 +58,22 @@ async function globalTeardown() {
       SELECT DISTINCT session_id FROM session_participants
       WHERE player_id = ANY(${strayIds}::uuid[])
     ` as { session_id: string }[]
-    if (straySessions.length > 0) {
-      const straySessionIds = straySessions.map(r => r.session_id)
+    // Sessions where a stray player was the dealer (not just a participant).
+    const strayDealerSessions = await sql`
+      SELECT id AS session_id FROM sessions WHERE dealer_id = ANY(${strayIds}::uuid[])
+    ` as { session_id: string }[]
+    const straySessionIds = [
+      ...new Set([...straySessions, ...strayDealerSessions].map((r) => r.session_id)),
+    ]
+    if (straySessionIds.length > 0) {
+      await sql`UPDATE players SET last_dealer_session_id = NULL WHERE last_dealer_session_id = ANY(${straySessionIds}::uuid[])`
       await sql`DELETE FROM edit_log WHERE session_id = ANY(${straySessionIds}::uuid[])`
       await sql`DELETE FROM session_participants WHERE session_id = ANY(${straySessionIds}::uuid[])`
       await sql`DELETE FROM sessions WHERE id = ANY(${straySessionIds}::uuid[])`
     }
     await sql`DELETE FROM edit_log WHERE player_id = ANY(${strayIds}::uuid[])`
+    // season_results FK-references players (M3) — must go before deleting players.
+    await sql`DELETE FROM season_results WHERE player_id = ANY(${strayIds}::uuid[])`
     await sql`DELETE FROM players WHERE id = ANY(${strayIds}::uuid[])`
     console.log(`[teardown] Deleted ${strayPlayers.length} stray test player(s)`)
   }

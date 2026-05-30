@@ -1,6 +1,34 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-05-29 (test verification run)
+Last updated: 2026-05-29 (UI redesign — shadcn foundation)
+
+## 🎨 UI redesign (branch `redesign/shadcn`)
+
+Re-platforming the 13 custom components onto themed shadcn primitives. Felt-green
+identity preserved (anti "AI-ish"); shadcn ban lifted in SPEC/CLAUDE. Magic UI /
+flashy animation still banned. **Revert savepoint: git tag `v0.95-pre-redesign`.**
+
+- [x] **Step 1 — foundation** (no visual change): deps (cva, clsx, tailwind-merge, tailwindcss-animate, lucide), `lib/utils.ts` cn(), `components.json`, tailwind tokens + globals.css aliases → felt-green. Build green, 71/71 tests pass. (commit `19187f8`)
+- [x] **Step 2 — pilot: Button + Sheet** → `components/ui/button.tsx` (shadcn cva) + `Button.tsx` adapter (legacy API preserved, 13 call-sites untouched); `Sheet.tsx` rebuilt on Radix Dialog. Build green, 71/71 pass. (commit `4025b16`)
+- [x] **Step 3 — per-screen migration** (tests each checkpoint) — DONE 2026-05-30. Full e2e 71/71 green after every screen migrated.
+- [ ] **Visual redesign pass — "Underground Table"** (started 2026-05-30, owner-directed): bahasa visual baru di atas primitive shadcn, tetap felt-green/dark/anti-AI-ish.
+  - [x] Dashboard: **redesign ke konsep PODIUM** (owner-approved setelah render konsep 1-per-1). Top-3 ditampilkan sebagai podium (juara 1 di tengah, blok felt tinggi + angka emas, avatar pemain di atas blok; pemain-login dapat ring felt). Sisanya (#4+) jadi list "PERINGKAT LAINNYA" flat sejajar (low-balance ⚠ gold, baris pemain-login di-highlight + tag KAMU). Season context line + Riwayat musim di atas; CTA chunky. `page.tsx` passing `currentPlayerId` via `getAuthenticatedPlayer()`. `PlayerCard` dihapus. (Konsep yang dilewati: hero "Saldo kamu", standings table, accent-bar felt, box, garis, season band — di-render lalu owner pilih podium.)
+  - [x] Header (global `(main)` chrome): `HeaderMenu` client — avatar inisial felt + "Hi, nama" + chevron; semua aksi pindah ke bottom-sheet (Ganti PIN / Ganti identitas) biar header ga crowded. (avatar image / "ganti gambar" DITUNDA per owner). `identity.spec` diupdate (buka sheet dulu, hydration-safe retry). Build + 71/71 green.
+  - [ ] Roll out bahasa visual ke layar lain (1-per-1, render PNG dulu utk review):
+    - [x] **Session aktif** (`SessionView`): tiap peserta card + avatar inisial; dealer card felt-green + badge ★ DEALER; pemain-login dapat ring felt + tag KAMU; low-balance saldo gold + tombol "Saldo kurang"; Rebuy/Undo. `session/page.tsx` passing `currentPlayerId`. Teks/atribut test dijaga; 31/31 session+z-m2-coverage pass.
+    - [x] **Setup sesi** (`SessionSetupForm`): avatar inisial di row pemain & dealer, CTA "Mulai" chunky uppercase. Hydration-sync + atribut input dijaga; 38/38 session+z-m2 pass.
+    - [x] **End-wizard** (`SessionEndWizard`): avatar inisial di recap rows + step header (avatar gede), CTA Confirm chunky uppercase. Recap delta & semua teks/regex test dijaga; 35/35 session+z-m2+z-m3 pass.
+    - [x] **identity-picker**: avatar inisial (aria-hidden biar nama tombol tetap match test) + CTA "Masuk" chunky.
+    - [x] **player/[id]**: avatar gede di header. **history** (`HistoryAccordion`): avatar inisial di tiap baris klasemen. **pin** (`ChangePinForm`): CTA "Simpan PIN" chunky. **season/new** (`SeasonSetup`): CTA forward "Lanjut/Mulai Season" chunky uppercase. (via subagent paralel; full e2e 71/71 pass DB-warm)
+    - [x] **admin**: avatar inisial di list pemain (aria-hidden). Form & log table dibiarin themed 3e (uppercase chunky ga cocok di panel utility padat). admin.spec 15/15 pass.
+  - [x] **Visual redesign pass SELESAI** — semua layar (dashboard podium, setup, session, end-wizard, identity, player, history, pin, season/new, admin) + header global konsisten felt-green/avatar/chunky-CTA. Full e2e 71/71.
+- [x] **Fixed `global-teardown.ts` FK error (2026-05-30)** — teardown gagal hapus `[T…]` players karena `season_results` (M3) FK-refer mereka & ga ikut dibersihin → stray players numpuk di DB Neon asli (57 ke-akumulasi!) + `pnpm test` exit non-zero ("1 error not part of any test"). Fix: hapus `season_results` sebelum players (tracked + stray), clear `last_dealer_session_id` yang refer sesi test, dan tangani sesi di mana stray jadi dealer (bukan cuma participant). One-off cleanup: 57 stray dihapus, DB balik ke 4 player asli (JAGO/OwnerTaveve/PAN8/yontol). Verified: teardown bersih, 0 stray, exit 0.
+- [x] **Chrome + loading skeletons** (2026-05-30) — `(main)/layout.tsx` header, `session/setup/page.tsx` chrome, and all loading skeletons (`(main)/loading`, `session/loading`, `session/end/loading`, `session/setup/loading`, `identity/loading`) migrated to Tailwind felt-green tokens + `animate-pulse`. Only intentional dynamic inline styles remain: admin log-badge `ACTION_COLORS` (data-driven) and skeleton `animationDelay` (per-index stagger). **Redesign migration complete.**
+  - [x] 3a dashboard → Card + Badge primitives, PlayerCard/BalanceDisplay on Tailwind tokens. 71/71 pass. (commit `ca24d4d`)
+  - [x] 3b session active (`SessionView`) → Card + Badge primitives, inline styles → Tailwind felt-green tokens, Button/Sheet adapters kept. DOM text preserved. Build green, session specs 18/18 pass. (2026-05-30)
+  - [x] 3c end-session wizard (`SessionEndWizard`) → Card for info/recap/rake boxes, Badge for dealer chips, sticky-bottom CTA pattern, inline styles → Tailwind tokens. All handlers/refs and DOM text (input[type=number], step counter, RECAP, KALKULATOR RAKE, button labels) preserved. Build green, 35/35 wizard specs pass. (2026-05-30)
+  - [x] 3d session setup (`SessionSetupForm`) → rowClass helper (felt active / neutral surface), inline styles → Tailwind tokens, accent-primary checkboxes/radios. Hydration-sync effects + input attributes (`data-player-id`, `name="dealer"`, value) and label structure preserved for e2e. Build green, session + z-m2-coverage 31/31 pass. (2026-05-30)
+  - [x] 3e admin + remaining → identity (IdentityPicker + loading), admin cluster (page + AddPlayer/EditBalance/ForceEnd/ResetPin/Debug; dynamic ACTION_COLORS log badge kept as data-driven inline style), season/new (SeasonSetup 4-step), season/history (+ end + SeasonEndConfirm), player/[id], settings/pin (ChangePinForm). Inline styles → Tailwind felt-green tokens; primitives (Card/Badge/Button) where they map; all DOM text/attributes/handlers preserved. Build green, full e2e 71/71 pass. (2026-05-30; 4 screens via parallel subagents + identity by hand)
 
 ## Overall status
 
@@ -53,8 +81,8 @@ Treatment is derived at session start based on phase + cooldown + balance:
 
 | Phase | Cooldown | Balance | Behavior |
 |---|---|---|---|
-| 1 | no | ≥ buy_in | Pay buy-in + receive `+buy_in` salary chips printed on table (plays with 2× buy_in stack) |
-| 1 | no | < buy_in | No deduction, play with the salary chips alone (1× buy_in stack) |
+| 1 | no | ≥ buy_in | **Free entry — no buy-in deduction.** Receives `+buy_in` salary chips printed on table (plays with 1× buy_in stack) |
+| 1 | no | < buy_in | Free entry — no deduction, play with the salary chips (1× buy_in stack) |
 | 1 | yes | ≥ buy_in | Pay buy-in, no salary |
 | 1 | yes | < buy_in | Deals only (`no_gaji_dealer = true`), no salary |
 | 2 | n/a | ≥ buy_in | Pay buy-in, salary = rake (collected via end stack) |
@@ -135,10 +163,15 @@ These override the earlier `SPEC.md` text where they conflict:
 
 2. **Cooldown is Phase 1 only and does NOT block** — it just denies the Phase 1 free-entry salary. A cooled-down dealer in P1 pays buy-in; in P2 cooldown is irrelevant. Anchor set only when salary is granted.
 
-3. **Phase 1 salary = printed chips on table** (not free entry skip)
-   - Has balance: pays buy-in + receives `+buy_in` salary chips → `2*buy_in` stack
-   - Broke: no deduction, plays with `1*buy_in` salary chips alone
-   - Logged as `dealer_salary_chips` action (no balance change, counted in chip total)
+3. **Phase 1 salary = free entry + 1× buy_in printed chips** (updated 2026-05-29 per owner)
+   - Dealer (not cooldown) plays FREE: balance is NOT deducted (the salary), and they
+     receive `+buy_in` salary chips printed on the table → `1*buy_in` stack.
+   - Same for has-balance and broke dealers — every seat holds exactly one buy-in, so
+     table total = `n_players * buy_in` (e.g. 3 players @ 200 → 600, not 800).
+   - Logged as `buy_in_dealer_free` (0 deduction) + `dealer_salary_chips` (no balance change,
+     counted in chip total). System still injects `1*buy_in` new chips per session.
+   - **Prior model (reverted):** has-balance dealer paid buy-in AND got salary → `2*buy_in`
+     stack, table total 800. Owner flagged the inflated total as a bug.
 
 4. **Low-balance players can only join as the dealer** — server rejects a non-dealer with `balance < buy_in`. Form disables Mulai with a clear hint.
 
@@ -155,8 +188,11 @@ These override the earlier `SPEC.md` text where they conflict:
 - [x] `dealer_salary` dead code removed — was a leftover IN-clause entry in `session/end/page.tsx:60`'s `original_balance` subquery from the old broke-deals-only-gets-credit flow. Never written by current code (only `dealer_salary_chips` is, at `session.ts:477`), so removing it is a no-op for current data. Cleaned 2026-05-29; build + 35 end-session tests still green.
 - [x] E2E test suite verified — clean `pnpm test` run on 2026-05-29: **71 passed (3.9m), 0 failures** across admin/balance/concurrency/identity/session/z-m2-coverage/z-m2-features/z-m3-features. No drift remaining.
 - [ ] Migration filename collision: `002_identity_auth.sql` and `002_seasons.sql` both prefixed `002_` (cosmetic — alphabetical order still works)
+- [x] **Fixed flaky `identity.spec.ts:31` (2026-05-30)** — "tapping a player… redirects to /" intermittently logged in as a real player (e.g. JAGO, balance 200, sorts before `[T…] Alice`) instead of the seeded Alice. Root cause: the picker hydrates client-side and a tap before React attaches the click handler is dropped, leaving the default (alphabetically-first) selection; with real players in the shared Neon DB the default is no longer a test player. Fix: test now uses an exact-name match and retries the tap (`toPass`) until the hidden `playerId` input equals `alice.id` — deterministic regardless of hydration timing or DB contents. 2 clean runs. (Latent product note: a pre-hydration mis-tap would submit the default player, but the PIN gate makes real-world impact negligible; left as-is to avoid scope creep.)
+- [ ] **Test DB is the shared/real Neon DB** — global-setup seeds `[T…]` players alongside the owner's real players (JAGO/OwnerTaveve/PAN8/yontol). Tests mutate the live DB. Consider a dedicated Neon test branch for isolation (needs owner's DB creds).
 - [x] Admin log filter buttons updated — added `buy_in_dealer_phase2`, `buy_in_no_gaji_dealer`, `dealer_salary_chips`, `season_start`, `season_end`, `pin_change` with colors
 - [x] Mobile dev-mode hydration fix — Next.js 16's `blockCrossSiteDEV` was killing hydration on the phone (LAN IP origin not allowlisted). Added `allowedDevOrigins: ['192.168.18.*']` to `next.config.js`. Restart required after change.
+- [x] **Bugfix dealer chip inflation (2026-05-29)** — Phase 1 free-entry dealer was paying buy-in AND receiving `+buy_in` salary chips → 2× buy_in stack, inflating table total (3 players @ 200 → 800). Owner flagged: dealer should play FREE (no deduction) on a single 1× buy_in salary stack → table total = `n × buy_in` (→ 600). Fixed in `session.ts` (free-entry branch now `deduction=0`, action `buy_in_dealer_free`, unchanged-balance salary log). Updated `SessionSetupForm` hint, SPEC.md, memory, and 3 tests (z-m2-coverage P1 dealer balance/action + recap, z-m3 stats). Build + 71/71 green.
 
 ---
 

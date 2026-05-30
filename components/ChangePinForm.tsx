@@ -19,18 +19,11 @@ export default function ChangePinForm() {
     setIsHydrated(true)
   }, [])
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '0.75rem 1rem',
-    borderRadius: '8px',
-    border: '1px solid var(--border-strong)',
-    background: 'var(--bg-elevated)',
-    color: 'var(--text-primary)',
-    fontSize: '0.875rem',
-    fontFamily: 'var(--font-mono)',
-    outline: 'none',
-    boxSizing: 'border-box',
-  }
+  const inputClass =
+    'w-full rounded-lg border border-input bg-[var(--bg-elevated)] px-4 py-3 text-sm text-foreground outline-none font-mono'
+
+  const labelClass =
+    'mb-2 text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground'
 
   function handleSubmit() {
     setError(null)
@@ -48,10 +41,10 @@ export default function ChangePinForm() {
     return (
       <div className="flex flex-col px-4 pt-12 pb-8 gap-6">
         <div>
-          <h1 style={{ fontSize: '1.125rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>
+          <h1 className="text-lg font-medium text-foreground">
             PIN berhasil diubah
           </h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+          <p className="mt-2 text-sm text-muted-foreground">
             Gunakan PIN baru kamu saat login berikutnya.
           </p>
         </div>
@@ -64,33 +57,22 @@ export default function ChangePinForm() {
 
   return (
     <div className="flex flex-col px-4 pt-12 pb-8 gap-6">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={() => router.back()}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-secondary)',
-            fontSize: '1.125rem',
-            cursor: 'pointer',
-            minWidth: '44px',
-            minHeight: '44px',
-            display: 'flex',
-            alignItems: 'center',
-            padding: 0,
-          }}
+          className="flex min-h-11 min-w-11 items-center p-0 text-lg text-muted-foreground"
         >
           ←
         </button>
-        <h1 style={{ fontSize: '1.125rem', fontWeight: 500, color: 'var(--text-primary)', margin: 0 }}>
+        <h1 className="text-lg font-medium text-foreground">
           Ganti PIN
         </h1>
       </div>
 
       <div className="flex flex-col gap-4">
         <div>
-          <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <p className={labelClass}>
             PIN lama
           </p>
           <input
@@ -102,12 +84,12 @@ export default function ChangePinForm() {
             onChange={(e) => setOldPin(e.target.value)}
             placeholder="PIN saat ini"
             autoComplete="current-password"
-            style={inputStyle}
+            className={inputClass}
           />
         </div>
 
         <div>
-          <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <p className={labelClass}>
             PIN baru
           </p>
           <input
@@ -119,12 +101,12 @@ export default function ChangePinForm() {
             onChange={(e) => setNewPin(e.target.value)}
             placeholder="4–6 digit"
             autoComplete="new-password"
-            style={inputStyle}
+            className={inputClass}
           />
         </div>
 
         <div>
-          <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <p className={labelClass}>
             Konfirmasi PIN baru
           </p>
           <input
@@ -136,17 +118,18 @@ export default function ChangePinForm() {
             onChange={(e) => setNewPinConfirm(e.target.value)}
             placeholder="Ulangi PIN baru"
             autoComplete="new-password"
-            style={inputStyle}
+            className={inputClass}
           />
         </div>
 
         {error && (
-          <p style={{ fontSize: '0.8125rem', color: 'var(--accent-danger)', margin: 0 }}>{error}</p>
+          <p className="text-[0.8125rem] text-destructive">{error}</p>
         )}
 
         <Button
           type="button"
           fullWidth
+          className="h-12 text-base font-semibold uppercase tracking-wide"
           disabled={!isHydrated || isPending || !oldPin || !newPin || !newPinConfirm}
           onClick={handleSubmit}
         >

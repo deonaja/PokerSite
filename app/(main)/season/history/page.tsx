@@ -79,23 +79,23 @@ export default async function SeasonHistoryPage() {
   const seasons = await getData()
 
   return (
-    <div style={{ paddingBottom: '2rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+    <div className="pb-8">
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
         <Link
           href="/"
-          style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.125rem', cursor: 'pointer', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', textDecoration: 'none' }}
+          className="flex min-h-11 min-w-11 items-center text-lg text-muted-foreground no-underline"
         >
           ←
         </Link>
-        <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Riwayat Musim</span>
+        <span className="text-sm font-medium text-foreground">Riwayat Musim</span>
       </div>
 
       {seasons.length === 0 ? (
-        <p style={{ padding: '2rem 1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
+        <p className="px-4 py-8 text-center text-sm text-[var(--text-tertiary)]">
           Belum ada musim yang selesai.
         </p>
       ) : (
-        <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+        <div className="flex flex-col gap-2.5 p-4">
           <HistoryAccordion seasons={seasons} />
         </div>
       )}
