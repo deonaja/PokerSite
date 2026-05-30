@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
 import { hashPin } from '@/lib/auth'
+import { evaluateAchievements, type SeasonResultRow } from '@/lib/achievements'
 
 export interface CreateSeasonInput {
   playerNames: string[]
@@ -186,6 +187,32 @@ export async function endSeason(seasonId: string): Promise<{ success: true } | {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [seasonId, p.id, p.balance, rank, s.sessions_played, s.times_dealer, s.total_won, s.total_lost]
       )
+    }
+
+    // Award achievements from each player's full season-results history
+    // (incl. the rows just written for this season). Idempotent via the
+    // (player_id, achievement_key) unique constraint.
+    const { rows: allResults } = await client.query<SeasonResultRow & { player_id: string }>(
+      `SELECT sr.player_id, sr.rank, sr.final_balance, sr.sessions_played,
+              sr.times_dealer, sr.total_won, sr.total_lost, se.starting_balance
+       FROM season_results sr
+       JOIN seasons se ON se.id = sr.season_id`
+    )
+    const resultsByPlayer = new Map<string, SeasonResultRow[]>()
+    for (const r of allResults) {
+      const list = resultsByPlayer.get(r.player_id) ?? []
+      list.push(r)
+      resultsByPlayer.set(r.player_id, list)
+    }
+    for (const [playerId, rows] of resultsByPlayer) {
+      for (const key of evaluateAchievements(rows)) {
+        await client.query(
+          `INSERT INTO player_achievements (player_id, achievement_key, season_id)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (player_id, achievement_key) DO NOTHING`,
+          [playerId, key, seasonId]
+        )
+      }
     }
 
     // Reset all player balances to starting_balance.

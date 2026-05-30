@@ -4,6 +4,7 @@ import { sql } from '@/lib/db'
 import BalanceDisplay from '@/components/BalanceDisplay'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { ACHIEVEMENTS } from '@/lib/achievements'
 
 interface PlayerRow {
   id: string
@@ -26,7 +27,7 @@ interface ResultRow {
 }
 
 async function getData(id: string) {
-  const [playerRows, resultRows] = await Promise.all([
+  const [playerRows, resultRows, achRows] = await Promise.all([
     sql`SELECT id, name, balance FROM players WHERE id = ${id}` as unknown as Promise<PlayerRow[]>,
     sql`
       SELECT
@@ -46,11 +47,12 @@ async function getData(id: string) {
       WHERE sr.player_id = ${id}
       ORDER BY se.number DESC
     ` as unknown as Promise<ResultRow[]>,
+    sql`SELECT achievement_key FROM player_achievements WHERE player_id = ${id}` as unknown as Promise<{ achievement_key: string }[]>,
   ])
 
-  const player = (await playerRows)[0] ?? null
-  const results = await resultRows
-  return { player, results }
+  const player = playerRows[0] ?? null
+  const earnedKeys = new Set(achRows.map((a) => a.achievement_key))
+  return { player, results: resultRows, earnedKeys }
 }
 
 function formatDate(iso: string) {
@@ -63,7 +65,7 @@ function initialOf(name: string) {
 
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { player, results } = await getData(id)
+  const { player, results, earnedKeys } = await getData(id)
   if (!player) notFound()
 
   const totalSeasons = results.length
@@ -112,6 +114,33 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             </div>
           </>
         )}
+
+        {/* Achievements */}
+        <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">PENCAPAIAN</p>
+        <div className="mb-6 grid grid-cols-2 gap-2">
+          {ACHIEVEMENTS.map((a) => {
+            const earned = earnedKeys.has(a.key)
+            return (
+              <div
+                key={a.key}
+                className={
+                  'flex items-center gap-2.5 rounded-lg border px-3 py-2.5 ' +
+                  (earned ? 'border-primary bg-accent' : 'border-border bg-card opacity-60')
+                }
+              >
+                <span className={'text-xl ' + (earned ? '' : 'grayscale')} aria-hidden>
+                  {a.emoji}
+                </span>
+                <div className="min-w-0">
+                  <p className={'truncate text-xs font-medium ' + (earned ? 'text-foreground' : 'text-muted-foreground')}>
+                    {a.label}
+                  </p>
+                  <p className="text-[0.625rem] leading-tight text-[var(--text-tertiary)]">{a.description}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
 
         {/* Per-season breakdown */}
         <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">
