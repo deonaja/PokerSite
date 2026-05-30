@@ -39,6 +39,8 @@ const STORAGE_KEY = (sessionId: string) => `endSession:${sessionId}`
 const STICKY_BOTTOM =
   'fixed bottom-0 left-1/2 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]'
 
+const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
+
 export default function SessionEndWizard({ sessionId, participants, expectedTotal, rakeInfo }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -190,7 +192,10 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
               return (
                 <Card key={p.player_id} className="px-4 py-3">
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="text-sm font-medium text-foreground">{p.player_name}</span>
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground">
+                      {initialOf(p.player_name)}
+                    </span>
+                    <span className="min-w-0 truncate text-sm font-medium text-foreground">{p.player_name}</span>
                     {p.is_dealer && <Badge className="px-1.5 py-0.5">★</Badge>}
                     {p.no_gaji_dealer && (
                       <span className="text-[0.625rem] text-[var(--text-tertiary)]">bagi kartu</span>
@@ -238,7 +243,13 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
 
         <div className={STICKY_BOTTOM + ' flex gap-3'}>
           <Button variant="secondary" fullWidth disabled={isPending} onClick={handleBack}>Back</Button>
-          <Button variant="primary" fullWidth disabled={isPending} onClick={handleConfirm}>
+          <Button
+            variant="primary"
+            fullWidth
+            disabled={isPending}
+            onClick={handleConfirm}
+            className="h-12 font-semibold uppercase tracking-wide"
+          >
             {isPending ? 'Menyimpan...' : 'Confirm'}
           </Button>
         </div>
@@ -261,6 +272,9 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
       </div>
 
       <div className="flex flex-col items-center gap-1.5 px-6 pt-8">
+        <span className="mb-1 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xl font-medium text-foreground">
+          {initialOf(current.player_name)}
+        </span>
         <p className="m-0 text-xl font-medium text-foreground">{current.player_name}</p>
         {current.is_dealer && (
           <Badge className="px-2 py-0.5 text-xs tracking-wider">

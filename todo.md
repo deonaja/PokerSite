@@ -17,7 +17,8 @@ flashy animation still banned. **Revert savepoint: git tag `v0.95-pre-redesign`.
   - [ ] Roll out bahasa visual ke layar lain (1-per-1, render PNG dulu utk review):
     - [x] **Session aktif** (`SessionView`): tiap peserta card + avatar inisial; dealer card felt-green + badge ★ DEALER; pemain-login dapat ring felt + tag KAMU; low-balance saldo gold + tombol "Saldo kurang"; Rebuy/Undo. `session/page.tsx` passing `currentPlayerId`. Teks/atribut test dijaga; 31/31 session+z-m2-coverage pass.
     - [x] **Setup sesi** (`SessionSetupForm`): avatar inisial di row pemain & dealer, CTA "Mulai" chunky uppercase. Hydration-sync + atribut input dijaga; 38/38 session+z-m2 pass.
-    - [ ] end-wizard, admin, season/new, history, player, pin, identity-picker.
+    - [x] **End-wizard** (`SessionEndWizard`): avatar inisial di recap rows + step header (avatar gede), CTA Confirm chunky uppercase. Recap delta & semua teks/regex test dijaga; 35/35 session+z-m2+z-m3 pass.
+    - [ ] admin, season/new, history, player, pin, identity-picker.
 - [x] **Chrome + loading skeletons** (2026-05-30) — `(main)/layout.tsx` header, `session/setup/page.tsx` chrome, and all loading skeletons (`(main)/loading`, `session/loading`, `session/end/loading`, `session/setup/loading`, `identity/loading`) migrated to Tailwind felt-green tokens + `animate-pulse`. Only intentional dynamic inline styles remain: admin log-badge `ACTION_COLORS` (data-driven) and skeleton `animationDelay` (per-index stagger). **Redesign migration complete.**
   - [x] 3a dashboard → Card + Badge primitives, PlayerCard/BalanceDisplay on Tailwind tokens. 71/71 pass. (commit `ca24d4d`)
   - [x] 3b session active (`SessionView`) → Card + Badge primitives, inline styles → Tailwind felt-green tokens, Button/Sheet adapters kept. DOM text preserved. Build green, session specs 18/18 pass. (2026-05-30)
