@@ -129,6 +129,7 @@ export default function ChangePinForm() {
         <Button
           type="button"
           fullWidth
+          className="h-12 text-base font-semibold uppercase tracking-wide"
           disabled={!isHydrated || isPending || !oldPin || !newPin || !newPinConfirm}
           onClick={handleSubmit}
         >

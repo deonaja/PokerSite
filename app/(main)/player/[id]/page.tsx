@@ -57,6 +57,10 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function initialOf(name: string) {
+  return (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
+}
+
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const { player, results } = await getData(id)
@@ -79,6 +83,12 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         >
           ←
         </Link>
+        <span
+          aria-hidden
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xl font-medium text-foreground"
+        >
+          {initialOf(player.name)}
+        </span>
         <div className="flex-1">
           <p className="text-[0.9375rem] font-medium text-foreground">{player.name}</p>
         </div>

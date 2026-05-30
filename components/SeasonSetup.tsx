@@ -187,6 +187,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
             fullWidth
             disabled={!isHydrated || !step1Valid || isPending}
             onClick={() => setStep(2)}
+            className="h-12 text-base font-semibold uppercase tracking-wide"
           >
             Lanjut →
           </Button>
@@ -225,7 +226,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
             <Button type="button" onClick={() => setStep(1)} disabled={!isHydrated || isPending} className="flex-1">
               ← Kembali
             </Button>
-            <Button type="button" fullWidth disabled={!isHydrated || !step2Valid || isPending} onClick={() => setStep(3)} className="flex-[2]">
+            <Button type="button" fullWidth disabled={!isHydrated || !step2Valid || isPending} onClick={() => setStep(3)} className="flex-[2] h-12 text-base font-semibold uppercase tracking-wide">
               Lanjut →
             </Button>
           </div>
@@ -318,7 +319,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
             <Button type="button" onClick={() => setStep(2)} disabled={!isHydrated || isPending} className="flex-1">
               ← Kembali
             </Button>
-            <Button type="button" fullWidth disabled={!isHydrated || !step3Valid || isPending} onClick={() => setStep(4)} className="flex-[2]">
+            <Button type="button" fullWidth disabled={!isHydrated || !step3Valid || isPending} onClick={() => setStep(4)} className="flex-[2] h-12 text-base font-semibold uppercase tracking-wide">
               Lanjut →
             </Button>
           </div>
@@ -376,7 +377,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
               fullWidth
               disabled={!isHydrated || isPending}
               onClick={handleSubmit}
-              className="flex-[2]"
+              className="flex-[2] h-12 text-base font-semibold uppercase tracking-wide"
             >
               {isPending ? 'Membuat…' : 'Mulai Season'}
             </Button>

@@ -30,6 +30,8 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
+
 function SeasonCard({ season }: { season: Season }) {
   const [open, setOpen] = useState(false)
   const winner = season.results[0]
@@ -85,7 +87,13 @@ function SeasonCard({ season }: { season: Season }) {
                     >
                       #{r.rank}
                     </span>
-                    <span className="flex-1 text-sm text-foreground">{r.player_name}</span>
+                    <span
+                      aria-hidden
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground"
+                    >
+                      {initialOf(r.player_name)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">{r.player_name}</span>
                     <div className="text-right">
                       <span className="block font-mono text-sm text-foreground">
                         {r.final_balance}

@@ -10,6 +10,8 @@ interface Props {
   error?: string
 }
 
+const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
+
 export default function IdentityPicker({ players, error }: Props) {
   const [selectedId, setSelectedId] = useState<string>(players[0]?.id ?? '')
 
@@ -51,11 +53,17 @@ export default function IdentityPicker({ players, error }: Props) {
                   type="button"
                   onClick={() => setSelectedId(p.id)}
                   className={
-                    'min-h-11 w-full rounded-lg border px-4 py-3 text-left text-foreground transition-colors duration-150 ' +
+                    'flex min-h-11 w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors duration-150 ' +
                     (active ? 'border-primary bg-accent' : 'border-border bg-card')
                   }
                 >
-                  {p.name}
+                  <span
+                    aria-hidden
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground"
+                  >
+                    {initialOf(p.name)}
+                  </span>
+                  <span className="truncate text-foreground">{p.name}</span>
                 </button>
               )
             })}
@@ -78,7 +86,7 @@ export default function IdentityPicker({ players, error }: Props) {
 
           {errorMessage && <p className="m-0 text-[0.8125rem] text-destructive">{errorMessage}</p>}
 
-          <Button type="submit" fullWidth disabled={!selectedId}>
+          <Button type="submit" fullWidth disabled={!selectedId} className="h-12 text-base font-semibold uppercase tracking-wide">
             Masuk
           </Button>
         </form>
