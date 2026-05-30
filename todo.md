@@ -150,11 +150,11 @@ Treatment is derived at session start based on phase + cooldown + balance:
 
 ---
 
-## 🚧 M4 — Polish (in progress)
+## 🚧 M4 — Polish (Export CSV + Achievements done; polish open)
 
 - [x] Per-player overall stats (cross-season) — `/player/[id]` (done in M3)
 - [x] **Export CSV** (2026-05-31, merged to main `28e74df`) — admin-only `/admin/export?type=results|log|players|sessions` download endpoint (middleware-gated + re-verifies `admin_key` cookie, 404 otherwise; UTF-8 BOM for Excel). EXPORT CSV section on admin page (4 buttons). `lib/csv.ts` helper. 2 e2e tests. Full suite 73/73.
-- [ ] Achievement system
+- [x] **Achievement system** (2026-05-31, merged to main `31a4822`) — stored (migration 004 `player_achievements`, awarded in `endSeason` from each player's season_results history, idempotent). 6 badges (🏆 Juara, 🥈 Podium, 🎖️ Veteran, 🃏 Raja Bandar, 💰 Sultan, 📈 Musim Untung) in `lib/achievements.ts`; PENCAPAIAN section on `/player/[id]` (earned felt / locked muted). Existing results backfilled (real players legit 0). e2e: z-m3 asserts rank-1 → juara+podium. 73/73.
 - [ ] Additional UX polish (TBD)
 
 ---
