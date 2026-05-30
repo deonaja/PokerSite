@@ -2,8 +2,11 @@ import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
   testDir: './tests',
-  timeout: 30_000,
-  retries: 0,
+  // Heavy season/session tests do many round-trips through the Neon serverless
+  // driver; a cold/throttled free-tier DB can push them past 30s. 60s + one
+  // retry keeps the suite reliable without masking real assertion failures.
+  timeout: 60_000,
+  retries: 1,
   workers: 1, // serial — tests share DB state
   use: {
     baseURL: 'http://localhost:3000',
