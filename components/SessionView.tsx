@@ -7,7 +7,6 @@ import { rebuy, undoRebuy } from '@/lib/actions/session'
 import { usePoll } from '@/lib/usePoll'
 import Sheet from './Sheet'
 import Button from './Button'
-import { Card } from './ui/card'
 import { Badge } from './ui/badge'
 import type { PollParticipant, PollResponse } from '@/lib/types'
 import { getLocalStorageItem } from '@/lib/safeStorage'
@@ -16,9 +15,12 @@ interface Props {
   sessionId: string
   initial: PollResponse
   buyIn?: number
+  currentPlayerId?: string | null
 }
 
-export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) {
+const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
+
+export default function SessionView({ sessionId, initial, buyIn = 100, currentPlayerId = null }: Props) {
   const router = useRouter()
   const { activeSession } = usePoll(initial)
   const participants: PollParticipant[] = activeSession?.participants ?? []
@@ -58,10 +60,7 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
       {/* Sticky header */}
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            className="flex min-h-11 min-w-11 items-center justify-center text-lg text-muted-foreground"
-          >
+          <Link href="/" className="flex min-h-11 min-w-11 items-center justify-center text-lg text-muted-foreground">
             ←
           </Link>
           <span className="text-sm font-medium text-foreground">Sesi aktif</span>
@@ -89,66 +88,77 @@ export default function SessionView({ sessionId, initial, buyIn = 100 }: Props) 
 
       {/* Participants */}
       <div className="flex flex-col gap-3 p-4">
-        {participants.map((p) => (
-          <Card
-            key={p.participant_id}
-            className={
-              (p.is_dealer ? 'border-primary bg-accent ' : '') +
-              (p.no_gaji_dealer ? 'opacity-70 ' : '') +
-              'px-4 py-3.5'
-            }
-          >
-            {/* Name + role badge */}
-            <div className={'flex items-center gap-2' + (p.no_gaji_dealer ? '' : ' mb-1')}>
-              <span className="text-[0.9375rem] font-medium text-foreground">{p.player_name}</span>
-              {p.is_dealer && <Badge>★ DEALER</Badge>}
-              {p.no_gaji_dealer && (
-                <Badge variant="outline" className="border-input text-muted-foreground">
-                  BAGI KARTU
-                </Badge>
+        {participants.map((p) => {
+          const isMe = currentPlayerId != null && p.player_id === currentPlayerId
+          const lowBalance = p.balance < buyIn
+          return (
+            <div
+              key={p.participant_id}
+              className={
+                'rounded-lg border px-4 py-3.5 ' +
+                (p.is_dealer ? 'border-primary bg-accent ' : 'border-border bg-card ') +
+                (p.no_gaji_dealer ? 'opacity-70' : '')
+              }
+            >
+              {/* Avatar + name + role */}
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card font-mono text-sm font-medium text-foreground ' +
+                    (isMe ? 'border-2 border-primary ring-2 ring-primary/40' : 'border border-border')
+                  }
+                >
+                  {initialOf(p.player_name)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium text-foreground">
+                  {p.player_name}
+                </span>
+                {isMe && (
+                  <Badge variant="outline" className="border-primary text-primary">kamu</Badge>
+                )}
+                {p.is_dealer && <Badge>★ DEALER</Badge>}
+                {p.no_gaji_dealer && (
+                  <Badge variant="outline" className="border-input text-muted-foreground">BAGI KARTU</Badge>
+                )}
+              </div>
+
+              {p.no_gaji_dealer ? (
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-xs text-[var(--text-tertiary)]">Bagi kartu, tidak ikut taruhan</span>
+                  <span className="font-mono text-[0.8125rem] text-muted-foreground">Saldo: {p.balance}</span>
+                </div>
+              ) : (
+                <>
+                  {/* Saldo + rebuy count */}
+                  <div className="mt-2 mb-2.5 flex gap-3.5 font-mono text-[0.8125rem] text-muted-foreground">
+                    <span className={lowBalance ? 'text-warn' : 'text-muted-foreground'}>Saldo: {p.balance}</span>
+                    <span>Rebuy: {p.rebuy_count}</span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      disabled={!isHydrated || isPending || lowBalance}
+                      onClick={() => setRebuying(p)}
+                      className="min-h-[38px] flex-1 text-[0.8125rem]"
+                    >
+                      {lowBalance ? 'Saldo kurang' : 'Rebuy'}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={!isHydrated || isPending || p.rebuy_count === 0}
+                      onClick={() => handleUndo(p)}
+                      className="min-h-[38px] flex-1 text-[0.8125rem]"
+                    >
+                      Undo
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
-
-            {p.no_gaji_dealer ? (
-              <>
-                <p className="mb-1 text-xs text-[var(--text-tertiary)]">
-                  Bagi kartu, tidak ikut taruhan
-                </p>
-                <p className="font-mono text-[0.8125rem] text-muted-foreground">Saldo: {p.balance}</p>
-              </>
-            ) : (
-              <>
-                {/* Saldo + Rebuy count */}
-                <div className="mb-2.5 flex gap-3.5 font-mono text-[0.8125rem] text-muted-foreground">
-                  <span className={p.balance < buyIn ? 'text-warn' : 'text-muted-foreground'}>
-                    Saldo: {p.balance}
-                  </span>
-                  <span>Rebuy: {p.rebuy_count}</span>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    disabled={!isHydrated || isPending || p.balance < buyIn}
-                    onClick={() => setRebuying(p)}
-                    className="min-h-[38px] flex-1 text-[0.8125rem]"
-                  >
-                    {p.balance < buyIn ? 'Saldo kurang' : 'Rebuy'}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={!isHydrated || isPending || p.rebuy_count === 0}
-                    onClick={() => handleUndo(p)}
-                    className="min-h-[38px] flex-1 text-[0.8125rem]"
-                  >
-                    Undo
-                  </Button>
-                </div>
-              </>
-            )}
-          </Card>
-        ))}
+          )
+        })}
       </div>
 
       {/* Rebuy confirmation sheet */}

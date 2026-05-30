@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
+import { getAuthenticatedPlayer } from '@/lib/auth-server'
 import SessionView from '@/components/SessionView'
 import type { Player, PollParticipant, PollResponse } from '@/lib/types'
 
@@ -47,8 +48,15 @@ async function getSessionInitial(): Promise<{ sessionId: string; buyIn: number; 
 }
 
 export default async function SessionPage() {
-  const data = await getSessionInitial()
+  const [data, authPlayer] = await Promise.all([getSessionInitial(), getAuthenticatedPlayer()])
   if (!data) redirect('/')
 
-  return <SessionView sessionId={data.sessionId} initial={data.initial} buyIn={data.buyIn} />
+  return (
+    <SessionView
+      sessionId={data.sessionId}
+      initial={data.initial}
+      buyIn={data.buyIn}
+      currentPlayerId={authPlayer?.id ?? null}
+    />
+  )
 }
