@@ -1,4 +1,5 @@
 import { sql } from '@/lib/db'
+import { getAuthenticatedPlayer } from '@/lib/auth-server'
 import type { Player, Season, PollParticipant, PollResponse } from '@/lib/types'
 import DashboardClient from '@/components/DashboardClient'
 
@@ -37,6 +38,9 @@ async function getDashboardData(): Promise<{ initial: PollResponse; season: Seas
 }
 
 export default async function DashboardPage() {
-  const { initial, season } = await getDashboardData()
-  return <DashboardClient initial={initial} season={season} />
+  const [{ initial, season }, authPlayer] = await Promise.all([
+    getDashboardData(),
+    getAuthenticatedPlayer(),
+  ])
+  return <DashboardClient initial={initial} season={season} currentPlayerId={authPlayer?.id ?? null} />
 }

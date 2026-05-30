@@ -48,3 +48,6 @@ yarn-error.log*
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# local UI review screenshots
+shot-*.png
