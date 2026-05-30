@@ -150,11 +150,11 @@ Treatment is derived at session start based on phase + cooldown + balance:
 
 ---
 
-## ❌ M4 — Polish (0%)
+## 🚧 M4 — Polish (in progress)
 
 - [x] Per-player overall stats (cross-season) — `/player/[id]` (done in M3)
+- [x] **Export CSV** (2026-05-31, merged to main `28e74df`) — admin-only `/admin/export?type=results|log|players|sessions` download endpoint (middleware-gated + re-verifies `admin_key` cookie, 404 otherwise; UTF-8 BOM for Excel). EXPORT CSV section on admin page (4 buttons). `lib/csv.ts` helper. 2 e2e tests. Full suite 73/73.
 - [ ] Achievement system
-- [ ] Export CSV (sessions, results, logs)
 - [ ] Additional UX polish (TBD)
 
 ---
