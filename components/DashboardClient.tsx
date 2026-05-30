@@ -19,9 +19,10 @@ export default function DashboardClient({ initial, season }: Props) {
 
   return (
     <div className="pb-24">
-      {/* Season strip — its own zone, divided from the standings below */}
+      {/* Season strip — its own zone: a subtle felt "band" sets it apart from
+          the standings below (flat tint, not a gradient). */}
       {season && (
-        <div className="border-b border-border px-4 pb-4 pt-5">
+        <div className="bg-[color-mix(in_srgb,var(--accent-felt)_12%,var(--bg-base))] px-4 pb-4 pt-5">
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-2">
               <span className="text-base font-medium text-foreground">Season {season.number}</span>
