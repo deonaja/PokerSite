@@ -42,35 +42,43 @@ export default function DashboardClient({ initial, season }: Props) {
         </div>
       )}
 
-      {/* Player standings — ranked by balance */}
+      {/* Player standings — ranked by balance, flat aligned columns (no box) */}
       <div className="px-4 pt-4">
-        <div className="mb-2 flex items-baseline justify-between">
+        <div className="grid grid-cols-[1.25rem_1fr_auto] items-baseline gap-3 px-1 pb-1">
+          <span />
           <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">PEMAIN</p>
-          <span className="text-[0.625rem] uppercase tracking-wider text-[var(--text-tertiary)]">saldo</span>
+          <span className="text-right text-[0.625rem] uppercase tracking-wider text-[var(--text-tertiary)]">
+            saldo
+          </span>
         </div>
 
         {ranked.length === 0 ? (
-          <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
+          <p className="px-1 text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
         ) : (
-          <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+          <div>
             {ranked.map((p, i) => {
               const lowBalance = season != null && p.balance < season.buy_in
               return (
                 <Link
                   key={p.id}
                   href={`/player/${p.id}`}
-                  className="flex min-h-11 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--bg-elevated)]"
+                  className="grid grid-cols-[1.25rem_1fr_auto] items-center gap-3 border-b border-border px-1 py-3 transition-colors last:border-0 hover:bg-[var(--bg-elevated)]"
                 >
-                  <span className="w-5 shrink-0 text-right font-mono text-xs tabular-nums text-[var(--text-tertiary)]">
+                  <span className="text-right font-mono text-xs tabular-nums text-[var(--text-tertiary)]">
                     {i + 1}
                   </span>
-                  <span className="flex-1 truncate text-sm text-foreground">{p.name}</span>
-                  {lowBalance && (
-                    <span className="text-warn" aria-label="saldo di bawah buy-in" title="saldo di bawah buy-in">
-                      ⚠
-                    </span>
-                  )}
-                  <BalanceDisplay balance={p.balance} className={lowBalance ? 'text-warn' : undefined} />
+                  <span className="truncate text-sm text-foreground">{p.name}</span>
+                  <span className="flex items-center justify-end gap-1.5">
+                    {lowBalance && (
+                      <span className="text-warn" aria-label="saldo di bawah buy-in" title="saldo di bawah buy-in">
+                        ⚠
+                      </span>
+                    )}
+                    <BalanceDisplay
+                      balance={p.balance}
+                      className={'min-w-[3.5rem] text-right' + (lowBalance ? ' text-warn' : '')}
+                    />
+                  </span>
                 </Link>
               )
             })}
