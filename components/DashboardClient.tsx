@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePoll } from '@/lib/usePoll'
 import Button from './Button'
 import BalanceDisplay from './BalanceDisplay'
-import type { PollResponse, Season } from '@/lib/types'
+import type { Player, PollResponse, Season } from '@/lib/types'
 
 interface Props {
   initial: PollResponse
@@ -12,89 +12,75 @@ interface Props {
   currentPlayerId: string | null
 }
 
+const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
+
 export default function DashboardClient({ initial, season, currentPlayerId }: Props) {
   const { players, activeSession } = usePoll(initial)
-
   // Standings: ranked by balance (desc). Copy first — never mutate poll state.
   const ranked = [...players].sort((a, b) => b.balance - a.balance)
-  const me = players.find((p) => p.id === currentPlayerId) ?? null
-  const myRank = me ? ranked.findIndex((p) => p.id === me.id) + 1 : null
-  const myDelta = me && season ? me.balance - season.starting_balance : null
+  const top3 = ranked.slice(0, 3)
+  const rest = ranked.slice(3)
+
+  // One podium column. Rank 1 is tallest/centre; current player gets a felt ring.
+  function PodiumCol({ player, rank }: { player: Player; rank: number }) {
+    const isMe = player.id === currentPlayerId
+    const blockH = rank === 1 ? 'h-20' : rank === 2 ? 'h-14' : 'h-10'
+    const blockBg = rank === 1 ? 'bg-primary' : 'bg-accent'
+    const avatarSize = rank === 1 ? 'h-12 w-12 text-base' : 'h-10 w-10 text-sm'
+    return (
+      <Link href={`/player/${player.id}`} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1.5">
+        <span
+          className={
+            'flex shrink-0 items-center justify-center rounded-full bg-card font-mono font-medium text-foreground ' +
+            avatarSize +
+            (isMe ? ' border-2 border-primary ring-2 ring-primary/40' : ' border border-border')
+          }
+        >
+          {initialOf(player.name)}
+        </span>
+        <span className="max-w-full truncate px-1 text-xs text-foreground">{player.name}</span>
+        <BalanceDisplay balance={player.balance} className="text-xs" />
+        <div className={'flex w-full items-start justify-center rounded-t-md pt-1.5 ' + blockH + ' ' + blockBg}>
+          <span className={'font-mono text-lg font-semibold ' + (rank === 1 ? 'text-warn' : 'text-foreground')}>
+            {rank}
+          </span>
+        </div>
+      </Link>
+    )
+  }
 
   return (
     <div className="pb-24">
-      {/* Hero — the logged-in player's own stack */}
-      {me && (
-        <section className="px-4 pt-7">
-          <p className="text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
-            Saldo kamu
-          </p>
-          <div className="mt-1 flex items-end gap-3">
-            <span className="font-mono text-[2.75rem] font-medium leading-none tabular-nums text-foreground">
-              {me.balance}
-            </span>
-            {myDelta !== null && myDelta !== 0 && (
-              <span
-                className={
-                  'mb-1 font-mono text-sm tabular-nums ' +
-                  (myDelta > 0 ? 'text-success' : 'text-destructive')
-                }
-              >
-                {myDelta > 0 ? '▲ +' : '▼ '}
-                {myDelta}
-              </span>
-            )}
-          </div>
-          <div className="mt-2.5 space-y-0.5 text-xs text-muted-foreground">
-            {myRank && (
-              <p>
-                peringkat <span className="font-mono text-foreground">#{myRank}</span> dari {players.length}
-              </p>
-            )}
-            {season && (
-              <p>
-                Season {season.number}{' · '}
-                <span className="text-primary">
-                  {season.current_phase === 'steady' ? 'STEADY' : 'BOOTSTRAP'}
-                </span>
-              </p>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Active session callout */}
-      {activeSession && (
-        <div className="px-4 pt-5">
-          <Link
-            href="/session"
-            className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-primary bg-accent px-4 py-3 transition-colors hover:bg-[var(--bg-elevated)]"
-          >
-            <span className="text-sm text-foreground">Sesi sedang berjalan</span>
-            <span className="text-xs text-[var(--text-tertiary)]">tap untuk lanjut →</span>
+      {/* Season context line */}
+      {season && (
+        <div className="flex items-center justify-between gap-3 px-4 pt-4 text-xs text-[var(--text-tertiary)]">
+          <span className="truncate">
+            Season {season.number}{' · '}
+            <span className="text-primary">{season.current_phase === 'steady' ? 'STEADY' : 'BOOTSTRAP'}</span>
+          </span>
+          <Link href="/season/history" className="shrink-0 transition-colors hover:text-muted-foreground">
+            Riwayat musim →
           </Link>
         </div>
       )}
 
-      {/* Standings */}
-      <section className="px-4 pt-7">
-        <div className="mb-2 flex items-baseline justify-between">
-          <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">KLASEMEN</p>
-          {season && (
-            <Link
-              href="/season/history"
-              className="text-xs text-[var(--text-tertiary)] transition-colors hover:text-muted-foreground"
-            >
-              Riwayat musim →
-            </Link>
-          )}
+      {/* Podium — top 3 (visual order: #2, #1, #3) */}
+      {top3.length > 0 && (
+        <div className="flex items-end justify-center gap-2 px-4 pt-6">
+          {top3[1] && <PodiumCol player={top3[1]} rank={2} />}
+          {top3[0] && <PodiumCol player={top3[0]} rank={1} />}
+          {top3[2] && <PodiumCol player={top3[2]} rank={3} />}
         </div>
+      )}
 
-        {ranked.length === 0 ? (
-          <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
-        ) : (
+      {/* The rest of the standings */}
+      {rest.length > 0 && (
+        <div className="px-4 pt-7">
+          <p className="mb-2 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">
+            PERINGKAT LAINNYA
+          </p>
           <div>
-            {ranked.map((p, i) => {
+            {rest.map((p, i) => {
               const lowBalance = season != null && p.balance < season.buy_in
               const isMe = p.id === currentPlayerId
               return (
@@ -107,7 +93,7 @@ export default function DashboardClient({ initial, season, currentPlayerId }: Pr
                   }
                 >
                   <span className="w-6 shrink-0 text-right font-mono text-xs tabular-nums text-[var(--text-tertiary)]">
-                    {i + 1}
+                    {i + 4}
                   </span>
                   <span className="flex min-w-0 flex-1 items-center gap-2">
                     <span className={'truncate text-sm ' + (isMe ? 'font-medium text-foreground' : 'text-foreground')}>
@@ -134,8 +120,25 @@ export default function DashboardClient({ initial, season, currentPlayerId }: Pr
               )
             })}
           </div>
-        )}
-      </section>
+        </div>
+      )}
+
+      {players.length === 0 && (
+        <p className="px-4 pt-6 text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
+      )}
+
+      {/* Active session callout */}
+      {activeSession && (
+        <div className="px-4 pt-6">
+          <Link
+            href="/session"
+            className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-primary bg-accent px-4 py-3 transition-colors hover:bg-[var(--bg-elevated)]"
+          >
+            <span className="text-sm text-foreground">Sesi sedang berjalan</span>
+            <span className="text-xs text-[var(--text-tertiary)]">tap untuk lanjut →</span>
+          </Link>
+        </div>
+      )}
 
       {/* Sticky CTA */}
       <div className="fixed bottom-0 left-1/2 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
