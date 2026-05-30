@@ -212,6 +212,14 @@ test.describe('M3: season end, leaderboard, history', () => {
       expect(aliceRes.rank).toBeLessThan(charlieRes.rank)
       expect(charlieRes.rank).toBeLessThan(bobRes.rank)
 
+      // M4: endSeason awards achievements. Alice finished #1 → juara + podium.
+      const aliceAch = await db()`
+        SELECT achievement_key FROM player_achievements WHERE player_id = ${alice.id}
+      ` as { achievement_key: string }[]
+      const aliceKeys = aliceAch.map((a) => a.achievement_key)
+      expect(aliceKeys).toContain('juara')
+      expect(aliceKeys).toContain('podium')
+
       const balancesAfterReset = await db()`
         SELECT id, balance
         FROM players
