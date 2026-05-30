@@ -134,6 +134,27 @@ export default async function AdminPage({
       {/* Debug */}
       <DebugSection />
 
+      {/* Export */}
+      <section className="flex flex-col gap-2.5">
+        <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">EXPORT CSV</p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { type: 'results', label: 'Hasil musim' },
+            { type: 'log', label: 'Edit log' },
+            { type: 'players', label: 'Pemain' },
+            { type: 'sessions', label: 'Sesi' },
+          ].map((x) => (
+            <a
+              key={x.type}
+              href={`/admin/export?type=${x.type}`}
+              className="rounded-md border border-input bg-[var(--bg-elevated)] px-3 py-2 text-[0.8125rem] text-foreground no-underline transition-colors hover:bg-secondary"
+            >
+              ↓ {x.label}
+            </a>
+          ))}
+        </div>
+      </section>
+
       {/* Logs */}
       <section className="flex flex-col gap-2.5">
         <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">LOG</p>

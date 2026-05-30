@@ -153,3 +153,34 @@ test.describe('Admin - force end session', () => {
     }
   })
 })
+
+test.describe('Admin - CSV export', () => {
+  test('each dataset downloads a CSV with a header row (admin cookie required)', async ({ page }) => {
+    const { adminKey } = getTestData()
+    // Set the admin_key cookie via the normal entry point.
+    await page.goto(adminUrl(adminKey))
+    await expect(page.getByRole('heading', { name: 'Admin' })).toBeVisible()
+
+    const expected: Record<string, string> = {
+      players: 'Nama,Saldo',
+      results: 'Musim,Pemain,Rank',
+      sessions: 'Musim,Dealer,Status',
+      log: 'Waktu,Action,Pemain',
+    }
+    for (const [type, header] of Object.entries(expected)) {
+      const res = await page.request.get(`/admin/export?type=${type}`)
+      expect(res.status(), `export ${type}`).toBe(200)
+      expect(res.headers()['content-type']).toContain('text/csv')
+      const body = await res.text()
+      // Strip the UTF-8 BOM before checking the header row.
+      expect(body.replace(/^﻿/, '')).toContain(header)
+    }
+  })
+
+  test('export endpoint 404s without the admin cookie', async ({ browser }) => {
+    const ctx = await browser.newContext() // no admin_key cookie
+    const res = await ctx.request.get('/admin/export?type=players')
+    expect(res.status()).toBe(404)
+    await ctx.close()
+  })
+})
