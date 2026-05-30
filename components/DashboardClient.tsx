@@ -19,9 +19,9 @@ export default function DashboardClient({ initial, season }: Props) {
 
   return (
     <div className="pb-24">
-      {/* Season strip — airy header, not a dense card */}
+      {/* Season strip — its own zone, divided from the standings below */}
       {season && (
-        <div className="px-4 pt-5">
+        <div className="border-b border-border px-4 pb-4 pt-5">
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-2">
               <span className="text-base font-medium text-foreground">Season {season.number}</span>
@@ -43,7 +43,7 @@ export default function DashboardClient({ initial, season }: Props) {
       )}
 
       {/* Player standings — ranked by balance, flat aligned columns (no box) */}
-      <div className="px-4 pt-4">
+      <div className="px-4 pt-5">
         <div className="grid grid-cols-[1.25rem_1fr_auto] items-baseline gap-3 px-1 pb-1">
           <span />
           <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">PEMAIN</p>
