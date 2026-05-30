@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { usePoll } from '@/lib/usePoll'
-import PlayerCard from './PlayerCard'
 import Button from './Button'
+import BalanceDisplay from './BalanceDisplay'
 import { Badge } from './ui/badge'
 import type { PollResponse, Season } from '@/lib/types'
 
@@ -14,6 +14,8 @@ interface Props {
 
 export default function DashboardClient({ initial, season }: Props) {
   const { players, activeSession } = usePoll(initial)
+  // Standings: ranked by balance (desc). Copy first — never mutate poll state.
+  const ranked = [...players].sort((a, b) => b.balance - a.balance)
 
   return (
     <div className="pb-24">
@@ -40,19 +42,38 @@ export default function DashboardClient({ initial, season }: Props) {
         </div>
       )}
 
-      {/* Player list */}
+      {/* Player standings — ranked by balance */}
       <div className="px-4 pt-4">
-        <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">
-          PEMAIN
-        </p>
+        <div className="mb-2 flex items-baseline justify-between">
+          <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">PEMAIN</p>
+          <span className="text-[0.625rem] uppercase tracking-wider text-[var(--text-tertiary)]">saldo</span>
+        </div>
 
-        {players.length === 0 ? (
+        {ranked.length === 0 ? (
           <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
         ) : (
-          <div className="flex flex-col gap-2">
-            {players.map((p) => (
-              <PlayerCard key={p.id} player={p} buyIn={season?.buy_in} />
-            ))}
+          <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
+            {ranked.map((p, i) => {
+              const lowBalance = season != null && p.balance < season.buy_in
+              return (
+                <Link
+                  key={p.id}
+                  href={`/player/${p.id}`}
+                  className="flex min-h-11 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--bg-elevated)]"
+                >
+                  <span className="w-5 shrink-0 text-right font-mono text-xs tabular-nums text-[var(--text-tertiary)]">
+                    {i + 1}
+                  </span>
+                  <span className="flex-1 truncate text-sm text-foreground">{p.name}</span>
+                  {lowBalance && (
+                    <span className="text-warn" aria-label="saldo di bawah buy-in" title="saldo di bawah buy-in">
+                      ⚠
+                    </span>
+                  )}
+                  <BalanceDisplay balance={p.balance} className={lowBalance ? 'text-warn' : undefined} />
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>
