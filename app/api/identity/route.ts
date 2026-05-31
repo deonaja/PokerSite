@@ -16,6 +16,11 @@ function makeUrl(request: NextRequest, pathname: string) {
 const MAX_ATTEMPTS = 5
 const LOCK_MINUTES = 15
 
+// players.id is a UUID column — a non-UUID playerId makes Postgres throw 22P02.
+// Reject the shape up front (treated like an unknown player) so a malformed
+// request can't surface as a 500.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function POST(request: NextRequest) {
   const formData = await request.formData()
   const playerId = (formData.get('playerId') as string | null)?.trim() ?? ''
@@ -23,6 +28,9 @@ export async function POST(request: NextRequest) {
 
   if (!playerId || !pin) {
     return NextResponse.redirect(makeUrl(request, '/identity?error=missing'), { status: 303 })
+  }
+  if (!UUID_RE.test(playerId)) {
+    return NextResponse.redirect(makeUrl(request, '/identity?error=invalid'), { status: 303 })
   }
 
   const client = createDbClient()
@@ -101,6 +109,10 @@ export async function POST(request: NextRequest) {
     // old non-httpOnly playerId/playerName cookies were never read anywhere, so
     // we don't set them. Logout still clears any left in existing browsers.
     return response
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {})
+    console.error('identity login error:', e)
+    return NextResponse.redirect(makeUrl(request, '/identity?error=invalid'), { status: 303 })
   } finally {
     await client.end()
   }
