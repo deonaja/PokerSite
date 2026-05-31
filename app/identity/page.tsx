@@ -1,3 +1,8 @@
+// Reads live DB state (active season + player list) on every request — must never
+// be statically prerendered, or the build-time empty DB bakes a permanent
+// redirect to /season/new (redirect fires before searchParams is awaited).
+export const dynamic = 'force-dynamic'
+
 import { redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
 import type { Player } from '@/lib/types'
