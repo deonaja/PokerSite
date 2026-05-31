@@ -16,7 +16,8 @@ async function migrate() {
     .filter((file) => file.endsWith('.sql'))
     .sort()
 
-  const client = createClient({ connectionString })
+  // createClient() needs a DIRECT (non-pooled) connection; strip Neon's "-pooler".
+  const client = createClient({ connectionString: connectionString!.replace('-pooler.', '.') })
   await client.connect()
 
   try {
