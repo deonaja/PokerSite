@@ -7,6 +7,12 @@ function makeUrl(request: NextRequest, pathname: string) {
   return new URL(pathname, `http://${host}`)
 }
 
+// PIN brute-force throttle (per player). 4-digit PINs + public playerIds make
+// the login endpoint trivially fuzzable without this; here, MAX_ATTEMPTS
+// consecutive failures lock the player for LOCK_MINUTES. Reset on success.
+const MAX_ATTEMPTS = 5
+const LOCK_MINUTES = 15
+
 export async function POST(request: NextRequest) {
   const formData = await request.formData()
   const playerId = (formData.get('playerId') as string | null)?.trim() ?? ''
@@ -19,19 +25,57 @@ export async function POST(request: NextRequest) {
   const client = createDbClient()
   await client.connect()
   try {
-    const { rows: [player] } = await client.query<{ id: string; name: string; pin_hash: string | null }>(
-      `SELECT id, name, pin_hash FROM players WHERE id = $1 LIMIT 1`,
+    await client.query('BEGIN')
+
+    const { rows: [player] } = await client.query<{
+      id: string
+      name: string
+      pin_hash: string | null
+      failed_attempts: number
+      is_locked: boolean
+    }>(
+      `SELECT id, name, pin_hash, failed_attempts,
+              (locked_until IS NOT NULL AND locked_until > now()) AS is_locked
+       FROM players WHERE id = $1 FOR UPDATE`,
       [playerId]
     )
 
     if (!player) {
+      await client.query('ROLLBACK')
       return NextResponse.redirect(makeUrl(request, '/identity?error=invalid'), { status: 303 })
+    }
+
+    // Locked: reject without even checking the PIN (don't extend the window).
+    if (player.is_locked) {
+      await client.query('ROLLBACK')
+      return NextResponse.redirect(makeUrl(request, '/identity?error=locked'), { status: 303 })
     }
 
     const pinOk = await verifyPin(pin, player.pin_hash)
     if (!pinOk) {
-      return NextResponse.redirect(makeUrl(request, '/identity?error=invalid'), { status: 303 })
+      // On the Nth failure, lock and reset the counter to 0 — so each post-lock
+      // window grants a fresh MAX_ATTEMPTS, capping the brute-force rate.
+      const nextAttempts = player.failed_attempts + 1
+      const justLocked = nextAttempts >= MAX_ATTEMPTS
+      await client.query(
+        `UPDATE players
+         SET failed_attempts = $1,
+             locked_until = CASE WHEN $2 THEN now() + ($3 || ' minutes')::interval ELSE NULL END
+         WHERE id = $4`,
+        [justLocked ? 0 : nextAttempts, justLocked, String(LOCK_MINUTES), player.id]
+      )
+      await client.query('COMMIT')
+      return NextResponse.redirect(
+        makeUrl(request, justLocked ? '/identity?error=locked' : '/identity?error=invalid'),
+        { status: 303 }
+      )
     }
+
+    // Success: clear any failure state, then mint the session.
+    await client.query(
+      `UPDATE players SET failed_attempts = 0, locked_until = NULL WHERE id = $1`,
+      [player.id]
+    )
 
     const token = generateSessionToken()
     const tokenHash = hashSessionToken(token)
@@ -40,6 +84,7 @@ export async function POST(request: NextRequest) {
        VALUES ($1, $2, now() + interval '7 days')`,
       [player.id, tokenHash]
     )
+    await client.query('COMMIT')
 
     const response = NextResponse.redirect(makeUrl(request, '/'), { status: 303 })
     response.cookies.set('auth_session', token, {

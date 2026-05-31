@@ -23,6 +23,7 @@ export default function IdentityPicker({ players, error }: Props) {
   const errorMessage =
     error === 'invalid' ? 'PIN salah.' :
     error === 'missing' ? 'Pilih pemain dan masukkan PIN.' :
+    error === 'locked' ? 'Terlalu banyak percobaan. Coba lagi dalam 15 menit.' :
     null
 
   return (

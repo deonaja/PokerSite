@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { neon } from '@neondatabase/serverless'
 import { getTestData, setIdentity, clearIdentity } from './helpers'
 
 test.describe('Identity flow', () => {
@@ -84,5 +85,27 @@ test.describe('Identity flow', () => {
     // Should stay on /identity — user is allowed to change identity
     await expect(page).toHaveURL(/\/identity/)
     await expect(page.getByText(alice.name)).toBeVisible()
+  })
+
+  test('locks login after repeated wrong PINs (brute-force throttle)', async ({ page }) => {
+    // 5 consecutive wrong PINs lock the player; the 5th already returns error=locked.
+    for (let i = 0; i < 5; i++) {
+      const res = await page.request.post('/api/identity', {
+        form: { playerId: alice.id, pin: '9999' },
+        maxRedirects: 0,
+      })
+      expect(res.status()).toBe(303)
+    }
+    // Now locked: even the CORRECT PIN is refused with error=locked.
+    const locked = await page.request.post('/api/identity', {
+      form: { playerId: alice.id, pin: '1234' },
+      maxRedirects: 0,
+    })
+    expect(locked.status()).toBe(303)
+    expect(locked.headers()['location']).toContain('error=locked')
+
+    // Unlock so the seeded player stays reusable within the run.
+    const sql = neon(process.env.DATABASE_URL!)
+    await sql`UPDATE players SET failed_attempts = 0, locked_until = NULL WHERE id = ${alice.id}`
   })
 })
