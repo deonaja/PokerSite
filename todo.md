@@ -1,6 +1,22 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-05-29 (UI redesign — shadcn foundation)
+Last updated: 2026-05-31 (Vercel production deploy)
+
+## 🚀 Deployment (Vercel) — 2026-05-31
+
+- [x] **Deployed to Vercel** — project `poker-site` (team "Deon's projects", Hobby), GitHub `deonaja/PokerSite` `main` → auto-deploy on push. Dashboard import + Next.js preset.
+- [x] **Prod DB = NEW Neon** via Vercel Storage integration (`neon-champagne-umbrella`, region `sin1` Singapore, free tier). Host `ep-proud-sound-ao8lys8z`. Distinct from old dev/test DB (`ep-bold-glitter`). Integration auto-injected `DATABASE_URL` + `POSTGRES_URL` (+ PG*/UNPOOLED variants). Migrated fresh: 9 tables, `one_active_session` index verified, 0 players.
+- [x] `ADMIN_KEY` env var set in Vercel (Production) — confirmed working via smoke test (`/admin?key=correct` → 307+cookie, wrong key → 404).
+- [x] **LIVE** at `pokeraja.vercel.app` (verified opens in browser 2026-05-31).
+- [x] **Fix A — pooled connection (commit `f142fd4`):** Neon integration injects a *pooled* `DATABASE_URL` (`-pooler` host), but `@vercel/postgres` `createClient()` only accepts a *direct* connection → broke transactions + migrate in prod. `lib/db.ts` + `db/migrate.ts` now strip `-pooler` for the transactional client (no-op for already-direct local string). Build green.
+- [x] **Fix B — git commit email:** first push was blocked by Vercel ("commit email `you@example.com` could not be matched to a GitHub account"). Repo git `user.email` was the placeholder. Set repo-local `user.email = deonpwa@gmail.com`, amended + force-pushed → unblocked. (Future commits in this repo now use the matched email.)
+- [x] **Fix C — redirect loop after season creation (commit `0e9bcf4`):** prod-only bug. `app/identity/page.tsx` called `redirect('/season/new')` *before* awaiting `searchParams`, so with the empty build-time DB Next prerendered `/identity` as a **static permanent redirect to /season/new** (`○ (Static)` in build output). Once a season existed this baked redirect drove a loop `/identity → /season/new → / → /identity`. Fixed with `export const dynamic = 'force-dynamic'`. Never seen in dev/tests (dev doesn't prerender). Lesson: any page doing a live-DB-state redirect must be force-dynamic, else build-time DB state gets baked in.
+- [x] **Reverted `.env.local` `DATABASE_URL` back to the dev DB** (`ep-bold-glitter`) after deploy — local `pnpm dev`/`pnpm test` no longer touch prod.
+- [x] **Smoke tested prod** — `scripts/smoke-prod.mjs` (`pnpm smoke <url> <key>`, commit `33d9a85`): read-only HTTP checks, 8/8 pass (`/api/poll` 200+shape, `/identity` 200 [loop fixed], `/` 307→/identity, admin 404-vs-auth, security headers). Plus manual: login + 1 full session OK on prod.
+- [x] **Deployment fully verified & live.** Run `pnpm smoke` after each deploy as a sanity check. (Do NOT point the Playwright suite at prod — it seeds `[T…]` players + mutates data; keep heavy tests on the dev DB.)
+- [x] **Renamed project → `pokeraja`** (free `.vercel.app` rename). Prod URL is now `pokeraja.vercel.app`; the old `poker-site-kappa.vercel.app` is dead (`DEPLOYMENT_NOT_FOUND`). Same project/DB/env — only the domain changed.
+- [x] **Abuse hardening — `/api/poll` CDN cache (commit `ccc8b2c`):** was `no-store`; now `public, s-maxage=1, stale-while-revalidate=4`. Payload is global (no per-user data) so a shared edge cache is safe. Verified live: 1st req `X-Vercel-Cache: MISS`, 2nd `HIT` → repeated/abusive polls served from Vercel edge, sparing function-invocation quota + Neon. For active attacks, use Vercel **Firewall → Attack Challenge Mode** (free toggle) + block-by-IP rules.
+- [ ] (Optional, deferred) PIN brute-force throttle on `/api/identity` — no rate limit today; 4-digit PIN + public playerIds. Low severity for a trusted home group; revisit if going wider. Options: DB-based lockout (no new dep) or Vercel Firewall rate rules.
 
 ## 🎨 UI redesign (branch `redesign/shadcn`)
 
