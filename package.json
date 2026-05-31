@@ -10,7 +10,8 @@
     "db:migrate": "node --env-file=.env.local --import=tsx/esm db/migrate.ts",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
-    "test:headed": "playwright test --headed"
+    "test:headed": "playwright test --headed",
+    "smoke": "node scripts/smoke-prod.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
