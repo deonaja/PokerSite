@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
-import { getAuthenticatedPlayerId } from '@/lib/auth-server'
+import { getAuthenticatedPlayerId, isAdmin } from '@/lib/auth-server'
 
 export async function rebuy({
   sessionId,
@@ -14,6 +14,7 @@ export async function rebuy({
   actorPlayerId: string
 }): Promise<{ success: true } | { error: string }> {
   const actorPlayerId = await getAuthenticatedPlayerId()
+  if (!actorPlayerId) return { error: 'Belum login' }
   const client = createDbClient()
   await client.connect()
   try {
@@ -84,6 +85,7 @@ export async function undoRebuy({
   actorPlayerId: string
 }): Promise<{ success: true } | { error: string }> {
   const actorPlayerId = await getAuthenticatedPlayerId()
+  if (!actorPlayerId) return { error: 'Belum login' }
   const client = createDbClient()
   await client.connect()
   try {
@@ -161,6 +163,8 @@ export async function forceEndSession({
   sessionId: string
   actorPlayerId: string
 }): Promise<{ success: true } | { error: string }> {
+  // Admin-only — surfaced in the admin panel (logs as admin_session_force_end).
+  if (!(await isAdmin())) return { error: 'Unauthorized' }
   const actorPlayerId = await getAuthenticatedPlayerId()
   const client = createDbClient()
   await client.connect()
@@ -204,6 +208,7 @@ export async function endSession({
   }
 
   const actorPlayerId = await getAuthenticatedPlayerId()
+  if (!actorPlayerId) return { error: 'Belum login' }
   const client = createDbClient()
   await client.connect()
   try {
@@ -330,6 +335,7 @@ export async function startSession({
   if (!playerIds.includes(dealerId)) return { error: 'Dealer harus salah satu pemain' }
 
   const actorPlayerId = await getAuthenticatedPlayerId()
+  if (!actorPlayerId) return { error: 'Belum login' }
   const client = createDbClient()
   await client.connect()
 

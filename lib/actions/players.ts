@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
-import { getAuthenticatedPlayerId } from '@/lib/auth-server'
+import { getAuthenticatedPlayerId, isAdmin } from '@/lib/auth-server'
 import { hashPin, isValidPin, verifyPin } from '@/lib/auth'
 
 export async function changePin({
@@ -66,6 +66,7 @@ export async function addPlayer({
   pinConfirm: string
   actorPlayerId: string
 }): Promise<{ success: true; playerId: string } | { error: string }> {
+  if (!(await isAdmin())) return { error: 'Unauthorized' }
   const trimmed = name.trim()
   if (!trimmed) return { error: 'Nama tidak boleh kosong' }
   if (trimmed.length > 50) return { error: 'Nama maksimal 50 karakter' }
@@ -112,6 +113,7 @@ export async function editBalance({
   reason: string
   actorPlayerId: string
 }): Promise<{ success: true } | { error: string }> {
+  if (!(await isAdmin())) return { error: 'Unauthorized' }
   if (!reason.trim()) return { error: 'Alasan wajib diisi' }
   if (reason.trim().length > 200) return { error: 'Alasan maksimal 200 karakter' }
   if (!Number.isInteger(newBalance) || newBalance < 0 || newBalance > 100_000) return { error: 'Balance tidak valid (0-100000)' }
@@ -161,6 +163,7 @@ export async function resetPlayerPin({
   reason: string
   actorPlayerId: string
 }): Promise<{ success: true } | { error: string }> {
+  if (!(await isAdmin())) return { error: 'Unauthorized' }
   if (!reason.trim()) return { error: 'Alasan reset PIN wajib diisi' }
   if (reason.trim().length > 200) return { error: 'Alasan maksimal 200 karakter' }
   if (!isValidPin(pin)) return { error: 'PIN harus 4-6 digit angka' }

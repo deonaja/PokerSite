@@ -1,21 +1,11 @@
 'use server'
 
-import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { sql, createDbClient } from '@/lib/db'
+import { isAdmin } from '@/lib/auth-server'
 import { endSeason } from '@/lib/actions/season'
 
 type Result = { success: true; message: string } | { error: string }
-
-// Debug actions are destructive, so re-verify the admin key cookie (set by the
-// proxy after a valid ?key=). The /admin page being gated isn't enough on its own
-// since server actions are independently invocable.
-async function isAdmin(): Promise<boolean> {
-  const adminKey = process.env.ADMIN_KEY
-  if (!adminKey) return false
-  const store = await cookies()
-  return store.get('admin_key')?.value === adminKey
-}
 
 function revalidateAll() {
   revalidatePath('/')

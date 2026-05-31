@@ -38,3 +38,16 @@ export async function getAuthenticatedPlayerId(): Promise<string | null> {
   const player = await getAuthenticatedPlayer()
   return player?.id ?? null
 }
+
+/**
+ * Whether the caller holds the admin_key cookie (set by the proxy after a valid
+ * ?key=). MUST be checked inside every admin server action / route — server
+ * actions are independently invocable (their IDs ship in the public client
+ * bundle), so page-level / middleware gating alone does not protect them.
+ */
+export async function isAdmin(): Promise<boolean> {
+  const adminKey = process.env.ADMIN_KEY
+  if (!adminKey) return false
+  const cookieStore = await cookies()
+  return cookieStore.get('admin_key')?.value === adminKey
+}

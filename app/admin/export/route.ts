@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
+import { isAdmin } from '@/lib/auth-server'
 import { toCsv, type CsvColumn } from '@/lib/csv'
 
 // Defense-in-depth: middleware already gates /admin/*, but re-verify the
 // admin_key cookie here so the export endpoint can't be hit without it.
-async function isAdmin(): Promise<boolean> {
-  const adminKey = process.env.ADMIN_KEY
-  if (!adminKey) return false
-  const store = await cookies()
-  return store.get('admin_key')?.value === adminKey
-}
 
 function csv(filename: string, columns: CsvColumn[], rows: Record<string, unknown>[]) {
   return new NextResponse(toCsv(columns, rows), {
