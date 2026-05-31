@@ -3,8 +3,11 @@ import { createDbClient } from '@/lib/db'
 import { generateSessionToken, hashSessionToken, verifyPin } from '@/lib/auth'
 
 function makeUrl(request: NextRequest, pathname: string) {
+  // Honor the proxy's forwarded scheme (https on Vercel) so we don't 303 to an
+  // http:// URL that then has to be upgraded.
+  const proto = request.headers.get('x-forwarded-proto') ?? 'http'
   const host = request.headers.get('host') ?? 'localhost:3000'
-  return new URL(pathname, `http://${host}`)
+  return new URL(pathname, `${proto}://${host}`)
 }
 
 // PIN brute-force throttle (per player). 4-digit PINs + public playerIds make
@@ -93,8 +96,10 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       maxAge: 60 * 60 * 24 * 7,
     })
-    response.cookies.set('playerId', player.id, { path: '/', sameSite: 'lax' })
-    response.cookies.set('playerName', encodeURIComponent(player.name), { path: '/', sameSite: 'lax' })
+    // Identity for the client comes from localStorage (IdentityPicker /
+    // LocalStorageSync); server-side it's derived from auth_session → DB. The
+    // old non-httpOnly playerId/playerName cookies were never read anywhere, so
+    // we don't set them. Logout still clears any left in existing browsers.
     return response
   } finally {
     await client.end()

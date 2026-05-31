@@ -3,8 +3,10 @@ import { createDbClient } from '@/lib/db'
 import { hashSessionToken } from '@/lib/auth'
 
 function makeUrl(request: NextRequest, pathname: string) {
+  // Honor the proxy's forwarded scheme (https on Vercel).
+  const proto = request.headers.get('x-forwarded-proto') ?? 'http'
   const host = request.headers.get('host') ?? 'localhost:3000'
-  return new URL(pathname, `http://${host}`)
+  return new URL(pathname, `${proto}://${host}`)
 }
 
 export async function POST(request: NextRequest) {
