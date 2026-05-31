@@ -18,6 +18,17 @@ Last updated: 2026-05-31 (Vercel production deploy)
 - [x] **Abuse hardening — `/api/poll` CDN cache (commit `ccc8b2c`):** was `no-store`; now `public, s-maxage=1, stale-while-revalidate=4`. Payload is global (no per-user data) so a shared edge cache is safe. Verified live: 1st req `X-Vercel-Cache: MISS`, 2nd `HIT` → repeated/abusive polls served from Vercel edge, sparing function-invocation quota + Neon. For active attacks, use Vercel **Firewall → Attack Challenge Mode** (free toggle) + block-by-IP rules.
 - [x] **PIN brute-force throttle (commit `179b393`, migration 005):** per-player lockout on `/api/identity` — 5 consecutive wrong PINs → 15-min lock; correct login resets. Race-safe (`SELECT … FOR UPDATE` in a txn); locked attempts short-circuit before the PIN check. Per-player (not per-IP — home group shares one WiFi). `IdentityPicker` shows `error=locked`. e2e covers it (8/8 identity). Migrated both DBs (dev + prod); prod `/api/identity` verified 303 (no 500). **Note:** repo has a `post-commit` hook that auto-pushes → migrate prod BEFORE committing schema-dependent code next time.
 
+## 🔒 Security review — 2026-05-31
+
+Full sweep of auth/authz/endpoints/SQL (prod disposable, owner-authorized pentest).
+
+- [x] **CRITICAL fixed (commit `37c2d41`):** `editBalance`, `resetPlayerPin`, `addPlayer` (lib/actions/players.ts) had NO admin check. Server action IDs ship in the public client bundle → invocable by anyone → set any balance, **reset any PIN (account takeover)**, add players. Now gated by shared `isAdmin()`.
+- [x] **MEDIUM/HIGH fixed (same commit):** `rebuy`/`undoRebuy`/`startSession`/`endSession` didn't require auth → unauth caller could rewrite balances via `endSession` on an active session. Now reject when not logged in. `forceEndSession` now `isAdmin()`-gated.
+- [x] Extracted shared `isAdmin()` → `lib/auth-server.ts`; deduped debug.ts + admin export route.
+- [x] **Verified clean:** SQL fully parameterized (no string-concat → no SQLi); admin export route already re-verifies `isAdmin()` (404 otherwise); PIN hashing scrypt + `timingSafeEqual`; session token sha256-hashed at rest; admin wrong-key → real 404.
+- [x] Build green; admin+session+identity suites pass (2 known hydration-flaky, pass on retry).
+- [ ] **LOW (deferred, low-risk):** `playerId`/`playerName` cookies are non-httpOnly (cosmetic only — real auth is the httpOnly `auth_session`, validated server-side; tampering grants nothing). `makeUrl()` builds redirect with `http://` (Vercel upgrades to https). No CSRF token on `/api/identity` (login CSRF, needs victim's PIN → negligible).
+
 ## 🎨 UI redesign (branch `redesign/shadcn`)
 
 Re-platforming the 13 custom components onto themed shadcn primitives. Felt-green
