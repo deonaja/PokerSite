@@ -27,6 +27,7 @@ Full sweep of auth/authz/endpoints/SQL (prod disposable, owner-authorized pentes
 - [x] Extracted shared `isAdmin()` → `lib/auth-server.ts`; deduped debug.ts + admin export route.
 - [x] **Verified clean:** SQL fully parameterized (no string-concat → no SQLi); admin export route already re-verifies `isAdmin()` (404 otherwise); PIN hashing scrypt + `timingSafeEqual`; session token sha256-hashed at rest; admin wrong-key → real 404.
 - [x] Build green; admin+session+identity suites pass (2 known hydration-flaky, pass on retry).
+- [x] **Robustness (commit `c137d5d`):** malformed (non-UUID) `playerId` on `/api/identity` threw Postgres 22P02 → 500. Now validated up front (→ `error=invalid`) + a catch wraps the login txn (rollback + graceful redirect). Verified on prod: 500 → 303.
 - [x] **LOW closed (commit `b1d06a6`):** dropped the vestigial non-httpOnly `playerId`/`playerName` cookies (never read anywhere — client uses localStorage, server uses `auth_session`→DB); logout still clears legacy ones. `makeUrl()` now honors `x-forwarded-proto` → 303 redirects use https on Vercel. CSRF on `/api/identity` left untokenized by design (login CSRF needs the victim's PIN + sameSite cookies → negligible).
 
 ## 🎨 UI redesign (branch `redesign/shadcn`)
