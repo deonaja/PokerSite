@@ -33,6 +33,13 @@ export async function GET() {
   }
 
   return NextResponse.json(body, {
-    headers: { 'Cache-Control': 'no-store' },
+    headers: {
+      // Short shared-CDN cache: bursts / abuse get served from Vercel's edge
+      // instead of re-invoking the function + hammering Neon. The payload is
+      // global (no per-user data), so a shared cache is correct. Each client
+      // still revalidates on its 2s poll; worst-case staleness ≈ 1s.
+      // stale-while-revalidate smooths spikes — at most one origin hit per window.
+      'Cache-Control': 'public, max-age=0, s-maxage=1, stale-while-revalidate=4',
+    },
   })
 }
