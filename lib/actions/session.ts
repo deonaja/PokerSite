@@ -156,38 +156,79 @@ export async function undoRebuy({
   }
 }
 
-export async function forceEndSession({
+export async function cancelSession({
   sessionId,
-  actorPlayerId: _actorPlayerId,
 }: {
   sessionId: string
-  actorPlayerId: string
 }): Promise<{ success: true } | { error: string }> {
-  // Admin-only — surfaced in the admin panel (logs as admin_session_force_end).
+  // Admin-only — surfaced in the admin panel. Cancels an aborted session and
+  // refunds every participant back to their pre-session balance (reverses all
+  // buy-ins / rebuys), then removes the session entirely — as if it never
+  // happened — so it doesn't pollute end-of-season stats and the active-session
+  // slot is freed. A per-player 'admin_session_cancel' audit entry is appended.
   if (!(await isAdmin())) return { error: 'Unauthorized' }
   const actorPlayerId = await getAuthenticatedPlayerId()
   const client = createDbClient()
   await client.connect()
   try {
     await client.query('BEGIN')
-    const { rowCount } = await client.query(
-      `UPDATE sessions SET status = 'ended', ended_at = now() WHERE id = $1 AND status = 'active'`,
+
+    const { rows: [session] } = await client.query<{ id: string }>(
+      `SELECT id FROM sessions WHERE id = $1 AND status = 'active' FOR UPDATE`,
       [sessionId]
     )
-    if (!rowCount) { await client.query('ROLLBACK'); return { error: 'Sesi tidak ditemukan atau sudah ended' } }
+    if (!session) { await client.query('ROLLBACK'); return { error: 'Sesi tidak ditemukan atau sudah ended' } }
 
-    await client.query(
-      `INSERT INTO edit_log (session_id, actor_player_id, action) VALUES ($1, $2, 'admin_session_force_end')`,
-      [sessionId, actorPlayerId]
+    // Net amount this session deducted from each player's persistent balance.
+    // A free-entry dealer nets 0; a rebuy_undo naturally cancels its rebuy.
+    const { rows: refunds } = await client.query<{ player_id: string; refund: number }>(
+      `SELECT player_id, SUM(balance_before - balance_after)::int AS refund
+         FROM edit_log
+        WHERE session_id = $1
+          AND player_id IS NOT NULL
+          AND balance_before IS NOT NULL
+          AND balance_after IS NOT NULL
+        GROUP BY player_id`,
+      [sessionId]
     )
+
+    for (const { player_id, refund } of refunds) {
+      const { rows: [player] } = await client.query<{ balance: number }>(
+        `SELECT balance FROM players WHERE id = $1 FOR UPDATE`,
+        [player_id]
+      )
+      if (!player) continue
+      if (refund !== 0) {
+        await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [refund, player_id])
+      }
+      // Audit entry is intentionally session_id = NULL so it survives the
+      // session delete below and stays out of the per-session accounting.
+      await client.query(
+        `INSERT INTO edit_log (player_id, actor_player_id, action, balance_before, balance_after, metadata)
+         VALUES ($1, $2, 'admin_session_cancel', $3, $4, $5)`,
+        [player_id, actorPlayerId, player.balance, player.balance + refund,
+         JSON.stringify({ cancelled_session_id: sessionId, refund })]
+      )
+    }
+
+    // Reverse the dealer cooldown anchor if it pointed at this session (FK is
+    // RESTRICT), then wipe the session's economic log + the session itself
+    // (participants cascade). The NULL-session audit rows above are untouched.
+    await client.query(`UPDATE players SET last_dealer_session_id = NULL WHERE last_dealer_session_id = $1`, [sessionId])
+    await client.query(`DELETE FROM edit_log WHERE session_id = $1`, [sessionId])
+    await client.query(`DELETE FROM session_participants WHERE session_id = $1`, [sessionId])
+    await client.query(`DELETE FROM sessions WHERE id = $1`, [sessionId])
+
     await client.query('COMMIT')
     revalidatePath('/')
     revalidatePath('/session')
+    revalidatePath('/session/setup')
+    revalidatePath('/admin')
     return { success: true }
   } catch (e) {
     await client.query('ROLLBACK')
-    console.error('forceEndSession error:', e)
-    return { error: 'Gagal force-end sesi' }
+    console.error('cancelSession error:', e)
+    return { error: 'Gagal membatalkan sesi' }
   } finally {
     await client.end()
   }
