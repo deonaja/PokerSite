@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { rebuy, undoRebuy } from '@/lib/actions/session'
 import { usePoll } from '@/lib/usePoll'
+import { useElapsedSeconds } from '@/lib/useElapsed'
+import { formatClock } from '@/lib/duration'
 import Sheet from './Sheet'
 import Button from './Button'
 import { Badge } from './ui/badge'
@@ -15,15 +17,17 @@ interface Props {
   sessionId: string
   initial: PollResponse
   buyIn?: number
+  startedAt?: string | null
   currentPlayerId?: string | null
 }
 
 const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
-export default function SessionView({ sessionId, initial, buyIn = 100, currentPlayerId = null }: Props) {
+export default function SessionView({ sessionId, initial, buyIn = 100, startedAt = null, currentPlayerId = null }: Props) {
   const router = useRouter()
   const { activeSession } = usePoll(initial)
   const participants: PollParticipant[] = activeSession?.participants ?? []
+  const elapsed = useElapsedSeconds(startedAt)
 
   const [isPending, startTransition] = useTransition()
   const [rebuying, setRebuying] = useState<PollParticipant | null>(null)
@@ -63,7 +67,14 @@ export default function SessionView({ sessionId, initial, buyIn = 100, currentPl
           <Link href="/" className="flex min-h-11 min-w-11 items-center justify-center text-lg text-muted-foreground">
             ←
           </Link>
-          <span className="text-sm font-medium text-foreground">Sesi aktif</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-foreground">Sesi aktif</span>
+            {elapsed != null && (
+              <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label="Durasi sesi">
+                {formatClock(elapsed)}
+              </span>
+            )}
+          </div>
         </div>
         <Link
           href="/session/end"

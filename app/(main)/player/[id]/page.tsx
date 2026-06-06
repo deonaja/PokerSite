@@ -5,6 +5,7 @@ import BalanceDisplay from '@/components/BalanceDisplay'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ACHIEVEMENTS } from '@/lib/achievements'
+import { formatDurationShort } from '@/lib/duration'
 
 interface PlayerRow {
   id: string
@@ -27,7 +28,7 @@ interface ResultRow {
 }
 
 async function getData(id: string) {
-  const [playerRows, resultRows, achRows] = await Promise.all([
+  const [playerRows, resultRows, achRows, playtimeRows] = await Promise.all([
     sql`SELECT id, name, balance FROM players WHERE id = ${id}` as unknown as Promise<PlayerRow[]>,
     sql`
       SELECT
@@ -48,11 +49,27 @@ async function getData(id: string) {
       ORDER BY se.number DESC
     ` as unknown as Promise<ResultRow[]>,
     sql`SELECT achievement_key FROM player_achievements WHERE player_id = ${id}` as unknown as Promise<{ achievement_key: string }[]>,
+    // Total / count of finished sessions this player took part in, for play-time stats.
+    sql`
+      SELECT
+        COALESCE(SUM(EXTRACT(EPOCH FROM (s.ended_at - s.started_at))), 0)::int AS total_seconds,
+        COUNT(*)::int AS session_count
+      FROM sessions s
+      JOIN session_participants sp ON sp.session_id = s.id
+      WHERE sp.player_id = ${id} AND s.status = 'ended' AND s.ended_at IS NOT NULL
+    ` as unknown as Promise<{ total_seconds: number; session_count: number }[]>,
   ])
 
   const player = playerRows[0] ?? null
   const earnedKeys = new Set(achRows.map((a) => a.achievement_key))
-  return { player, results: resultRows, earnedKeys }
+  const pt = playtimeRows[0] ?? { total_seconds: 0, session_count: 0 }
+  return {
+    player,
+    results: resultRows,
+    earnedKeys,
+    totalPlaySeconds: Number(pt.total_seconds),
+    playedSessionCount: Number(pt.session_count),
+  }
 }
 
 function formatDate(iso: string) {
@@ -65,7 +82,7 @@ function initialOf(name: string) {
 
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { player, results, earnedKeys } = await getData(id)
+  const { player, results, earnedKeys, totalPlaySeconds, playedSessionCount } = await getData(id)
   if (!player) notFound()
 
   const totalSeasons = results.length
@@ -74,6 +91,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const totalTimesDealer = results.reduce((s, r) => s + r.times_dealer, 0)
   const totalWon = results.reduce((s, r) => s + r.total_won, 0)
   const totalLost = results.reduce((s, r) => s + r.total_lost, 0)
+  const avgPlaySeconds = playedSessionCount > 0 ? Math.round(totalPlaySeconds / playedSessionCount) : 0
 
   return (
     <div className="pb-8">
@@ -99,18 +117,28 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
       <div className="px-4 pt-5">
         {/* Overall stats */}
-        {totalSeasons > 0 && (
+        {(totalSeasons > 0 || playedSessionCount > 0) && (
           <>
             <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">
               STATISTIK KESELURUHAN
             </p>
             <div className="mb-6 grid grid-cols-2 gap-2">
-              <StatBox label="Musim dimainkan" value={totalSeasons} />
-              <StatBox label="Rank terbaik" value={bestRank !== null ? `#${bestRank}` : '—'} />
-              <StatBox label="Total sesi" value={totalSessions} />
-              <StatBox label="Jadi dealer" value={totalTimesDealer} />
-              <StatBox label="Total menang" value={totalWon} mono positive />
-              <StatBox label="Total kalah" value={totalLost} mono negative />
+              {totalSeasons > 0 && (
+                <>
+                  <StatBox label="Musim dimainkan" value={totalSeasons} />
+                  <StatBox label="Rank terbaik" value={bestRank !== null ? `#${bestRank}` : '—'} />
+                  <StatBox label="Total sesi" value={totalSessions} />
+                  <StatBox label="Jadi dealer" value={totalTimesDealer} />
+                  <StatBox label="Total menang" value={totalWon} mono positive />
+                  <StatBox label="Total kalah" value={totalLost} mono negative />
+                </>
+              )}
+              {playedSessionCount > 0 && (
+                <>
+                  <StatBox label="Total waktu main" value={formatDurationShort(totalPlaySeconds)} />
+                  <StatBox label="Rata-rata/sesi" value={formatDurationShort(avgPlaySeconds)} />
+                </>
+              )}
             </div>
           </>
         )}
