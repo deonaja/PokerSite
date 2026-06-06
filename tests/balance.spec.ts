@@ -108,6 +108,36 @@ test.describe('Balance non-negative enforcement', () => {
     await expect(bobCard.getByRole('button', { name: 'Saldo habis' })).toBeDisabled()
   })
 
+  test('undo of a partial rebuy restores the partial amount, not a full buy-in', async ({ page }) => {
+    const sql = neon(process.env.DATABASE_URL!)
+
+    await setIdentity(page, alice)
+    await page.goto('/session/setup')
+    await clickLabelFor(page, alice.name)
+    await clickLabelFor(page, bob.name)
+    const aliceRadio = page.locator('label', { hasText: alice.name }).locator('input[type="radio"]')
+    await aliceRadio.check()
+    await page.getByRole('button', { name: 'Mulai' }).click()
+    await page.waitForURL('**/session')
+
+    // Below buy_in (100): a partial rebuy takes the remaining 50.
+    await sql`UPDATE players SET balance = 50 WHERE id = ${bob.id}`
+    const bobCard = page.locator('div').filter({
+      has: page.locator('p, span', { hasText: /^Rebuy: \d+$/ }),
+    }).filter({ hasText: bob.name }).last()
+    await expect(bobCard.getByText(/Saldo: 50/)).toBeVisible({ timeout: 5000 })
+
+    await bobCard.getByRole('button', { name: 'Rebuy' }).click()
+    await page.getByRole('button', { name: 'Rebuy' }).last().click()
+    await expect(bobCard.getByText('Rebuy: 1')).toBeVisible({ timeout: 5000 })
+
+    // Undo must give back exactly 50 (the partial), not a full 100 buy-in.
+    await bobCard.getByRole('button', { name: 'Undo' }).click()
+    await expect(bobCard.getByText('Rebuy: 0')).toBeVisible({ timeout: 5000 })
+    const [bobRow] = await sql`SELECT balance FROM players WHERE id = ${bob.id}` as { balance: number }[]
+    expect(Number(bobRow.balance)).toBe(50)
+  })
+
   test('admin edit balance to negative is rejected', async ({ page }) => {
     await page.goto(adminUrl(td.adminKey))
 
