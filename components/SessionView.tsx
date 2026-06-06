@@ -91,6 +91,7 @@ export default function SessionView({ sessionId, initial, buyIn = 100, currentPl
         {participants.map((p) => {
           const isMe = currentPlayerId != null && p.player_id === currentPlayerId
           const lowBalance = p.balance < buyIn
+          const noBalance = p.balance <= 0
           return (
             <div
               key={p.participant_id}
@@ -139,11 +140,11 @@ export default function SessionView({ sessionId, initial, buyIn = 100, currentPl
                   <div className="flex gap-2">
                     <Button
                       variant="secondary"
-                      disabled={!isHydrated || isPending || lowBalance}
+                      disabled={!isHydrated || isPending || noBalance}
                       onClick={() => setRebuying(p)}
                       className="min-h-[38px] flex-1 text-[0.8125rem]"
                     >
-                      {lowBalance ? 'Saldo kurang' : 'Rebuy'}
+                      {noBalance ? 'Saldo habis' : 'Rebuy'}
                     </Button>
                     <Button
                       variant="secondary"
@@ -167,7 +168,10 @@ export default function SessionView({ sessionId, initial, buyIn = 100, currentPl
         onClose={() => !isPending && isHydrated && setRebuying(null)}
         title={`Rebuy ${rebuying?.player_name ?? ''}?`}
       >
-        <p className="mb-5 text-sm text-muted-foreground">Balance kepotong {buyIn}.</p>
+        <p className="mb-5 text-sm text-muted-foreground">
+          Balance kepotong {rebuying ? Math.min(buyIn, rebuying.balance) : buyIn}
+          {rebuying && rebuying.balance < buyIn ? ' (sisa saldo)' : ''}.
+        </p>
         <div className="flex gap-3">
           <Button variant="secondary" fullWidth disabled={!isHydrated || isPending} onClick={() => setRebuying(null)}>
             Cancel

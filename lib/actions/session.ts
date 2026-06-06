@@ -44,12 +44,15 @@ export async function rebuy({
     )
     const buyIn = sessionSeason?.buy_in ?? 100
 
-    if (player.balance < buyIn) {
+    // Partial rebuy: a player may rebuy even when balance < buy_in, taking only
+    // what they have left (balance never goes negative). Nothing to rebuy at 0.
+    if (player.balance <= 0) {
       await client.query('ROLLBACK')
-      return { error: 'Saldo tidak cukup untuk rebuy' }
+      return { error: 'Saldo habis, tidak bisa rebuy' }
     }
+    const rebuyAmount = Math.min(buyIn, player.balance)
 
-    await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [buyIn, playerId])
+    await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [rebuyAmount, playerId])
     const rebuyRow = await client.query(
       `UPDATE session_participants SET rebuy_count = rebuy_count + 1 WHERE id = $1`,
       [participant.id]
@@ -59,7 +62,7 @@ export async function rebuy({
     await client.query(
       `INSERT INTO edit_log (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
        VALUES ($1, $2, $3, 'rebuy', $4, $5, $6)`,
-      [sessionId, playerId, actorPlayerId, player.balance, player.balance - buyIn, JSON.stringify({ buy_in: buyIn })]
+      [sessionId, playerId, actorPlayerId, player.balance, player.balance - rebuyAmount, JSON.stringify({ buy_in: rebuyAmount })]
     )
 
     await client.query('COMMIT')
@@ -109,8 +112,8 @@ export async function undoRebuy({
     )
     if (!player) { await client.query('ROLLBACK'); return { error: 'Pemain tidak ditemukan' } }
 
-    const { rows: [logEntry] } = await client.query<{ id: string }>(
-      `SELECT id FROM edit_log
+    const { rows: [logEntry] } = await client.query<{ id: string; balance_before: number; balance_after: number }>(
+      `SELECT id, balance_before, balance_after FROM edit_log
        WHERE session_id = $1 AND player_id = $2 AND action = 'rebuy' AND voided = false
        ORDER BY created_at DESC LIMIT 1
        FOR UPDATE`,
@@ -124,13 +127,11 @@ export async function undoRebuy({
     )
     if (!voided.rowCount) { await client.query('ROLLBACK'); return { error: 'Rebuy sudah di-undo' } }
 
-    const { rows: [undoSeason] } = await client.query<{ buy_in: number }>(
-      `SELECT s.buy_in FROM seasons s JOIN sessions sess ON sess.season_id = s.id WHERE sess.id = $1`,
-      [sessionId]
-    )
-    const undoBuyIn = undoSeason?.buy_in ?? 100
+    // Restore exactly what that rebuy deducted (handles partial rebuys, not a
+    // fixed buy_in), so undo is a true reversal of the balance change.
+    const undoAmount = logEntry.balance_before - logEntry.balance_after
 
-    await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [undoBuyIn, playerId])
+    await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [undoAmount, playerId])
     const undoRow = await client.query(
       `UPDATE session_participants SET rebuy_count = rebuy_count - 1 WHERE id = $1 AND rebuy_count > 0`,
       [participant.id]
@@ -140,7 +141,7 @@ export async function undoRebuy({
     await client.query(
       `INSERT INTO edit_log (session_id, player_id, actor_player_id, action, balance_before, balance_after)
        VALUES ($1, $2, $3, 'rebuy_undo', $4, $5)`,
-      [sessionId, playerId, actorPlayerId, player.balance, player.balance + undoBuyIn]
+      [sessionId, playerId, actorPlayerId, player.balance, player.balance + undoAmount]
     )
 
     await client.query('COMMIT')
