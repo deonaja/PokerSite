@@ -12,6 +12,7 @@ interface ParticipantRow {
   current_balance: number
   contributed: number
   original_balance: number
+  started_at: string
 }
 
 interface SeasonRow {
@@ -29,6 +30,7 @@ async function getSessionData() {
     sql`
       SELECT
         s.id          AS session_id,
+        s.started_at,
         sp.player_id,
         sp.is_dealer,
         sp.no_gaji_dealer,
@@ -85,6 +87,7 @@ async function getSessionData() {
 
   return {
     sessionId: rows[0].session_id,
+    startedAt: rows[0].started_at,
     expectedTotal,
     rakeInfo: isPhase2 && rakeRate !== null ? { rakeRate: Number(rakeRate) } : null,
     participants: rows.map((r) => ({
@@ -110,6 +113,7 @@ export default async function SessionEndPage() {
       participants={data.participants}
       expectedTotal={data.expectedTotal}
       rakeInfo={data.rakeInfo}
+      startedAt={data.startedAt}
     />
   )
 }

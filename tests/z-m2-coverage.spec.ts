@@ -321,7 +321,7 @@ test.describe('M2 coverage: session-active + end-session details', () => {
     await setSeasonBase(seasonId, { phase: 'bootstrap', buyIn: 100, maxPool: 100_000_000, rakeRate: 10 })
   })
 
-  test('rebuy server hard-rejects insufficient balance even if sheet is already open', async ({ page }) => {
+  test('rebuy server rejects when balance is 0 even if sheet is already open', async ({ page }) => {
     await startSessionFromSetup({
       page,
       actor: alice,
@@ -342,7 +342,7 @@ test.describe('M2 coverage: session-active + end-session details', () => {
     await db()`UPDATE players SET balance = 0 WHERE id = ${bob.id}`
     await page.getByRole('button', { name: 'Rebuy' }).last().click()
 
-    await expect(page.getByText('Saldo tidak cukup untuk rebuy')).toBeVisible()
+    await expect(page.getByText('Saldo habis, tidak bisa rebuy')).toBeVisible()
 
     const [row] = await db()`
       SELECT p.balance, sp.rebuy_count

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { rebuy, undoRebuy } from '@/lib/actions/session'
 import { usePoll } from '@/lib/usePoll'
+import { useElapsedSeconds } from '@/lib/useElapsed'
+import { formatClock } from '@/lib/duration'
 import Sheet from './Sheet'
 import Button from './Button'
 import { Badge } from './ui/badge'
@@ -15,15 +17,17 @@ interface Props {
   sessionId: string
   initial: PollResponse
   buyIn?: number
+  startedAt?: string | null
   currentPlayerId?: string | null
 }
 
 const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
-export default function SessionView({ sessionId, initial, buyIn = 100, currentPlayerId = null }: Props) {
+export default function SessionView({ sessionId, initial, buyIn = 100, startedAt = null, currentPlayerId = null }: Props) {
   const router = useRouter()
   const { activeSession } = usePoll(initial)
   const participants: PollParticipant[] = activeSession?.participants ?? []
+  const elapsed = useElapsedSeconds(startedAt)
 
   const [isPending, startTransition] = useTransition()
   const [rebuying, setRebuying] = useState<PollParticipant | null>(null)
@@ -63,7 +67,14 @@ export default function SessionView({ sessionId, initial, buyIn = 100, currentPl
           <Link href="/" className="flex min-h-11 min-w-11 items-center justify-center text-lg text-muted-foreground">
             ←
           </Link>
-          <span className="text-sm font-medium text-foreground">Sesi aktif</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-foreground">Sesi aktif</span>
+            {elapsed != null && (
+              <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label="Durasi sesi">
+                {formatClock(elapsed)}
+              </span>
+            )}
+          </div>
         </div>
         <Link
           href="/session/end"
@@ -91,6 +102,7 @@ export default function SessionView({ sessionId, initial, buyIn = 100, currentPl
         {participants.map((p) => {
           const isMe = currentPlayerId != null && p.player_id === currentPlayerId
           const lowBalance = p.balance < buyIn
+          const noBalance = p.balance <= 0
           return (
             <div
               key={p.participant_id}
@@ -139,11 +151,11 @@ export default function SessionView({ sessionId, initial, buyIn = 100, currentPl
                   <div className="flex gap-2">
                     <Button
                       variant="secondary"
-                      disabled={!isHydrated || isPending || lowBalance}
+                      disabled={!isHydrated || isPending || noBalance}
                       onClick={() => setRebuying(p)}
                       className="min-h-[38px] flex-1 text-[0.8125rem]"
                     >
-                      {lowBalance ? 'Saldo kurang' : 'Rebuy'}
+                      {noBalance ? 'Saldo habis' : 'Rebuy'}
                     </Button>
                     <Button
                       variant="secondary"
@@ -167,7 +179,10 @@ export default function SessionView({ sessionId, initial, buyIn = 100, currentPl
         onClose={() => !isPending && isHydrated && setRebuying(null)}
         title={`Rebuy ${rebuying?.player_name ?? ''}?`}
       >
-        <p className="mb-5 text-sm text-muted-foreground">Balance kepotong {buyIn}.</p>
+        <p className="mb-5 text-sm text-muted-foreground">
+          Balance kepotong {rebuying ? Math.min(buyIn, rebuying.balance) : buyIn}
+          {rebuying && rebuying.balance < buyIn ? ' (sisa saldo)' : ''}.
+        </p>
         <div className="flex gap-3">
           <Button variant="secondary" fullWidth disabled={!isHydrated || isPending} onClick={() => setRebuying(null)}>
             Cancel

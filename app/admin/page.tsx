@@ -27,6 +27,7 @@ const ACTION_COLORS: Record<string, string> = {
   admin_pin_reset: '#5f4ab5',
   admin_player_add: '#7a4ab5',
   admin_session_force_end: 'var(--accent-danger)',
+  admin_session_cancel: 'var(--accent-danger)',
 }
 
 const ACTION_TYPES = [
@@ -38,6 +39,7 @@ const ACTION_TYPES = [
   'season_start', 'season_end',
   'pin_change',
   'admin_balance_edit', 'admin_pin_reset', 'admin_player_add', 'admin_session_force_end',
+  'admin_session_cancel',
 ]
 
 interface SearchParams {

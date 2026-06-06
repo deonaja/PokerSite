@@ -67,7 +67,7 @@ test.describe('Balance non-negative enforcement', () => {
     expect(Number(aliceRow.balance)).toBe(400)
   })
 
-  test('rebuy is blocked when player balance < buy_in (no unlimited free rebuys)', async ({ page }) => {
+  test('rebuy below buy_in takes the remaining balance (partial), floors at 0', async ({ page }) => {
     const sql = neon(process.env.DATABASE_URL!)
 
     await setIdentity(page, alice)
@@ -80,23 +80,32 @@ test.describe('Balance non-negative enforcement', () => {
     await page.getByRole('button', { name: 'Mulai' }).click()
     await page.waitForURL('**/session')
 
-    // Drop Bob's balance below buy_in mid-session
+    // Drop Bob's balance below buy_in (100) mid-session — he can still rebuy,
+    // taking only what's left (50), never going negative.
     await sql`UPDATE players SET balance = 50 WHERE id = ${bob.id}`
 
     const bobCard = page.locator('div').filter({
       has: page.locator('p, span', { hasText: /^Rebuy: \d+$/ }),
     }).filter({ hasText: bob.name }).last()
 
-    // Wait for the 2s poll to reflect Bob's new saldo, then assert the
-    // rebuy trigger is disabled and balance/rebuy_count are untouched.
+    // Wait for the 2s poll to reflect Bob's new saldo. Rebuy stays enabled.
     await expect(bobCard.getByText(/Saldo: 50/)).toBeVisible({ timeout: 5000 })
+    const rebuyBtn = bobCard.getByRole('button', { name: 'Rebuy' })
+    await expect(rebuyBtn).toBeEnabled()
 
-    const rebuyBtn = bobCard.getByRole('button', { name: /Saldo kurang|Rebuy/ })
-    await expect(rebuyBtn).toBeDisabled()
+    // Sheet shows the partial amount, not the full buy-in.
+    await rebuyBtn.click()
+    await expect(page.getByText(/Balance kepotong 50/)).toBeVisible()
+    await page.getByRole('button', { name: 'Rebuy' }).last().click()
 
+    // Balance floors at 0, rebuy counted once.
+    await expect(bobCard.getByText('Rebuy: 1')).toBeVisible({ timeout: 5000 })
     const [bobRow] = await sql`SELECT balance FROM players WHERE id = ${bob.id}` as { balance: number }[]
-    expect(Number(bobRow.balance)).toBe(50)
-    await expect(bobCard.getByText('Rebuy: 0')).toBeVisible()
+    expect(Number(bobRow.balance)).toBe(0)
+
+    // Now broke (0) → rebuy disabled with "Saldo habis".
+    await expect(bobCard.getByText(/Saldo: 0/)).toBeVisible({ timeout: 5000 })
+    await expect(bobCard.getByRole('button', { name: 'Saldo habis' })).toBeDisabled()
   })
 
   test('admin edit balance to negative is rejected', async ({ page }) => {

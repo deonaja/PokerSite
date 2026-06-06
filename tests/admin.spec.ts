@@ -136,18 +136,18 @@ test.describe('Admin - logs', () => {
   })
 })
 
-test.describe('Admin - force end session', () => {
-  test('force-end button only appears when active session exists', async ({ page }) => {
+test.describe('Admin - cancel session', () => {
+  test('cancel-session button only appears when active session exists', async ({ page }) => {
     const { adminKey } = getTestData()
     await page.goto(adminUrl(adminKey))
 
-    const forceEndSection = page.getByText('Force-end sesi')
-    const hasActiveSession = await forceEndSection.isVisible().catch(() => false)
+    const cancelSection = page.getByRole('button', { name: 'Batalkan sesi' })
+    const hasActiveSession = await cancelSection.isVisible().catch(() => false)
 
     if (hasActiveSession) {
-      await page.getByRole('button', { name: 'Force-end sesi' }).click()
-      await page.getByRole('button', { name: 'Yakin force-end' }).click()
-      await expect(page.getByText('Sesi di-force-end.')).toBeVisible()
+      await cancelSection.click()
+      await page.getByRole('button', { name: 'Yakin batalkan' }).click()
+      await expect(page.getByText('Sesi dibatalkan, balance dikembalikan.')).toBeVisible()
     } else {
       await expect(page.getByText('SESI AKTIF')).not.toBeVisible()
     }

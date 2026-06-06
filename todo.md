@@ -183,7 +183,83 @@ Treatment is derived at session start based on phase + cooldown + balance:
 - [x] Per-player overall stats (cross-season) — `/player/[id]` (done in M3)
 - [x] **Export CSV** (2026-05-31, merged to main `28e74df`) — admin-only `/admin/export?type=results|log|players|sessions` download endpoint (middleware-gated + re-verifies `admin_key` cookie, 404 otherwise; UTF-8 BOM for Excel). EXPORT CSV section on admin page (4 buttons). `lib/csv.ts` helper. 2 e2e tests. Full suite 73/73.
 - [x] **Achievement system** (2026-05-31, merged to main `31a4822`) — stored (migration 004 `player_achievements`, awarded in `endSeason` from each player's season_results history, idempotent). 6 badges (🏆 Juara, 🥈 Podium, 🎖️ Veteran, 🃏 Raja Bandar, 💰 Sultan, 📈 Musim Untung) in `lib/achievements.ts`; PENCAPAIAN section on `/player/[id]` (earned felt / locked muted). Existing results backfilled (real players legit 0). e2e: z-m3 asserts rank-1 → juara+podium. 73/73.
+- [x] **Durasi sesi + statistik waktu main (2026-06-06)** — `sessions.started_at`/`ended_at` udah ada di schema (001_init), jadi ga perlu migration; murni nampilin. Helper baru `lib/duration.ts` (`formatClock` mm:ss/h:mm:ss live, `formatDurationShort` "1j 23m" buat stats) + hook `lib/useElapsed.ts` (`useElapsedSeconds`, tick 1s, null sampe mounted biar ga hydration-mismatch). (1) **Sesi aktif** `/session`: timer hidup di header (`SessionView` terima `startedAt`, page query tambah `started_at`). (2) **Recap akhir** `SessionEndWizard`: baris "Durasi 1j 23m" di header RECAP (terima `startedAt`, end page query tambah `s.started_at`) — live krn sesi belum ended pas recap. (3) **Stats pemain** `/player/[id]`: box "Total waktu main" + "Rata-rata/sesi" dari `SUM/COUNT(EXTRACT(EPOCH FROM ended_at−started_at))` di sesi `ended` yang dia ikut (join sessions⋈session_participants, BUKAN season_results yang ga simpen waktu). Section STATISTIK muncul kalau `totalSeasons>0 || playedSessionCount>0` biar keliatan walau musim belum kelar (kasus season 1). Build green.
+- [x] **Rebuy partial saat saldo < buy_in (Opsi B, 2026-06-06)** — dulu rebuy ditolak total kalau `balance < buy_in`. Owner: di praktek banyak yang mau rebuy walau saldo ga cukup. Sekarang rebuy ambil **`min(buy_in, saldo)`** (saldo ga pernah minus); cuma ditolak kalau saldo = 0 ("Saldo habis, tidak bisa rebuy"). `lib/actions/session.ts` `rebuy` (partial deduct + metadata simpan jumlah asli) & `undoRebuy` (balikin jumlah asli dari `balance_before − balance_after` entry yang di-void, BUKAN `buy_in` penuh — true reversal buat partial). `SessionView.tsx`: tombol disable cuma pas `balance <= 0` (label "Saldo habis"), sheet nunjukin nominal partial "(sisa saldo)". Tes diupdate (balance.spec partial rebuy + z-m2 reject-at-0); build green, 2/2 tes kena pass. Ga overlap sama loan (loan = luar sesi, rebuy = dalam sesi).
+- [x] **Changelog "Apa yang baru" + dot notif (2026-06-06, branch `feat/changelog`)** — changelog statis di kode (no DB/migration): `lib/changelog.ts` (array entry `{version,date,changes[]}` versi 0.x terbaru-di-atas + `LATEST_VERSION` + `CHANGELOG_SEEN_KEY`). Halaman `app/(main)/changelog/page.tsx` + loading skeleton (kartu felt-green per versi: badge `v0.6.0`, tanggal tabular-nums, bullet). `HeaderMenu`: dot felt-green di avatar kalau `last-seen (localStorage) != LATEST_VERSION` (default false biar ga hydration-mismatch, listen event `changelog-seen`) + link "Apa yang baru" w/ badge "Baru". `components/MarkChangelogSeen.tsx` di halaman changelog set localStorage + dispatch event → dot ilang real-time same-tab, tetep ilang abis reload. Typecheck (`tsc --noEmit`) clean; **verified live di Chrome (devtools MCP)**: dot nyala saat login → buka changelog → dot ilang → tetep ilang balik ke dashboard. Commit `5705884` di branch `feat/changelog`, pushed ke origin. PR ke `main` belum dibuat (gh CLI ga ke-install di env) — buka manual: https://github.com/deonaja/PokerSite/pull/new/feat/changelog. PR bakal bawa 4 perubahan ke main (batalkan-sesi + rebuy partial + durasi sesi + changelog) karena main ketinggalan 3 commit dari dev.
 - [ ] Additional UX polish (TBD)
+  - [ ] **Alert saat pergantian phase (IDE — belum diimplement, 2026-06-06)** — transisi `bootstrap → steady` terjadi silent di `startSession` ([lib/actions/session.ts:421-433](lib/actions/session.ts)): pas `SUM(balance) >= max_pool`, phase di-flip tanpa feedback apa-apa. Owner mau ada **alert** biar yang megang app sadar phase baru aja berganti. Catatan implementasi nanti: `startSession` perlu return flag (mis. `phaseChanged: true` / `newPhase`), lalu di client (`/session` atau dashboard) munculin alert/toast/sheet. Phase badge BOOTSTRAP/STEADY udah ada di dashboard tapi pasif — ini butuh notif aktif sekali saat momen pergantian.
+- [x] **Admin: "force-end" → "Batalkan sesi" (refund + delete)** (2026-06-06) — bug: tombol admin force-end cuma `status='ended'` tanpa refund, jadi buy-in yang kepotong di `startSession` nyangkut → semua pemain rugi `buy_in` (200) padahal owner cuma mau abort sesi buat nambah pemain. Fix: `forceEndSession` → `cancelSession` (`lib/actions/session.ts`) — refund tiap pemain `SUM(balance_before − balance_after)` dari edit_log sesi (robust: free dealer net 0, rebuy_undo cancel sendiri), clear `last_dealer_session_id` yang nunjuk sesi itu, lalu **hapus total** sesi+participant+log-nya (owner pilih "vanish" biar ga ngotorin stats akhir musim & slot sesi bebas). Sisain audit `admin_session_cancel` per pemain (session_id NULL, metadata `{cancelled_session_id, refund}`). UI `ForceEndSection` → label "Batalkan sesi"/"Yakin batalkan" + hint refund; admin log `ACTION_COLORS`/`ACTION_TYPES` + `admin_session_cancel`; `admin.spec.ts` diupdate. Build green. **Belum jalanin full e2e** (DB shared/live; jalanin `pnpm test` kalau mau verifikasi penuh).
+
+---
+
+## 💡 Backlog — Fitur LOAN antar pemain (IDE, belum diimplement — 2026-06-06)
+
+Pemain dengan saldo kurang bisa minjem chip dari pemain lain biar tetep bisa main.
+Owner-directed design session; semua keputusan di bawah udah disepakati owner.
+
+### Konsep inti
+- **Loan = hutang**, bukan transfer/hadiah. Punya lifecycle: `request → approve → active → repay/auto-settle`.
+- **Transfer ga ngubah total pool** → transisi phase / `max_pool` aman.
+- **Gate:** tombol "Minta pinjaman" cuma muncul kalau **saldo borrower < buy_in**.
+
+### Keputusan desain (FINAL, owner-approved)
+1. **Auto-settle di akhir musim** — sebelum snapshot leaderboard di `endSeason` (DAN `adminForceEndSeason`), sistem otomatis tarik balik hutang dari saldo borrower → lender. Leaderboard jujur, ga perlu repay manual sebagai syarat.
+   - **Borrower bangkrut pas settle:** balance ga boleh minus. Settle `min(saldo, hutang)` — lender nerima yang ada, **sisanya diputihin + dicatat** (`loan_writeoff`). Lender "rugi" sisanya (konsekuensi minjemin ke yang sekarat).
+2. **Penempatan UI = Opsi B (konteks si broke).** Banner "Saldo kamu kurang — Minta pinjaman" di dashboard/sesi, muncul cuma kalau `balance < buy_in`. Klik → pilih lender. (BUKAN klik kartu lender — fitur ini milik si broke.)
+3. **GA BOLEH loan pas sesi aktif** — loan cuma di luar sesi (biar stack live ga keganggu).
+4. **Loan berantai/circular DICEGAH by design:** borrower yang masih punya hutang **ga boleh jadi lender**, dan tiap pemain **cuma 1 loan aktif/waktu**. → ga ada A→B→C / A→B→A; tiap loan independen pas settle (ga ada urutan settle yang ribet).
+5. **Repay = borrower yang aksi, lender auto-nerima** (ambil duit balik ga butuh izin). **Full-only** (ga nyicil).
+   - **Alert "udah bisa repay"** muncul kalau **`saldo >= hutang + buy_in`** (bisa balikin TANPA bikin diri broke lagi), bukan cuma `saldo >= hutang`.
+6. **Nominal pinjaman:** minimal 1 buy_in, di-cap sama saldo lender. Borrower pilih dalam range itu.
+7. **Tanpa bunga** — loan flat (game temen).
+8. **Flow approval (consent):** lender harus *setuju* dulu (request → pending → accept/decline). Disbursement chip lender→borrower terjadi **saat approve**, status jadi `active`.
+
+### Integritas data (silent killer — JANGAN lupa)
+- **Loan WAJIB pake action type edit_log sendiri** (`loan_out`/`loan_in`/`loan_repay`/`loan_settle`/`loan_writeoff`) dan **di-EXCLUDE dari formula stats** `total_won`/`total_lost` di `season_results` (yang dihitung dari `SUM` edit_log). Kalau ga, transfer chip keitung kayak menang/kalah sesi → leaderboard & achievement ngaco diam-diam.
+
+### Catatan implementasi (dari cek ulang)
+- **A. Notif loan ≠ `/api/poll`** — `/api/poll` di-cache edge (`s-maxage=1`) karena payload global. Notif loan itu **per-user** → bikin endpoint terpisah **`/api/loans` (no-cache, per-user)** yang di-poll bareng. Jangan campur ke poll global (nanti notif bocor antar user).
+- **B. Filter kandidat lender** — pas borrower pilih target, cuma tampilin pemain `balance >= buy_in`; ga bisa minta ke diri sendiri.
+- **C. Concurrency** — approval lender pake `SELECT ... FOR UPDATE` di saldo lender (2 borrower ga bisa klaim saldo lender sama bareng).
+- **Tampilan indikator** di dashboard & player detail kedua pihak: borrower "🔴 ngutang ke X: 100", lender "🟢 minjemin Y: 100".
+- **Re-borrow boleh** setelah loan beres (tetap 1 aktif/waktu).
+- Butuh: tabel `loans` baru (id, season_id, lender_id, borrower_id, amount, status, created_at, settled_at) + migration + tambah action types ke filter admin log + 2 notif (lender: ada permintaan; borrower: udah bisa repay).
+
+---
+
+## 💡 Backlog — Fitur LATE JOIN (IDE, belum diimplement — 2026-06-06)
+
+Pemain bisa gabung sesi yang **udah jalan** (orang telat dateng). Owner-approved.
+
+### Keputusan
+- **Late join YES, early cashout NO** — owner ga mau ada yang kabur tengah jalan (4-5 pemain, bubar suasananya). Nolak cashout juga bikin app tetep simpel (lihat alasan teknis di bawah).
+- **Aksi "+ Tambah pemain" di `/session`** (sesi aktif, sebelum masuk tahap end) → bottom sheet pilih pemain yang belum ikut.
+- Late joiner **bayar buy-in** (saldo kepotong `buy_in`) + dipajang `buy_in` chip di meja, masuk `session_participants`. Pakai `SELECT ... FOR UPDATE` (race-safe, konsisten sama rebuy). Ini cuma konversi bankroll → chip meja, sama kayak pemain normal pas start.
+- **Slot dealer dikunci** (dealer ditentukan pas start) → late joiner selalu pemain biasa.
+- **Reconciliation kebawa OTOMATIS** — recap ngitung delta dari `balance_before` entry pertama tiap peserta; entry pertama late joiner = buy-in pas join, jadi hasil (chip akhir − setoran) kehitung bener tanpa kode khusus. Total chip akhir juga nambah otomatis dari edit_log-nya. Model existing udah support natural.
+
+### Edge case
+- **Late joiner saldo < buy_in → ditolak** (aturan existing: non-dealer low-balance ga boleh). 🔗 **Tie-in LOAN:** yang telat & broke bisa minta pinjam dulu baru join.
+- Ga bisa join kalau udah jadi peserta / sesi udah masuk tahap end.
+- Phase transition cuma dicek pas start sesi → late join ga re-trigger (minor, biarin).
+
+### Kenapa early cashout DITOLAK (alasan teknis, biar ga lupa)
+App ga track stack live (cuma nyatet chip yang *masuk*: buy-in + rebuy). Cash-out tengah jalan butuh: (1) stop main + hitung chip orang itu manual saat itu juga, (2) rumus chip-conservation di end-wizard harus dikurangi stack yang udah keluar, (3) hasil dia di-finalize lebih awal + wizard harus skip dia tapi tetep ngitung chipnya. Ribet + ngerusak suasana → ditolak.
+
+---
+
+## 💡 Backlog — Season wizard & phase UX (IDE, belum diimplement — 2026-06-06)
+
+Tiga item dari owner, catet dulu:
+
+1. **Rekomendasi setting season ga responsif ke starting balance** — di wizard `/season/new`, masukin starting balance 200 vs 400 ngasih rekomendasi yang SAMA. Harusnya rekomendasi (BB/SB, max_pool, dll) berubah ngikut starting balance / buy_in. Cek `components/SeasonSetup.tsx` (step preset/confirm) — kemungkinan angka rekomendasi di-hardcode atau ga nurunin dari input. Bug.
+
+2. **Tampilin progress menuju phase berikutnya di tiap phase (dalam SESI)** — owner mau liat "sisa berapa sesi lagi" ke phase berikut, di KEDUA phase. Dua transisi pakai metrik beda secara internal, tapi dua-duanya bisa dinyatakan dalam sesi:
+   - **Phase 2 → end game:** langsung sesi-based — `COUNT(sesi ended) >= max_sessions` (`session.ts:343`). Sisa = `max_sessions − sesi_ended`. Akurat.
+   - **Phase 1 → 2 (bootstrap→steady):** internalnya pool-based — `SUM(balance) >= max_pool` (`session.ts:428`). **TAPI bisa di-ESTIMATE jadi sesi** (owner-approved approach): tiap sesi nyuntik chip baru tetap dari **gaji dealer Phase 1** (free dealer dapet `+buy_in` chip cetak baru yang masuk sistem). Jadi pool naik ~`buy_in` per sesi → **estimasi sisa sesi ke P2 = `ceil((max_pool − SUM(balance)) / buy_in)`**. Caveat: injeksi cuma kejadian kalau sesi itu ada free dealer (P1, non-cooldown); sesi tanpa free dealer (cooldown/broke deals-only) ga nambah pool → estimasi bisa undershoot. Owner oke ini cuma estimasi ("estimate aja").
+   - Tempat tampil: dashboard (deket badge phase) + mungkin halaman season. Label P1 boleh "≈ sisa N sesi ke Phase 2" (kasih tanda ≈ biar jelas estimasi).
+
+3. **Carry-over pemain musim sebelumnya jadi bisa dipilih (bukan auto)** — sekarang `/season/new` auto-masukin pemain dari musim sebelumnya (by rank). Owner mau itu **default ke-pilih tapi bisa di-uncheck/atur** pas `/season/new`, bukan dipaksa ikut semua. Cek `components/SeasonSetup.tsx` step pilih pemain + query pre-fill di `app/season/new/page.tsx`.
 
 ---
 

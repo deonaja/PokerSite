@@ -8,6 +8,8 @@ import Button from './Button'
 import { Card } from './ui/card'
 import { Badge } from './ui/badge'
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '@/lib/safeStorage'
+import { useElapsedSeconds } from '@/lib/useElapsed'
+import { formatDurationShort } from '@/lib/duration'
 
 interface Participant {
   player_id: string
@@ -31,6 +33,7 @@ interface Props {
   expectedTotal: number
   // Present only in Phase 2 (steady). Used to show the rake calculator on the dealer's step.
   rakeInfo: { rakeRate: number } | null
+  startedAt: string
 }
 
 const STORAGE_KEY = (sessionId: string) => `endSession:${sessionId}`
@@ -41,8 +44,9 @@ const STICKY_BOTTOM =
 
 const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
-export default function SessionEndWizard({ sessionId, participants, expectedTotal, rakeInfo }: Props) {
+export default function SessionEndWizard({ sessionId, participants, expectedTotal, rakeInfo, startedAt }: Props) {
   const router = useRouter()
+  const elapsed = useElapsedSeconds(startedAt)
   const [isPending, startTransition] = useTransition()
   const [step, setStep] = useState(0)
   const [inputs, setInputs] = useState<Record<string, string>>({})
@@ -181,7 +185,14 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
         </div>
 
         <div className="px-4 pt-5">
-          <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">RECAP</p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">RECAP</p>
+            {elapsed != null && (
+              <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                Durasi {formatDurationShort(elapsed)}
+              </p>
+            )}
+          </div>
 
           <div className="mb-5 flex flex-col gap-2.5">
             {participants.map((p, idx) => {
