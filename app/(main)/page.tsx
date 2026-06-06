@@ -3,11 +3,13 @@ import { getAuthenticatedPlayer } from '@/lib/auth-server'
 import type { Player, Season, PollParticipant, PollResponse } from '@/lib/types'
 import DashboardClient from '@/components/DashboardClient'
 
-async function getDashboardData(): Promise<{ initial: PollResponse; season: Season | null }> {
-  const [players, sessions, seasonRows] = await Promise.all([
+async function getDashboardData(): Promise<{ initial: PollResponse; season: Season | null; sessionsPlayed: number }> {
+  const [players, sessions, seasonRows, playedRows] = await Promise.all([
     sql`SELECT id, name, balance, created_at FROM players ORDER BY name ASC`,
     sql`SELECT id FROM sessions WHERE status = 'active' LIMIT 1`,
     sql`SELECT id, number, status, preset_name, starting_balance, buy_in, bb, sb, max_pool, max_sessions, rake_rate, current_phase, creator_player_id, started_at, ended_at FROM seasons WHERE status = 'active' LIMIT 1`,
+    // Ended sessions in the active season — drives the Phase 2 → end-game progress.
+    sql`SELECT COUNT(*)::int AS played FROM sessions s JOIN seasons se ON se.id = s.season_id WHERE se.status = 'active' AND s.status = 'ended'`,
   ])
 
   const activeSessionRow = (sessions as unknown as { id: string }[])[0]
@@ -34,13 +36,21 @@ async function getDashboardData(): Promise<{ initial: PollResponse; season: Seas
       activeSession,
     },
     season: (seasonRows[0] as unknown as Season) ?? null,
+    sessionsPlayed: (playedRows[0] as unknown as { played: number } | undefined)?.played ?? 0,
   }
 }
 
 export default async function DashboardPage() {
-  const [{ initial, season }, authPlayer] = await Promise.all([
+  const [{ initial, season, sessionsPlayed }, authPlayer] = await Promise.all([
     getDashboardData(),
     getAuthenticatedPlayer(),
   ])
-  return <DashboardClient initial={initial} season={season} currentPlayerId={authPlayer?.id ?? null} />
+  return (
+    <DashboardClient
+      initial={initial}
+      season={season}
+      sessionsPlayed={sessionsPlayed}
+      currentPlayerId={authPlayer?.id ?? null}
+    />
+  )
 }

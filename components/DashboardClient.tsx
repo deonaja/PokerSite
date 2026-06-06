@@ -9,17 +9,42 @@ import type { Player, PollResponse, Season } from '@/lib/types'
 interface Props {
   initial: PollResponse
   season: Season | null
+  sessionsPlayed: number
   currentPlayerId: string | null
 }
 
 const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
-export default function DashboardClient({ initial, season, currentPlayerId }: Props) {
+export default function DashboardClient({ initial, season, sessionsPlayed, currentPlayerId }: Props) {
   const { players, activeSession } = usePoll(initial)
   // Standings: ranked by balance (desc). Copy first — never mutate poll state.
   const ranked = [...players].sort((a, b) => b.balance - a.balance)
   const top3 = ranked.slice(0, 3)
   const rest = ranked.slice(3)
+
+  // Progress toward the next phase, expressed in sessions.
+  //  - Phase 2 (steady): real session count → max_sessions.
+  //  - Phase 1 (bootstrap): transition is pool-based (SUM(balance) ≥ max_pool),
+  //    but each session injects ~1 buy-in of new chips via the dealer salary, so
+  //    we ESTIMATE the remaining sessions = ceil((max_pool − pool) / buy_in).
+  let phaseProgress: { pct: number; label: string } | null = null
+  if (season) {
+    if (season.current_phase === 'steady') {
+      const left = Math.max(0, season.max_sessions - sessionsPlayed)
+      const pct = season.max_sessions > 0
+        ? Math.min(100, Math.round((sessionsPlayed / season.max_sessions) * 100))
+        : 0
+      phaseProgress = { pct, label: left > 0 ? `${left} sesi lagi ke akhir musim` : 'Musim siap diakhiri' }
+    } else {
+      const pool = players.reduce((s, p) => s + p.balance, 0)
+      const remaining = Math.max(0, season.max_pool - pool)
+      const left = season.buy_in > 0 ? Math.ceil(remaining / season.buy_in) : 0
+      const pct = season.max_pool > 0
+        ? Math.min(100, Math.round((pool / season.max_pool) * 100))
+        : 0
+      phaseProgress = { pct, label: remaining > 0 ? `≈ ${left} sesi lagi ke Phase 2` : 'Siap masuk Phase 2' }
+    }
+  }
 
   // One podium column. Rank 1 is tallest/centre; current player gets a felt ring.
   function PodiumCol({ player, rank }: { player: Player; rank: number }) {
@@ -61,6 +86,29 @@ export default function DashboardClient({ initial, season, currentPlayerId }: Pr
           <Link href="/season/history" className="shrink-0 transition-colors hover:text-muted-foreground">
             Riwayat musim →
           </Link>
+        </div>
+      )}
+
+      {/* Progress toward the next phase */}
+      {phaseProgress && (
+        <div className="px-4 pt-2.5">
+          <div className="mb-1 flex items-center justify-between text-[0.6875rem] text-[var(--text-tertiary)]">
+            <span className="truncate">{phaseProgress.label}</span>
+            <span className="shrink-0 font-mono tabular-nums">{phaseProgress.pct}%</span>
+          </div>
+          <div
+            className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]"
+            role="progressbar"
+            aria-valuenow={phaseProgress.pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={phaseProgress.label}
+          >
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-300"
+              style={{ width: `${phaseProgress.pct}%` }}
+            />
+          </div>
         </div>
       )}
 
