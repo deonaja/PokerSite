@@ -128,8 +128,10 @@ test.describe('M2 coverage: dealer/cooldown matrix', () => {
       balance: number
       last_dealer_session_id: string | null
     }[]
-    // Free-entry dealer pays no buy-in → balance stays at the 500 starting value.
-    expect(Number(aliceBalance.balance)).toBe(500)
+    // Free-entry dealer pays no buy-in AND gets the bankroll half of the 2× salary
+    // (1× buy_in = 100) credited immediately → 500 + 100 = 600. (The other 1× is
+    // chips on the table, realised at session end.)
+    expect(Number(aliceBalance.balance)).toBe(600)
     expect(aliceBalance.last_dealer_session_id).toBe(sessionId)
 
     const [participant] = await db()`
@@ -147,6 +149,7 @@ test.describe('M2 coverage: dealer/cooldown matrix', () => {
     const actions = new Set(logs.map((l) => l.action))
     expect(actions.has('buy_in_dealer_free')).toBe(true)
     expect(actions.has('dealer_salary_chips')).toBe(true)
+    expect(actions.has('dealer_salary_balance')).toBe(true)
   })
 
   test('Phase 1 + cooldown + dealer can afford: pays buy-in, no salary, cooldown anchor unchanged', async ({ page }) => {
@@ -397,9 +400,10 @@ test.describe('M2 coverage: session-active + end-session details', () => {
     await page.getByRole('button', { name: /Lihat recap/ }).click()
 
     await expect(page.getByText('RECAP')).toBeVisible()
-    // Alice is the Phase 1 free-entry dealer: balance not deducted (stays 500),
-    // plays on 100 salary chips, ends with 250 → 500 + 250 = 750 (+250).
-    await expect(page.getByText(/500\s*→\s*750\s*\(\+250\)/)).toBeVisible()
+    // Alice is the Phase 1 free-entry dealer: no buy-in deduction, but gets the
+    // bankroll half of the 2× salary (+100) → current balance 600. Plays on the
+    // 100 table salary chips, ends with 250 → 600 + 250 = 850 (vs original 500 = +350).
+    await expect(page.getByText(/500\s*→\s*850\s*\(\+350\)/)).toBeVisible()
     // Bob paid buy-in 100 + 1 rebuy 100 (balance 300), stack 150 → 450 (-50).
     await expect(page.getByText(/500\s*→\s*450\s*\(-50\)/)).toBeVisible()
 
@@ -550,7 +554,7 @@ test.describe('M2 coverage: season setup custom values + default PIN for new pla
     await resetTestPlayers(500)
   })
 
-  test('creates custom season, saves computed buy-in/BB/SB, and new players can login with PIN 1234', async ({ page }) => {
+  test('creates custom season: derives buy-in/BB/SB/max_pool, new players login PIN 1234', async ({ page }) => {
     await page.goto('/season/new')
     await expect(page.getByText('Siapa yang main?')).toBeVisible()
 
@@ -562,15 +566,17 @@ test.describe('M2 coverage: season setup custom values + default PIN for new pla
     }
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
-    await expect(page.getByText('Modal & blind')).toBeVisible()
-    await page.getByPlaceholder('cth. 200').fill('350')
+    // Step 2: buy-in + nyawa → modal = buy_in × nyawa; BB/SB from buy_in.
+    await expect(page.getByText('Buy-in & nyawa')).toBeVisible()
+    await page.getByPlaceholder('cth. 100').fill('100')
+    await page.getByRole('button', { name: '5×' }).click()
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
-    await expect(page.getByText('Durasi season')).toBeVisible()
+    // Step 3: custom 12 sesi + rake 13; tempo default = Langsung serius (0.25).
+    await expect(page.getByText('Durasi & tempo')).toBeVisible()
     await page.getByRole('button', { name: 'Custom' }).click()
-    await page.getByPlaceholder('cth. 3500').fill('4444')
     await page.getByPlaceholder('cth. 40').fill('12')
-    await page.getByPlaceholder('cth. 10').fill('13')
+    await page.getByPlaceholder('cth. 10', { exact: true }).fill('13')
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
     await expect(page.getByRole('button', { name: 'Mulai Season' })).toBeVisible()
@@ -593,11 +599,15 @@ test.describe('M2 coverage: season setup custom values + default PIN for new pla
       rake_rate: number
       preset_name: string | null
     }[]
-    expect(Number(season.starting_balance)).toBe(350)
-    expect(Number(season.buy_in)).toBe(175)
-    expect(Number(season.bb)).toBe(18)
-    expect(Number(season.sb)).toBe(9)
-    expect(Number(season.max_pool)).toBe(4444)
+    // buy_in 100 × nyawa 5 = modal 500; bb = 100/10 = 10, sb = 5.
+    // Wizard pre-fills 2 empty name inputs (base season has no season_results), so
+    // only 2 names land → n=2. Custom 12 sesi, tempo serius 0.25 → targetP1 = round(3) = 3.
+    // Opsi A: max_pool = 2×500 + 3×(2×100) = 1600.
+    expect(Number(season.starting_balance)).toBe(500)
+    expect(Number(season.buy_in)).toBe(100)
+    expect(Number(season.bb)).toBe(10)
+    expect(Number(season.sb)).toBe(5)
+    expect(Number(season.max_pool)).toBe(1600)
     expect(Number(season.max_sessions)).toBe(12)
     expect(Number(season.rake_rate)).toBe(13)
     expect(season.preset_name).toBe('custom')
@@ -637,9 +647,11 @@ test.describe('M2 coverage: preset max_pool scales with starting balance', () =>
     await resetTestPlayers(500)
   })
 
-  // The Standard preset is 35× buy-in. At starting balance 400 (buy_in 200) that
-  // must store max_pool = 7000, not the old hardcoded 3500.
-  test('Standard preset stores max_pool = 35 × buy_in (scales with balance)', async ({ page }) => {
+  // Opsi A: max_pool = (n × starting_balance) + (target_P1 × 2×buy_in), where
+  // target_P1 = round(tempo_fraction × max_sessions). Standard = 24 sesi.
+  // Wizard pre-fills 2 empty inputs → n=2. buy_in 100 (modal 500), tempo Pemanasan
+  // 0.60 → target_P1 = round(14.4)=14 → max_pool = 2×500 + 14×(2×100) = 3800.
+  test('Standard preset derives max_pool from tempo (Opsi A)', async ({ page }) => {
     await page.goto('/season/new')
     await expect(page.getByText('Siapa yang main?')).toBeVisible()
 
@@ -650,14 +662,16 @@ test.describe('M2 coverage: preset max_pool scales with starting balance', () =>
     }
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
-    await expect(page.getByText('Modal & blind')).toBeVisible()
-    await page.getByPlaceholder('cth. 200').fill('400')
+    await expect(page.getByText('Buy-in & nyawa')).toBeVisible()
+    await page.getByPlaceholder('cth. 100').fill('100')
+    await page.getByRole('button', { name: '5×' }).click()
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
-    await expect(page.getByText('Durasi season')).toBeVisible()
+    await expect(page.getByText('Durasi & tempo')).toBeVisible()
     await page.getByRole('button', { name: 'Standard' }).click()
-    // The preset card reflects the scaled pool live.
-    await expect(page.getByText(/Max pool 7000/)).toBeVisible()
+    await page.getByRole('button', { name: /Pemanasan panjang/ }).click()
+    // Live summary reflects the tempo-derived bootstrap length.
+    await expect(page.getByText('≈ 14 sesi')).toBeVisible()
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
     await expect(page.getByRole('button', { name: 'Mulai Season' })).toBeVisible()
@@ -674,10 +688,10 @@ test.describe('M2 coverage: preset max_pool scales with starting balance', () =>
       max_sessions: number
       preset_name: string | null
     }[]
-    expect(Number(season.starting_balance)).toBe(400)
-    expect(Number(season.buy_in)).toBe(200)
-    expect(Number(season.max_pool)).toBe(7000)
-    expect(Number(season.max_sessions)).toBe(40)
+    expect(Number(season.starting_balance)).toBe(500)
+    expect(Number(season.buy_in)).toBe(100)
+    expect(Number(season.max_pool)).toBe(3800)
+    expect(Number(season.max_sessions)).toBe(24)
     expect(season.preset_name).toBe('standard')
   })
 })

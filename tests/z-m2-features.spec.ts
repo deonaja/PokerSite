@@ -230,12 +230,12 @@ test.describe('M2: season creation flow', () => {
     }
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
-    // Step 2: modal & blind (defaults: starting_balance 200 → buy_in 100)
-    await expect(page.getByText('Modal & blind')).toBeVisible()
+    // Step 2: buy-in & nyawa (defaults: buy_in 100 × nyawa 5 → starting_balance 500)
+    await expect(page.getByText('Buy-in & nyawa')).toBeVisible()
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
-    // Step 3: preset (Standard selected by default)
-    await expect(page.getByText('Durasi season')).toBeVisible()
+    // Step 3: durasi & tempo (Standard + Langsung serius by default)
+    await expect(page.getByText('Durasi & tempo')).toBeVisible()
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
     // Step 4: confirm
@@ -248,7 +248,7 @@ test.describe('M2: season creation flow', () => {
       SELECT id, starting_balance, buy_in, current_phase
       FROM seasons WHERE status = 'active' ORDER BY started_at DESC LIMIT 1
     ` as { id: string; starting_balance: number; buy_in: number; current_phase: string }[]
-    expect(Number(season.starting_balance)).toBe(200)
+    expect(Number(season.starting_balance)).toBe(500)
     expect(Number(season.buy_in)).toBe(100)
     expect(season.current_phase).toBe('bootstrap')
   })

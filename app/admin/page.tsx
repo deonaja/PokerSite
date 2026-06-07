@@ -17,6 +17,7 @@ const ACTION_COLORS: Record<string, string> = {
   buy_in_dealer_phase2: 'var(--accent-felt)',
   buy_in_no_gaji_dealer: 'var(--text-tertiary)',
   dealer_salary_chips: 'var(--accent-success)',
+  dealer_salary_balance: 'var(--accent-success)',
   rebuy: 'var(--accent-warn)',
   rebuy_undo: 'var(--text-tertiary)',
   session_end: '#4a7ab5',
@@ -33,7 +34,7 @@ const ACTION_COLORS: Record<string, string> = {
 const ACTION_TYPES = [
   'all',
   'buy_in', 'buy_in_dealer_free', 'buy_in_dealer_phase2', 'buy_in_no_gaji_dealer',
-  'dealer_salary_chips',
+  'dealer_salary_chips', 'dealer_salary_balance',
   'rebuy', 'rebuy_undo',
   'session_end',
   'season_start', 'season_end',

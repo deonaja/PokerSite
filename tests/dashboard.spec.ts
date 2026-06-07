@@ -14,12 +14,13 @@ test.describe('Dashboard — progress toward next phase', () => {
   // The active season is shared; always leave it in bootstrap for other specs.
   test.afterEach(async () => { await setPhase('bootstrap') })
 
-  test('bootstrap shows estimated sessions to Phase 2 with a progress bar', async ({ page }) => {
+  test('bootstrap shows the pool progress bar (pool / max_pool)', async ({ page }) => {
     await setPhase('bootstrap')
     await setIdentity(page, alice)
     await page.goto('/')
 
-    await expect(page.getByText(/sesi lagi ke Phase 2/)).toBeVisible()
+    // Phase 1 now shows the live pool toward max_pool, not a session estimate.
+    await expect(page.getByText(/Pool\s/)).toBeVisible()
     await expect(page.getByRole('progressbar')).toBeVisible()
   })
 

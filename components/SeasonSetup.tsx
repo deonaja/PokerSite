@@ -5,24 +5,40 @@ import { createSeason } from '@/lib/actions/season'
 import Button from './Button'
 import { Card } from './ui/card'
 
-// max_pool dinyatakan sebagai kelipatan buy-in (bukan angka absolut) supaya
-// rekomendasi ikut starting balance. Di buy_in=100 (starting 200) nilainya
-// balik ke 1500/2500/3500/5000 — backward-compatible dengan preset lama.
+// Preset = durasi (jumlah sesi) + rake. Label hari ngira-ngira di pace ~3 sesi/hari.
+// max_pool TIDAK lagi di preset — diturunin dari tempo (Opsi A) di bawah.
 const PRESETS = [
-  { name: 'sprint',   label: 'Sprint',   desc: '~1 minggu',  poolBuyIns: 15, maxSessions: 15, rakeRate: 15 },
-  { name: 'quick',    label: 'Quick',    desc: '~2 minggu',  poolBuyIns: 25, maxSessions: 25, rakeRate: 10 },
-  { name: 'standard', label: 'Standard', desc: '~3 minggu',  poolBuyIns: 35, maxSessions: 40, rakeRate: 10 },
-  { name: 'marathon', label: 'Marathon', desc: '~1 bulan',   poolBuyIns: 50, maxSessions: 60, rakeRate:  8 },
-  { name: 'custom',   label: 'Custom',   desc: 'manual',     poolBuyIns:  0, maxSessions:  0, rakeRate:  0 },
+  { name: 'sprint',   label: 'Sprint',   desc: '~3 hari',     maxSessions: 10, rakeRate: 15 },
+  { name: 'quick',    label: 'Quick',    desc: '~5 hari',     maxSessions: 15, rakeRate: 10 },
+  { name: 'standard', label: 'Standard', desc: '~1 minggu',   maxSessions: 24, rakeRate: 10 },
+  { name: 'marathon', label: 'Marathon', desc: '~1.5 minggu', maxSessions: 36, rakeRate:  8 },
+  { name: 'custom',   label: 'Custom',   desc: 'manual',      maxSessions:  0, rakeRate:  0 },
 ] as const
 
 type PresetName = typeof PRESETS[number]['name']
 
-function recommendBbSb(startingBalance: number): { bb: number; sb: number } {
-  const bb = Math.max(1, Math.round(startingBalance / 20))
+// Tempo = preferensi panjang Phase 1 (bootstrap) sebagai fraksi total sesi.
+// max_pool = modal_awal_total + (target_P1_sesi × gaji_dealer), gaji_dealer = 2×buy_in.
+const TEMPOS = [
+  { name: 'serius',    label: '🔥 Langsung serius',   desc: 'Bootstrap singkat, ekonomi cepat serius', p1Frac: 0.25 },
+  { name: 'seimbang',  label: '⚖️ Seimbang',          desc: 'Pemanasan & serius rata',                 p1Frac: 0.40 },
+  { name: 'pemanasan', label: '🐢 Pemanasan panjang', desc: 'Dealer lama main gratis',                 p1Frac: 0.60 },
+] as const
+
+type TempoName = typeof TEMPOS[number]['name']
+
+// BB/SB diturunin dari buy_in (= stack yang dibawa tiap duduk di meja), BUKAN
+// dari starting_balance. Sejak modal awal = buy_in × nyawa, basis ke
+// starting_balance bikin stack-in-BB ngaco pas nyawa > 2.
+function recommendBbSb(buyIn: number): { bb: number; sb: number } {
+  const bb = Math.max(1, Math.round(buyIn / 10))
   const sb = Math.max(1, Math.round(bb / 2))
   return { bb, sb }
 }
+
+// Modal awal tiap pemain = buy_in × nyawa. Nyawa = berapa kali bisa "isi ulang"
+// stack penuh sebelum bener-bener habis.
+const NYAWA_OPTIONS = [3, 4, 5] as const
 
 // Keep only digits and drop leading zeros (so an empty field stays empty and
 // typing into "0" gives "400", not "0400"). A lone "0" is preserved.
@@ -40,9 +56,11 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
   const [playerNames, setPlayerNames] = useState<string[]>(
     existingPlayers.length > 0 ? existingPlayers.map((p) => p.name) : ['', '']
   )
-  const [startingBalance, setStartingBalance] = useState(200)
+  const [buyIn, setBuyIn] = useState(100)
+  const [nyawa, setNyawa] = useState<number>(5)
   const [preset, setPreset] = useState<PresetName>('standard')
-  const [custom, setCustom] = useState({ maxPool: '3500', maxSessions: '40', rakeRate: '10' })
+  const [tempo, setTempo] = useState<TempoName>('serius')
+  const [custom, setCustom] = useState({ maxSessions: '24', rakeRate: '10' })
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [isHydrated, setIsHydrated] = useState(false)
@@ -51,17 +69,26 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
     setIsHydrated(true)
   }, [])
 
-  const { bb, sb } = recommendBbSb(startingBalance)
-  const buyIn = Math.floor(startingBalance / 2)
+  const startingBalance = buyIn * nyawa
+  const { bb, sb } = recommendBbSb(buyIn)
   const activePreset = PRESETS.find((p) => p.name === preset)!
-  const maxPool = preset === 'custom' ? (parseInt(custom.maxPool, 10) || 0) : buyIn * activePreset.poolBuyIns
+  const activeTempo = TEMPOS.find((t) => t.name === tempo)!
   const maxSessions = preset === 'custom' ? (parseInt(custom.maxSessions, 10) || 0) : activePreset.maxSessions
   const rakeRate = preset === 'custom' ? (parseInt(custom.rakeRate, 10) || 0) : activePreset.rakeRate
 
   const filledNames = playerNames.map((n) => n.trim()).filter(Boolean)
+
+  // Opsi A: max_pool diturunin (bukan diinput). gaji_dealer = 2×buy_in (item 6).
+  // target_P1 = fraksi tempo × total sesi (sesi bootstrap yang diharapkan).
+  const nPlayers = Math.max(filledNames.length, 2)
+  const gajiDealer = 2 * buyIn
+  const targetP1 = maxSessions > 0 ? Math.max(1, Math.round(activeTempo.p1Frac * maxSessions)) : 0
+  const phase2Sessions = Math.max(0, maxSessions - targetP1)
+  const maxPool = nPlayers * startingBalance + targetP1 * gajiDealer
+
   const step1Valid = filledNames.length >= 2 && new Set(filledNames.map((n) => n.toLowerCase())).size === filledNames.length
-  const step2Valid = startingBalance >= 10
-  const step3Valid = preset !== 'custom' || (maxPool > 0 && maxSessions > 0 && rakeRate >= 0)
+  const step2Valid = buyIn >= 10 && NYAWA_OPTIONS.includes(nyawa as 3 | 4 | 5)
+  const step3Valid = (preset !== 'custom' || (maxSessions > 0 && rakeRate >= 0)) && maxPool >= 100
 
   function addPlayer() {
     if (!isHydrated || isPending) return
@@ -84,6 +111,8 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
     startTransition(async () => {
       const result = await createSeason({
         playerNames: filledNames,
+        buyIn,
+        nyawa,
         startingBalance,
         bb,
         sb,
@@ -111,8 +140,8 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
         </p>
         <h1 className="m-0 text-lg font-medium text-foreground">
           {step === 1 && 'Siapa yang main?'}
-          {step === 2 && 'Modal & blind'}
-          {step === 3 && 'Durasi season'}
+          {step === 2 && 'Buy-in & nyawa'}
+          {step === 3 && 'Durasi & tempo'}
           {step === 4 && 'Konfirmasi'}
         </h1>
       </div>
@@ -197,32 +226,59 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
         </div>
       )}
 
-      {/* Step 2: Balance */}
+      {/* Step 2: Buy-in & nyawa */}
       {step === 2 && (
         <div className="flex flex-col gap-4">
           <div>
-            <p className={labelClass}>Modal awal tiap pemain</p>
+            <p className={labelClass}>Buy-in (1 stack di meja)</p>
             <input
               type="number"
               inputMode="numeric"
-              value={startingBalance || ''}
+              value={buyIn || ''}
               disabled={!isHydrated || isPending}
-              onChange={(e) => setStartingBalance(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              onChange={(e) => setBuyIn(Math.max(0, parseInt(e.target.value, 10) || 0))}
               min={10}
               max={100000}
-              placeholder="cth. 200"
+              placeholder="cth. 100"
               className={inputClass + ' font-mono text-xl'}
             />
           </div>
 
+          <div>
+            <p className={labelClass}>Nyawa (isi ulang sebelum habis)</p>
+            <div className="flex gap-2">
+              {NYAWA_OPTIONS.map((n) => {
+                const active = nyawa === n
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={!isHydrated || isPending}
+                    onClick={() => setNyawa(n)}
+                    className={
+                      'min-h-11 flex-1 cursor-pointer rounded-lg border font-mono text-base transition-colors ' +
+                      (active ? 'border-primary bg-accent text-foreground' : 'border-border bg-card text-muted-foreground')
+                    }
+                  >
+                    {n}×
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <Card className="flex flex-col gap-2.5 p-4">
-            <Row label="Buy-in / dealer salary" value={buyIn} mono />
+            <Row label="Modal awal tiap pemain" value={startingBalance} mono />
             <Row label="Big blind (BB)" value={bb} mono />
             <Row label="Small blind (SB)" value={sb} mono />
+            <div className="h-px bg-border" />
+            <p className="m-0 text-xs text-[var(--text-tertiary)]">
+              Stack meja = 1 buy-in = {bb > 0 ? Math.round(buyIn / bb) : 0} BB
+            </p>
           </Card>
 
           <p className="m-0 text-xs text-[var(--text-tertiary)]">
-            BB/SB adalah rekomendasi. Bisa disesuaikan pas main.
+            Modal awal = buy-in × nyawa. Tiap pemain mulai {nyawa} nyawa (bisa rebuy {nyawa - 1}× sebelum habis). BB/SB rekomendasi, bisa disesuaikan pas main.
           </p>
 
           <div className="flex gap-2">
@@ -240,7 +296,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
       {step === 3 && (
         <div className="flex flex-col gap-3">
           <p className="m-0 text-[0.8125rem] text-muted-foreground">
-            Estimasi untuk {filledNames.length} pemain, 2–3x seminggu.
+            Durasi (jumlah sesi) untuk {filledNames.length} pemain. Label hari kira-kira di pace ~3 sesi/hari.
           </p>
 
           <div className="flex flex-col gap-2">
@@ -265,7 +321,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                   </div>
                   {p.name !== 'custom' && (
                     <div className="mt-1 font-mono text-xs text-muted-foreground">
-                      Max pool {buyIn * p.poolBuyIns} · {p.maxSessions} sesi · rake {p.rakeRate}%
+                      {p.maxSessions} sesi · rake {p.rakeRate}%
                     </div>
                   )}
                 </button>
@@ -275,19 +331,6 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
 
           {preset === 'custom' && (
             <div className="mt-2 flex flex-col gap-3">
-              <div>
-                <p className={labelClass}>Max pool chip di sistem</p>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={custom.maxPool}
-                  disabled={!isHydrated || isPending}
-                  onChange={(e) => setCustom((c) => ({ ...c, maxPool: digitsOnly(e.target.value) }))}
-                  min={100}
-                  className={inputClass + ' font-mono'}
-                  placeholder="cth. 3500"
-                />
-              </div>
               <div>
                 <p className={labelClass}>Max sesi</p>
                 <input
@@ -317,6 +360,35 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
               </div>
             </div>
           )}
+
+          {/* Tempo ekonomi = preferensi panjang Phase 1 */}
+          <p className={labelClass + ' mt-2'}>Tempo ekonomi</p>
+          <div className="flex flex-col gap-2">
+            {TEMPOS.map((t) => {
+              const active = tempo === t.name
+              return (
+                <button
+                  key={t.name}
+                  type="button"
+                  disabled={!isHydrated || isPending}
+                  onClick={() => setTempo(t.name)}
+                  className={
+                    'min-h-11 cursor-pointer rounded-lg border px-4 py-3 text-left transition-colors ' +
+                    (active ? 'border-primary bg-accent' : 'border-border bg-card')
+                  }
+                >
+                  <span className="text-sm font-medium text-foreground">{t.label}</span>
+                  <div className="mt-0.5 text-xs text-[var(--text-tertiary)]">{t.desc}</div>
+                </button>
+              )
+            })}
+          </div>
+
+          <Card className="flex flex-col gap-2.5 p-4">
+            <Row label="Bootstrap (Phase 1)" value={`≈ ${targetP1} sesi`} />
+            <Row label="Steady (Phase 2)" value={`≈ ${phase2Sessions} sesi`} />
+            <Row label="Max pool" value={maxPool} mono />
+          </Card>
 
           <div className="flex gap-2">
             <Button type="button" onClick={() => setStep(2)} disabled={!isHydrated || isPending} className="flex-1">
@@ -349,16 +421,17 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
             <div className="h-px bg-border" />
 
             <Section title="Ekonomi">
-              <Row label="Modal awal" value={startingBalance} mono />
               <Row label="Buy-in" value={buyIn} mono />
+              <Row label="Nyawa" value={`${nyawa}× (modal ${startingBalance})`} />
               <Row label="BB / SB" value={`${bb} / ${sb}`} />
             </Section>
 
             <div className="h-px bg-border" />
 
-            <Section title={`Preset: ${activePreset.label}`}>
-              <Row label="Max pool" value={maxPool} mono />
+            <Section title={`Preset: ${activePreset.label} · ${activeTempo.label}`}>
               <Row label="Max sesi" value={maxSessions} />
+              <Row label="Bootstrap / Steady" value={`≈ ${targetP1} / ${phase2Sessions} sesi`} />
+              <Row label="Max pool" value={maxPool} mono />
               <Row label="Rake rate" value={`${rakeRate}%`} />
             </Section>
           </Card>

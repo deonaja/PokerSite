@@ -8,6 +8,8 @@ import { evaluateAchievements, type SeasonResultRow } from '@/lib/achievements'
 
 export interface CreateSeasonInput {
   playerNames: string[]
+  buyIn: number
+  nyawa: number
   startingBalance: number
   bb: number
   sb: number
@@ -20,21 +22,26 @@ export interface CreateSeasonInput {
 export async function createSeason(
   input: CreateSeasonInput
 ): Promise<{ error: string } | void> {
-  const { playerNames, startingBalance, bb, sb, maxPool, maxSessions, rakeRate, presetName } = input
+  const { playerNames, buyIn, nyawa, bb, sb, maxPool, maxSessions, rakeRate, presetName } = input
 
   const names = playerNames.map((n) => n.trim()).filter(Boolean)
   if (names.length < 2) return { error: 'Minimal 2 pemain' }
   if (new Set(names.map((n) => n.toLowerCase())).size !== names.length) {
     return { error: 'Nama pemain harus unik' }
   }
-  if (!Number.isInteger(startingBalance) || startingBalance < 10 || startingBalance > 100_000) {
-    return { error: 'Starting balance tidak valid' }
+  if (!Number.isInteger(buyIn) || buyIn < 10 || buyIn > 100_000) {
+    return { error: 'Buy-in tidak valid' }
   }
+  if (!Number.isInteger(nyawa) || nyawa < 2 || nyawa > 10) {
+    return { error: 'Nyawa tidak valid' }
+  }
+  // Derive starting_balance server-side (don't trust the client's copy) so
+  // starting_balance = buy_in × nyawa always holds.
+  const startingBalance = buyIn * nyawa
+  if (startingBalance > 1_000_000) return { error: 'Modal awal terlalu besar' }
   if (!Number.isInteger(maxPool) || maxPool < 100) return { error: 'Max pool tidak valid' }
   if (!Number.isInteger(maxSessions) || maxSessions < 1) return { error: 'Max sesi tidak valid' }
   if (!Number.isInteger(rakeRate) || rakeRate < 0 || rakeRate > 50) return { error: 'Rake rate tidak valid' }
-
-  const buyIn = Math.floor(startingBalance / 2)
   const defaultPinHash = await hashPin('1234')
   const client = createDbClient()
   await client.connect()

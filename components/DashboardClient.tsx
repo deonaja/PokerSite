@@ -52,11 +52,11 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
   const top3 = ranked.slice(0, 3)
   const rest = ranked.slice(3)
 
-  // Progress toward the next phase, expressed in sessions.
-  //  - Phase 2 (steady): real session count → max_sessions.
+  // Progress toward the next phase.
+  //  - Phase 2 (steady): real session count → max_sessions (exact).
   //  - Phase 1 (bootstrap): transition is pool-based (SUM(balance) ≥ max_pool),
-  //    but each session injects ~1 buy-in of new chips via the dealer salary, so
-  //    we ESTIMATE the remaining sessions = ceil((max_pool − pool) / buy_in).
+  //    so show the pool bar DIRECTLY (pool / max_pool) instead of estimating
+  //    sessions — honest and immune to the cooldown/no-injection undershoot.
   let phaseProgress: { pct: number; label: string } | null = null
   if (season) {
     if (season.current_phase === 'steady') {
@@ -67,12 +67,15 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
       phaseProgress = { pct, label: left > 0 ? `${left} sesi lagi ke akhir musim` : 'Musim siap diakhiri' }
     } else {
       const pool = players.reduce((s, p) => s + p.balance, 0)
-      const remaining = Math.max(0, season.max_pool - pool)
-      const left = season.buy_in > 0 ? Math.ceil(remaining / season.buy_in) : 0
       const pct = season.max_pool > 0
         ? Math.min(100, Math.round((pool / season.max_pool) * 100))
         : 0
-      phaseProgress = { pct, label: remaining > 0 ? `≈ ${left} sesi lagi ke Phase 2` : 'Siap masuk Phase 2' }
+      phaseProgress = {
+        pct,
+        label: pool < season.max_pool
+          ? `Pool ${pool.toLocaleString('id-ID')} / ${season.max_pool.toLocaleString('id-ID')}`
+          : 'Siap masuk Phase 2',
+      }
     }
   }
 

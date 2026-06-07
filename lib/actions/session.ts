@@ -510,16 +510,29 @@ export async function startSession({
       )
     }
 
-    // Phase 1 dealer salary as printed chips: no balance change, but the chips
-    // ARE on the table — count them toward the end-session chip reconciliation.
+    // Phase 1 dealer salary = 2× buy_in, SPLIT in two halves (net injection 2×):
+    //  - TABLE half (1× buy_in): printed chips on the table, played with, counted
+    //    in the end-session chip reconciliation (action `dealer_salary_chips`).
+    //  - BANKROLL half (1× buy_in): credited straight to the dealer's balance as a
+    //    spare "nyawa" so a broke dealer can rebuy. Logged as `dealer_salary_balance`,
+    //    which is intentionally EXCLUDED from the season win/loss stats (it's salary,
+    //    not winnings — same treatment as the table half).
     if (dealerGotSalaryChips) {
       const dealerPlayer = players.find((p) => p.id === dealerId)!
-      // Free-entry dealer pays no buy-in, so balance is unchanged here.
+      // Table half: on the table, no balance change here.
       await client.query(
         `INSERT INTO edit_log
            (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
          VALUES ($1, $2, $3, 'dealer_salary_chips', $4, $4, $5)`,
         [sessionId, dealerId, actorPlayerId, dealerPlayer.balance, JSON.stringify({ chips: buyIn })]
+      )
+      // Bankroll half: credit balance immediately (spare life).
+      await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [buyIn, dealerId])
+      await client.query(
+        `INSERT INTO edit_log
+           (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
+         VALUES ($1, $2, $3, 'dealer_salary_balance', $4, $5, $6)`,
+        [sessionId, dealerId, actorPlayerId, dealerPlayer.balance, dealerPlayer.balance + buyIn, JSON.stringify({ chips: buyIn })]
       )
     }
 
