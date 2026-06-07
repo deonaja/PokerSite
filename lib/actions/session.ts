@@ -482,7 +482,10 @@ export async function startSession({
       let noGaji = false
 
       if (isDealer && !dealerPlays) {
-        // NEUTRAL dealer: deals only, does NOT sit in.
+        // NEUTRAL dealer: deals only, does NOT sit in. Always flagged no_gaji so
+        // the active-session UI marks them "BAGI KARTU" (no rebuy controls) — they
+        // are not a playing participant regardless of phase.
+        noGaji = true
         if (dealerFreeEntry) {
           // Phase 1 neutral → flat 1× buy_in salary as table chips (no 2× split,
           // no play). They may still collect tips into this stack.
@@ -493,7 +496,6 @@ export async function startSession({
         } else {
           // Phase 2 (or cooldown) neutral → deals only, no salary, starts 0 chips.
           // In Phase 2 they collect the rake during play (realised at session end).
-          noGaji = true
           deduction = 0
           action = 'buy_in_no_gaji_dealer'
         }
