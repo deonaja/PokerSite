@@ -40,6 +40,9 @@ export async function createSeason(
   const startingBalance = buyIn * nyawa
   if (startingBalance > 1_000_000) return { error: 'Modal awal terlalu besar' }
   if (!Number.isInteger(maxPool) || maxPool < 100) return { error: 'Max pool tidak valid' }
+  // Opsi A invariant: max_pool must sit above the initial pool (n × starting_balance),
+  // otherwise the season would flip to Phase 2 on the very first session.
+  if (maxPool < names.length * startingBalance) return { error: 'Max pool tidak valid' }
   if (!Number.isInteger(maxSessions) || maxSessions < 1) return { error: 'Max sesi tidak valid' }
   if (!Number.isInteger(rakeRate) || rakeRate < 0 || rakeRate > 50) return { error: 'Rake rate tidak valid' }
   const defaultPinHash = await hashPin('1234')
