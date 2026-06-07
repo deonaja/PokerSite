@@ -78,6 +78,26 @@ async function globalTeardown() {
     console.log(`[teardown] Deleted ${strayPlayers.length} stray test player(s)`)
   }
 
+  // Restore the owner's real season config that setup overwrote (huge max_pool,
+  // etc.). Only set when we reused an existing season — see global-setup.
+  if (data.seasonSnapshot) {
+    const s = data.seasonSnapshot
+    await sql`
+      UPDATE seasons
+      SET preset_name = ${s.preset_name},
+          starting_balance = ${s.starting_balance},
+          buy_in = ${s.buy_in},
+          bb = ${s.bb},
+          sb = ${s.sb},
+          max_pool = ${s.max_pool},
+          max_sessions = ${s.max_sessions},
+          rake_rate = ${s.rake_rate},
+          current_phase = ${s.current_phase}
+      WHERE id = ${data.seasonId}
+    `
+    console.log('[teardown] Restored real season config')
+  }
+
   // Delete the test season only if setup created it (don't touch a pre-existing one).
   // Sessions referencing it are already gone by now; wrap in try/catch as a safety net.
   if (data.seasonCreated && data.seasonId) {
