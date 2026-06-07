@@ -15,6 +15,8 @@ interface Participant {
   player_id: string
   player_name: string
   is_dealer: boolean
+  // true = deals only, doesn't play (broke fallback OR a chosen neutral dealer).
+  // Only a non-playing dealer collects the rake.
   no_gaji_dealer: boolean
   rebuy_count: number
   current_balance: number
@@ -316,7 +318,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
         </Card>
       </div>
 
-      {rakeInfo && current.is_dealer && (
+      {rakeInfo && current.is_dealer && current.no_gaji_dealer && (
         <div className="px-6 pt-4">
           <Card className="border-[var(--accent-felt-dim)] px-4 py-3">
             <p className="mb-2 text-[0.6875rem] font-medium tracking-[0.08em] text-primary">KALKULATOR RAKE</p>

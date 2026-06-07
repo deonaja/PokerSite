@@ -429,6 +429,7 @@ test.describe('M2 coverage: rake calculator and Approach C', () => {
   const { players, seasonId } = getTestData()
   const alice = players[0]
   const bob = players[1]
+  const charlie = players[2]
 
   test.beforeEach(async () => {
     await forceEndAllSessions()
@@ -442,20 +443,28 @@ test.describe('M2 coverage: rake calculator and Approach C', () => {
     await setSeasonBase(seasonId, { phase: 'bootstrap', buyIn: 100, maxPool: 100_000_000, rakeRate: 10 })
   })
 
-  test('shows rake calculator (rounded to nearest 5) and does not auto-credit dealer rake', async ({ page }) => {
+  test('rake calculator shows for a non-playing dealer and is NOT auto-credited', async ({ page }) => {
+    // New rule (item 8): only a non-playing (deals-only / neutral) dealer collects
+    // rake. Make Alice a broke deals-only dealer; Bob + Charlie play and pay buy-in,
+    // so the table total stays 2×95 = 190.
+    await db()`UPDATE players SET balance = 50 WHERE id = ${alice.id}`
     await startSessionFromSetup({
       page,
       actor: alice,
-      selectedNames: [alice.name, bob.name],
+      selectedNames: [alice.name, bob.name, charlie.name],
       dealerId: alice.id,
     })
 
     await page.goto('/session/end')
+    // Step order = dealer first (is_dealer DESC), so Alice's step shows the rake calc.
     await expect(page.getByText('KALKULATOR RAKE')).toBeVisible()
     await expect(page.getByText('190')).toBeVisible()
     await expect(page.getByText('10%')).toBeVisible()
     await expect(page.getByText('20 chip')).toBeVisible()
 
+    // Alice (deals-only) took no rake this time → inputs 0; Bob + Charlie cash out 95 each.
+    await page.locator('input[type="number"]').fill('0')
+    await page.getByRole('button', { name: 'Next →' }).click()
     await page.locator('input[type="number"]').fill('95')
     await page.getByRole('button', { name: 'Next →' }).click()
     await page.locator('input[type="number"]').fill('95')
@@ -465,7 +474,8 @@ test.describe('M2 coverage: rake calculator and Approach C', () => {
 
     const [aliceRow] = await db()`SELECT balance FROM players WHERE id = ${alice.id}` as { balance: number }[]
     const [bobRow] = await db()`SELECT balance FROM players WHERE id = ${bob.id}` as { balance: number }[]
-    expect(Number(aliceRow.balance)).toBe(500)
+    // No auto-credit: Alice ends at original 50 + her input 0 = 50 (NOT 50 + rake).
+    expect(Number(aliceRow.balance)).toBe(50)
     expect(Number(bobRow.balance)).toBe(500)
   })
 
@@ -483,32 +493,50 @@ test.describe('M2 coverage: rake calculator and Approach C', () => {
     await expect(page.getByText('KALKULATOR RAKE')).not.toBeVisible()
   })
 
-  test('shows rake calculator only on dealer step in steady phase', async ({ page }) => {
+  test('rake calculator shows only on the (non-playing) dealer step in steady phase', async ({ page }) => {
     await setSeasonBase(seasonId, { phase: 'steady', buyIn: 95, maxPool: 100, rakeRate: 10 })
+    await db()`UPDATE players SET balance = 50 WHERE id = ${alice.id}`
 
     await startSessionFromSetup({
       page,
       actor: alice,
-      selectedNames: [alice.name, bob.name],
+      selectedNames: [alice.name, bob.name, charlie.name],
       dealerId: alice.id,
     })
 
     await page.goto('/session/end')
     await expect(page.getByText('KALKULATOR RAKE')).toBeVisible()
 
-    await page.locator('input[type="number"]').fill('95')
+    await page.locator('input[type="number"]').fill('0')
     await page.getByRole('button', { name: /^Next/ }).click()
     await expect(page.getByText('KALKULATOR RAKE')).not.toBeVisible()
   })
 
-  test('rounds estimated rake to nearest 5 (down case)', async ({ page }) => {
-    // total_chip = 170, rake 10% = 17 -> nearest 5 = 15
-    await setSeasonBase(seasonId, { phase: 'steady', buyIn: 85, maxPool: 100, rakeRate: 10 })
+  test('a PLAYING dealer in steady gets NO rake calculator', async ({ page }) => {
+    // New rule: a dealer who plays (pays buy-in) collects no rake → no calculator.
+    await setSeasonBase(seasonId, { phase: 'steady', buyIn: 95, maxPool: 100, rakeRate: 10 })
 
     await startSessionFromSetup({
       page,
       actor: alice,
       selectedNames: [alice.name, bob.name],
+      dealerId: alice.id, // Alice can afford 95 (balance 500) → plays + pays buy-in.
+    })
+
+    await page.goto('/session/end')
+    await expect(page.getByText('KALKULATOR RAKE')).not.toBeVisible()
+  })
+
+  test('rounds estimated rake to nearest 5 (down case)', async ({ page }) => {
+    // total_chip = 2×85 = 170, rake 10% = 17 -> nearest 5 = 15. Alice = broke
+    // deals-only dealer; Bob + Charlie pay the 85 buy-in.
+    await setSeasonBase(seasonId, { phase: 'steady', buyIn: 85, maxPool: 100, rakeRate: 10 })
+    await db()`UPDATE players SET balance = 50 WHERE id = ${alice.id}`
+
+    await startSessionFromSetup({
+      page,
+      actor: alice,
+      selectedNames: [alice.name, bob.name, charlie.name],
       dealerId: alice.id,
     })
 

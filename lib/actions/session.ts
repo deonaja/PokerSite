@@ -359,22 +359,31 @@ export async function endSession({
 
 interface StartSessionInput {
   playerIds: string[]
-  // The dealer must be one of the playing participants. Their treatment is derived:
-  //   - Phase 1 & not in cooldown → free entry: no buy-in deduction, plays with a
-  //     1× buy_in salary-chip stack on the table (this free stack IS the salary)
-  //   - else if they can afford buy-in → pays buy-in and plays
-  //   - else → deals only (no ante, no salary) — a "no-gaji" dealer
+  // The dealer is one of the selected participants. Treatment is derived:
+  //   PLAYING dealer (dealerPlays = true, default):
+  //     - Phase 1 & not in cooldown → free entry + 2× buy_in split salary
+  //       (1× table chips + 1× bankroll), plays.
+  //     - else if can afford buy-in → pays buy-in and plays.
+  //     - else → deals only (no ante, no salary).
+  //   NEUTRAL dealer (dealerPlays = false; needs 4+ players so 3 still play):
+  //     - Phase 1 & not in cooldown → flat 1× buy_in salary (table chips), no play.
+  //     - else → deals only (no salary, 0 chips); in Phase 2 collects the rake.
   dealerId: string
+  dealerPlays?: boolean
   actorPlayerId: string
 }
 
 export async function startSession({
   playerIds,
   dealerId,
+  dealerPlays = true,
   actorPlayerId: _actorPlayerId,
 }: StartSessionInput): Promise<{ sessionId: string } | { error: string }> {
   if (playerIds.length < 2) return { error: 'Minimal 2 pemain' }
   if (!playerIds.includes(dealerId)) return { error: 'Dealer harus salah satu pemain' }
+  if (!dealerPlays && playerIds.length < 4) {
+    return { error: 'Dealer netral butuh minimal 4 pemain (3 main + 1 dealer)' }
+  }
 
   const actorPlayerId = await getAuthenticatedPlayerId()
   if (!actorPlayerId) return { error: 'Belum login' }
@@ -465,23 +474,40 @@ export async function startSession({
 
     let dealerGotSalary = false
     let dealerGotSalaryChips = false
+    let dealerSalaryBankrollHalf = false
     for (const player of players) {
       const isDealer = player.id === dealerId
       let deduction = Math.min(player.balance, buyIn)
       let action = 'buy_in'
       let noGaji = false
 
-      if (isDealer) {
+      if (isDealer && !dealerPlays) {
+        // NEUTRAL dealer: deals only, does NOT sit in.
         if (dealerFreeEntry) {
-          // Phase 1 not in cooldown — the dealer plays FREE (this is the salary):
-          // their balance is NOT deducted, and they receive a 1× buy_in stack as
-          // printed salary chips on the table (logged separately below). Same for
-          // both has-balance and broke dealers — every seat holds exactly one
-          // buy-in worth of chips, so the table total stays N × buy_in.
+          // Phase 1 neutral → flat 1× buy_in salary as table chips (no 2× split,
+          // no play). They may still collect tips into this stack.
           deduction = 0
           action = 'buy_in_dealer_free'
           dealerGotSalary = true
           dealerGotSalaryChips = true
+        } else {
+          // Phase 2 (or cooldown) neutral → deals only, no salary, starts 0 chips.
+          // In Phase 2 they collect the rake during play (realised at session end).
+          noGaji = true
+          deduction = 0
+          action = 'buy_in_no_gaji_dealer'
+        }
+      } else if (isDealer) {
+        if (dealerFreeEntry) {
+          // Phase 1 not in cooldown — the PLAYING dealer plays FREE: balance not
+          // deducted, and the 2× buy_in salary is SPLIT into a 1× table stack
+          // (printed below) + a 1× bankroll credit (spare life). Both has-balance
+          // and broke dealers get this; the table seat still holds one buy-in.
+          deduction = 0
+          action = 'buy_in_dealer_free'
+          dealerGotSalary = true
+          dealerGotSalaryChips = true
+          dealerSalaryBankrollHalf = true
         } else if (player.balance < buyIn) {
           // Phase 2 or Phase 1 cooldown + broke → deals only (no salary, no ante).
           noGaji = true
@@ -495,9 +521,9 @@ export async function startSession({
       }
 
       await client.query(
-        `INSERT INTO session_participants (session_id, player_id, is_dealer, no_gaji_dealer)
-         VALUES ($1, $2, $3, $4)`,
-        [sessionId, player.id, isDealer, noGaji]
+        `INSERT INTO session_participants (session_id, player_id, is_dealer, no_gaji_dealer, dealer_plays)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [sessionId, player.id, isDealer, noGaji, isDealer ? dealerPlays : true]
       )
       if (deduction !== 0) {
         await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [deduction, player.id])
@@ -510,13 +536,11 @@ export async function startSession({
       )
     }
 
-    // Phase 1 dealer salary = 2× buy_in, SPLIT in two halves (net injection 2×):
-    //  - TABLE half (1× buy_in): printed chips on the table, played with, counted
-    //    in the end-session chip reconciliation (action `dealer_salary_chips`).
-    //  - BANKROLL half (1× buy_in): credited straight to the dealer's balance as a
-    //    spare "nyawa" so a broke dealer can rebuy. Logged as `dealer_salary_balance`,
-    //    which is intentionally EXCLUDED from the season win/loss stats (it's salary,
-    //    not winnings — same treatment as the table half).
+    // Phase 1 dealer salary as chips on the table (1× buy_in): printed, played
+    // with, counted in the end-session chip reconciliation (`dealer_salary_chips`).
+    // A PLAYING free dealer additionally gets the BANKROLL half (another 1× buy_in
+    // credited to balance = the 2× split spare life); a NEUTRAL dealer does not.
+    // `dealer_salary_balance` is EXCLUDED from win/loss stats (salary, not winnings).
     if (dealerGotSalaryChips) {
       const dealerPlayer = players.find((p) => p.id === dealerId)!
       // Table half: on the table, no balance change here.
@@ -526,14 +550,16 @@ export async function startSession({
          VALUES ($1, $2, $3, 'dealer_salary_chips', $4, $4, $5)`,
         [sessionId, dealerId, actorPlayerId, dealerPlayer.balance, JSON.stringify({ chips: buyIn })]
       )
-      // Bankroll half: credit balance immediately (spare life).
-      await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [buyIn, dealerId])
-      await client.query(
-        `INSERT INTO edit_log
-           (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
-         VALUES ($1, $2, $3, 'dealer_salary_balance', $4, $5, $6)`,
-        [sessionId, dealerId, actorPlayerId, dealerPlayer.balance, dealerPlayer.balance + buyIn, JSON.stringify({ chips: buyIn })]
-      )
+      // Bankroll half: PLAYING free dealer only (2× split). Credit immediately.
+      if (dealerSalaryBankrollHalf) {
+        await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [buyIn, dealerId])
+        await client.query(
+          `INSERT INTO edit_log
+             (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
+           VALUES ($1, $2, $3, 'dealer_salary_balance', $4, $5, $6)`,
+          [sessionId, dealerId, actorPlayerId, dealerPlayer.balance, dealerPlayer.balance + buyIn, JSON.stringify({ chips: buyIn })]
+        )
+      }
     }
 
     // Cooldown anchor is set only when the dealer actually received the salary.
