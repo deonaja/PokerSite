@@ -608,3 +608,76 @@ test.describe('M2 coverage: season setup custom values + default PIN for new pla
     await page.waitForURL('/')
   })
 })
+
+test.describe('M2 coverage: preset max_pool scales with starting balance', () => {
+  const { seasonId, runId } = getTestData()
+
+  test.beforeAll(async () => {
+    await forceEndAllSessions()
+    await db()`UPDATE seasons SET status = 'ended', ended_at = now() WHERE id = ${seasonId}`
+  })
+
+  test.afterAll(async () => {
+    await forceEndAllSessions()
+
+    const straySeasons = await db()`
+      SELECT id FROM seasons WHERE status = 'active' AND id != ${seasonId}
+    ` as { id: string }[]
+    for (const season of straySeasons) {
+      await db()`DELETE FROM edit_log WHERE action = 'season_start' AND metadata->>'season_id' = ${season.id}`
+      await db()`DELETE FROM seasons WHERE id = ${season.id}`
+    }
+
+    await db()`
+      UPDATE seasons
+      SET status = 'active', ended_at = NULL, current_phase = 'bootstrap',
+          buy_in = 100, max_pool = 100000000, rake_rate = 10
+      WHERE id = ${seasonId}
+    `
+    await resetTestPlayers(500)
+  })
+
+  // The Standard preset is 35× buy-in. At starting balance 400 (buy_in 200) that
+  // must store max_pool = 7000, not the old hardcoded 3500.
+  test('Standard preset stores max_pool = 35 × buy_in (scales with balance)', async ({ page }) => {
+    await page.goto('/season/new')
+    await expect(page.getByText('Siapa yang main?')).toBeVisible()
+
+    const inputs = page.getByPlaceholder(/Nama kamu|Pemain/)
+    const inputCount = await inputs.count()
+    for (let i = 0; i < inputCount; i++) {
+      await inputs.nth(i).fill(`[T${runId}] PS${i}`)
+    }
+    await page.getByRole('button', { name: /Lanjut/ }).click()
+
+    await expect(page.getByText('Modal & blind')).toBeVisible()
+    await page.getByPlaceholder('cth. 200').fill('400')
+    await page.getByRole('button', { name: /Lanjut/ }).click()
+
+    await expect(page.getByText('Durasi season')).toBeVisible()
+    await page.getByRole('button', { name: 'Standard' }).click()
+    // The preset card reflects the scaled pool live.
+    await expect(page.getByText(/Max pool 7000/)).toBeVisible()
+    await page.getByRole('button', { name: /Lanjut/ }).click()
+
+    await expect(page.getByRole('button', { name: 'Mulai Season' })).toBeVisible()
+    await page.getByRole('button', { name: 'Mulai Season' }).click()
+    await page.waitForURL('**/identity')
+
+    const [season] = await db()`
+      SELECT starting_balance, buy_in, max_pool, max_sessions, preset_name
+      FROM seasons WHERE status = 'active' ORDER BY started_at DESC LIMIT 1
+    ` as {
+      starting_balance: number
+      buy_in: number
+      max_pool: number
+      max_sessions: number
+      preset_name: string | null
+    }[]
+    expect(Number(season.starting_balance)).toBe(400)
+    expect(Number(season.buy_in)).toBe(200)
+    expect(Number(season.max_pool)).toBe(7000)
+    expect(Number(season.max_sessions)).toBe(40)
+    expect(season.preset_name).toBe('standard')
+  })
+})

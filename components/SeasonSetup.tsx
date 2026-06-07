@@ -5,12 +5,15 @@ import { createSeason } from '@/lib/actions/season'
 import Button from './Button'
 import { Card } from './ui/card'
 
+// max_pool dinyatakan sebagai kelipatan buy-in (bukan angka absolut) supaya
+// rekomendasi ikut starting balance. Di buy_in=100 (starting 200) nilainya
+// balik ke 1500/2500/3500/5000 — backward-compatible dengan preset lama.
 const PRESETS = [
-  { name: 'sprint',   label: 'Sprint',   desc: '~1 minggu',  maxPool: 1500, maxSessions: 15, rakeRate: 15 },
-  { name: 'quick',    label: 'Quick',    desc: '~2 minggu',  maxPool: 2500, maxSessions: 25, rakeRate: 10 },
-  { name: 'standard', label: 'Standard', desc: '~3 minggu',  maxPool: 3500, maxSessions: 40, rakeRate: 10 },
-  { name: 'marathon', label: 'Marathon', desc: '~1 bulan',   maxPool: 5000, maxSessions: 60, rakeRate:  8 },
-  { name: 'custom',   label: 'Custom',   desc: 'manual',     maxPool:    0, maxSessions:  0, rakeRate:  0 },
+  { name: 'sprint',   label: 'Sprint',   desc: '~1 minggu',  poolBuyIns: 15, maxSessions: 15, rakeRate: 15 },
+  { name: 'quick',    label: 'Quick',    desc: '~2 minggu',  poolBuyIns: 25, maxSessions: 25, rakeRate: 10 },
+  { name: 'standard', label: 'Standard', desc: '~3 minggu',  poolBuyIns: 35, maxSessions: 40, rakeRate: 10 },
+  { name: 'marathon', label: 'Marathon', desc: '~1 bulan',   poolBuyIns: 50, maxSessions: 60, rakeRate:  8 },
+  { name: 'custom',   label: 'Custom',   desc: 'manual',     poolBuyIns:  0, maxSessions:  0, rakeRate:  0 },
 ] as const
 
 type PresetName = typeof PRESETS[number]['name']
@@ -51,7 +54,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
   const { bb, sb } = recommendBbSb(startingBalance)
   const buyIn = Math.floor(startingBalance / 2)
   const activePreset = PRESETS.find((p) => p.name === preset)!
-  const maxPool = preset === 'custom' ? (parseInt(custom.maxPool, 10) || 0) : activePreset.maxPool
+  const maxPool = preset === 'custom' ? (parseInt(custom.maxPool, 10) || 0) : buyIn * activePreset.poolBuyIns
   const maxSessions = preset === 'custom' ? (parseInt(custom.maxSessions, 10) || 0) : activePreset.maxSessions
   const rakeRate = preset === 'custom' ? (parseInt(custom.rakeRate, 10) || 0) : activePreset.rakeRate
 
@@ -262,7 +265,7 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
                   </div>
                   {p.name !== 'custom' && (
                     <div className="mt-1 font-mono text-xs text-muted-foreground">
-                      Max pool {p.maxPool} · {p.maxSessions} sesi · rake {p.rakeRate}%
+                      Max pool {buyIn * p.poolBuyIns} · {p.maxSessions} sesi · rake {p.rakeRate}%
                     </div>
                   )}
                 </button>
