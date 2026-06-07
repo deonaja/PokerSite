@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { neon } from '@neondatabase/serverless'
 import { hashPin } from '../lib/auth'
-import { getTestData, setIdentity, clickLabelFor, resetTestPlayers } from './helpers'
+import { getTestData, setIdentity, clickLabelFor, resetTestPlayers, fillNewSeasonPlayers } from './helpers'
 
 const db = () => neon(process.env.DATABASE_URL!)
 
@@ -586,12 +586,9 @@ test.describe('M2 coverage: season setup custom values + default PIN for new pla
     await page.goto('/season/new')
     await expect(page.getByText('Siapa yang main?')).toBeVisible()
 
-    const names = [playerA, `[T${runId}] M2C1`, `[T${runId}] M2C2`]
-    const inputs = page.getByPlaceholder(/Nama kamu|Pemain/)
-    const inputCount = await inputs.count()
-    for (let i = 0; i < inputCount; i++) {
-      await inputs.nth(i).fill(names[i] ?? `[T${runId}] M2C${i}`)
-    }
+    // Step 1 is now a checklist (existing players unchecked) + add-new section.
+    // Add exactly 2 brand-new players → n=2 (playerA = creator, login below).
+    await fillNewSeasonPlayers(page, [playerA, `[T${runId}] M2C1`])
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
     // Step 2: buy-in + nyawa → modal = buy_in × nyawa; BB/SB from buy_in.
@@ -628,9 +625,8 @@ test.describe('M2 coverage: season setup custom values + default PIN for new pla
       preset_name: string | null
     }[]
     // buy_in 100 × nyawa 5 = modal 500; bb = 100/10 = 10, sb = 5.
-    // Wizard pre-fills 2 empty name inputs (base season has no season_results), so
-    // only 2 names land → n=2. Custom 12 sesi, tempo serius 0.25 → targetP1 = round(3) = 3.
-    // Opsi A: max_pool = 2×500 + 3×(2×100) = 1600.
+    // We added 2 brand-new players → n=2. Custom 12 sesi, tempo serius 0.25 →
+    // targetP1 = round(3) = 3. Opsi A: max_pool = 2×500 + 3×(2×100) = 1600.
     expect(Number(season.starting_balance)).toBe(500)
     expect(Number(season.buy_in)).toBe(100)
     expect(Number(season.bb)).toBe(10)
@@ -677,17 +673,13 @@ test.describe('M2 coverage: preset max_pool scales with starting balance', () =>
 
   // Opsi A: max_pool = (n × starting_balance) + (target_P1 × 2×buy_in), where
   // target_P1 = round(tempo_fraction × max_sessions). Standard = 24 sesi.
-  // Wizard pre-fills 2 empty inputs → n=2. buy_in 100 (modal 500), tempo Pemanasan
+  // We add 2 brand-new players → n=2. buy_in 100 (modal 500), tempo Pemanasan
   // 0.60 → target_P1 = round(14.4)=14 → max_pool = 2×500 + 14×(2×100) = 3800.
   test('Standard preset derives max_pool from tempo (Opsi A)', async ({ page }) => {
     await page.goto('/season/new')
     await expect(page.getByText('Siapa yang main?')).toBeVisible()
 
-    const inputs = page.getByPlaceholder(/Nama kamu|Pemain/)
-    const inputCount = await inputs.count()
-    for (let i = 0; i < inputCount; i++) {
-      await inputs.nth(i).fill(`[T${runId}] PS${i}`)
-    }
+    await fillNewSeasonPlayers(page, [`[T${runId}] PS0`, `[T${runId}] PS1`])
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
     await expect(page.getByText('Buy-in & nyawa')).toBeVisible()

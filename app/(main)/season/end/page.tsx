@@ -36,9 +36,10 @@ async function getData(seasonId: string) {
       GROUP BY se.id
     ` as unknown as Promise<SeasonRow[]>,
     sql`
-      SELECT id, name, balance
-      FROM players
-      ORDER BY balance DESC, name ASC
+      SELECT p.id, p.name, p.balance
+      FROM players p
+      JOIN season_players mp ON mp.player_id = p.id AND mp.season_id = ${seasonId}
+      ORDER BY p.balance DESC, p.name ASC
     ` as unknown as Promise<PlayerRow[]>,
   ])
 

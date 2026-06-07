@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import type { Player } from '@/lib/types'
 import Button from './Button'
 import { setLocalStorageItem } from '@/lib/safeStorage'
@@ -92,6 +93,13 @@ export default function IdentityPicker({ players, error }: Props) {
           </Button>
         </form>
       )}
+
+      <Link
+        href="/panduan"
+        className="mt-6 self-center text-[0.8125rem] text-muted-foreground underline-offset-4 hover:underline"
+      >
+        Baru di sini? Lihat panduan
+      </Link>
     </div>
   )
 }

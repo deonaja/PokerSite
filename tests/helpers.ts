@@ -30,6 +30,9 @@ export async function setIdentity(page: Page, player: { id: string; name: string
   await page.addInitScript(({ id, name }: { id: string; name: string }) => {
     localStorage.setItem('playerId', id)
     localStorage.setItem('playerName', name)
+    // Suppress the one-time onboarding welcome sheet so its overlay never
+    // intercepts clicks during tests (the guide is covered separately).
+    localStorage.setItem('panduan_seen', '1')
   }, { id: player.id, name: player.name })
 }
 
@@ -54,6 +57,25 @@ export async function clickLabelFor(page: Page, text: string) {
     return
   }
   await input.check()
+}
+
+/**
+ * Season wizard step 1 is now a checklist of registered players (default
+ * UNCHECKED) + an "add new player" section. When registered players exist the
+ * new-player section starts with ZERO input rows, so add one row per name and
+ * fill it. This creates brand-new (or by-name-reused) players without touching
+ * any unchecked registered player. Returns after filling — caller clicks Lanjut.
+ */
+export async function fillNewSeasonPlayers(page: Page, names: string[]) {
+  const addBtn = page.getByRole('button', { name: '+ Tambah pemain baru' })
+  for (let i = 0; i < names.length; i++) {
+    await expect(addBtn).toBeEnabled({ timeout: 10_000 })
+    await addBtn.click()
+  }
+  const inputs = page.getByPlaceholder(/Pemain baru/)
+  for (let i = 0; i < names.length; i++) {
+    await inputs.nth(i).fill(names[i])
+  }
 }
 
 /** Admin page URL (cookie auth — first call must include ?key=) */

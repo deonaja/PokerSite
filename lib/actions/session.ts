@@ -432,7 +432,10 @@ export async function startSession({
     let currentPhase = season?.current_phase ?? 'bootstrap'
     if (currentPhase === 'bootstrap' && season) {
       const { rows: [{ total_chips }] } = await client.query<{ total_chips: number }>(
-        `SELECT COALESCE(SUM(balance), 0)::int AS total_chips FROM players`
+        `SELECT COALESCE(SUM(p.balance), 0)::int AS total_chips
+         FROM players p
+         JOIN season_players mp ON mp.player_id = p.id AND mp.season_id = $1`,
+        [season.id]
       )
       if (total_chips >= season.max_pool) {
         await client.query(

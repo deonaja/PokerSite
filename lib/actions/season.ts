@@ -99,6 +99,12 @@ export async function createSeason(
          VALUES ($1, $2, 'season_start', 0, $3, $4)`,
         [playerId, creatorId, startingBalance, JSON.stringify({ season_id: season.id, season_number: seasonNumber })]
       )
+      // Membership: every chosen player joins the season's roster.
+      await client.query(
+        `INSERT INTO season_players (season_id, player_id) VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [season.id, playerId]
+      )
     }
 
     await client.query('COMMIT')
@@ -180,9 +186,14 @@ export async function endSeason(seasonId: string): Promise<{ success: true } | {
       [seasonId]
     )
 
-    // Rank players by current balance (the final state before reset).
+    // Rank the season's MEMBERS by current balance (the final state before reset).
     const { rows: players } = await client.query<{ id: string; balance: number }>(
-      `SELECT id, balance FROM players ORDER BY balance DESC, id ASC FOR UPDATE`
+      `SELECT p.id, p.balance
+       FROM players p
+       JOIN season_players mp ON mp.player_id = p.id AND mp.season_id = $1
+       ORDER BY p.balance DESC, p.id ASC
+       FOR UPDATE OF p`,
+      [seasonId]
     )
 
     const statsMap = new Map(stats.map((s) => [s.player_id, s]))
@@ -225,10 +236,12 @@ export async function endSeason(seasonId: string): Promise<{ success: true } | {
       }
     }
 
-    // Reset all player balances to starting_balance.
+    // Reset the season members' balances to starting_balance (leave non-members,
+    // who aren't part of this season, untouched).
     await client.query(
-      `UPDATE players SET balance = $1`,
-      [season.starting_balance]
+      `UPDATE players SET balance = $1
+       WHERE id IN (SELECT player_id FROM season_players WHERE season_id = $2)`,
+      [season.starting_balance, seasonId]
     )
 
     // Log season_end for every player.

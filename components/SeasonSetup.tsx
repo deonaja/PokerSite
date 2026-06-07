@@ -48,14 +48,16 @@ function digitsOnly(v: string): string {
 
 interface Props {
   seasonNumber: number
-  existingPlayers: { id: string; name: string }[]
+  allPlayers: { id: string; name: string; inLastSeason: boolean }[]
 }
 
-export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
+export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
-  const [playerNames, setPlayerNames] = useState<string[]>(
-    existingPlayers.length > 0 ? existingPlayers.map((p) => p.name) : ['', '']
-  )
+  // Membership (item 3): existing players are a checklist (default UNCHECK all —
+  // explicit opt-in), brand-new players are typed below. The season roster =
+  // checked existing + filled new names.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [newNames, setNewNames] = useState<string[]>(allPlayers.length === 0 ? ['', ''] : [])
   const [buyIn, setBuyIn] = useState(100)
   const [nyawa, setNyawa] = useState<number>(5)
   const [preset, setPreset] = useState<PresetName>('standard')
@@ -76,7 +78,12 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
   const maxSessions = preset === 'custom' ? (parseInt(custom.maxSessions, 10) || 0) : activePreset.maxSessions
   const rakeRate = preset === 'custom' ? (parseInt(custom.rakeRate, 10) || 0) : activePreset.rakeRate
 
-  const filledNames = playerNames.map((n) => n.trim()).filter(Boolean)
+  // Roster = checked existing players (in display order) + filled new names.
+  // First entry = creator (season/new is unauthenticated, so the creator is
+  // derived from list order, same as before).
+  const selectedNames = allPlayers.filter((p) => selectedIds.has(p.id)).map((p) => p.name)
+  const newFilled = newNames.map((n) => n.trim()).filter(Boolean)
+  const filledNames = [...selectedNames, ...newFilled]
 
   // Opsi A: max_pool diturunin (bukan diinput). gaji_dealer = 2×buy_in (item 6).
   // target_P1 = fraksi tempo × total sesi (sesi bootstrap yang diharapkan).
@@ -90,19 +97,29 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
   const step2Valid = buyIn >= 10 && NYAWA_OPTIONS.includes(nyawa as 3 | 4 | 5)
   const step3Valid = (preset !== 'custom' || (maxSessions > 0 && rakeRate >= 0)) && maxPool >= 100
 
-  function addPlayer() {
+  function toggleSelect(id: string) {
     if (!isHydrated || isPending) return
-    setPlayerNames((prev) => [...prev, ''])
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
-  function removePlayer(i: number) {
+  function addNewPlayer() {
     if (!isHydrated || isPending) return
-    setPlayerNames((prev) => prev.filter((_, idx) => idx !== i))
+    setNewNames((prev) => [...prev, ''])
   }
 
-  function updateName(i: number, val: string) {
+  function removeNewPlayer(i: number) {
     if (!isHydrated || isPending) return
-    setPlayerNames((prev) => prev.map((n, idx) => (idx === i ? val : n)))
+    setNewNames((prev) => prev.filter((_, idx) => idx !== i))
+  }
+
+  function updateNewName(i: number, val: string) {
+    if (!isHydrated || isPending) return
+    setNewNames((prev) => prev.map((n, idx) => (idx === i ? val : n)))
   }
 
   function handleSubmit() {
@@ -159,60 +176,90 @@ export default function SeasonSetup({ seasonNumber, existingPlayers }: Props) {
         ))}
       </div>
 
-      {/* Step 1: Players */}
+      {/* Step 1: Players — membership checklist + brand-new players */}
       {step === 1 && (
-        <div className="flex flex-col gap-3">
-          {seasonNumber > 1 && existingPlayers.length > 0 ? (
-            <p className="m-0 text-[0.8125rem] text-muted-foreground">
-              Pemain dari musim sebelumnya — edit atau hapus sesuka kamu. PIN default pemain baru: <strong className="font-mono text-foreground">1234</strong>
-            </p>
-          ) : (
-            <p className="m-0 text-[0.8125rem] text-muted-foreground">
-              Pemain pertama = pembuat season. PIN default semua: <strong className="font-mono text-foreground">1234</strong>
-            </p>
+        <div className="flex flex-col gap-4">
+          <p className="m-0 text-[0.8125rem] text-muted-foreground">
+            Pilih siapa yang ikut musim ini. PIN default pemain baru: <strong className="font-mono text-foreground">1234</strong>
+          </p>
+
+          {allPlayers.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <p className={labelClass}>Pemain terdaftar</p>
+              {allPlayers.map((p) => {
+                const checked = selectedIds.has(p.id)
+                return (
+                  <label
+                    key={p.id}
+                    className={
+                      'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2.5 transition-colors ' +
+                      (checked ? 'border-primary bg-accent' : 'border-border bg-card')
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={!isHydrated || isPending}
+                      onChange={() => toggleSelect(p.id)}
+                      className="h-4 w-4 shrink-0 accent-primary"
+                    />
+                    <span className="flex-1 text-sm font-medium text-foreground">{p.name}</span>
+                    {p.inLastSeason && (
+                      <span className="text-[0.6875rem] uppercase tracking-[0.05em] text-[var(--text-tertiary)]">
+                        musim lalu
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
           )}
+
           <div className="flex flex-col gap-2">
-            {playerNames.map((name, i) => (
-              <div key={i} className="flex gap-2 items-center">
+            <p className={labelClass}>{allPlayers.length > 0 ? 'Tambah pemain baru' : 'Pemain'}</p>
+            {newNames.map((name, i) => (
+              <div key={i} className="flex items-center gap-2">
                 <input
                   value={name}
                   disabled={!isHydrated || isPending}
-                  onChange={(e) => updateName(i, e.target.value)}
-                  placeholder={i === 0 ? 'Nama kamu (pembuat)' : `Pemain ${i + 1}`}
+                  onChange={(e) => updateNewName(i, e.target.value)}
+                  placeholder={`Pemain baru ${i + 1}`}
                   maxLength={50}
                   className={inputClass + ' flex-1'}
                 />
-                {playerNames.length > 2 && (
-                  <button
-                    type="button"
-                    disabled={!isHydrated || isPending}
-                    onClick={() => removePlayer(i)}
-                    className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent text-base text-[var(--text-tertiary)]"
-                    aria-label="Hapus pemain"
-                  >
-                    ✕
-                  </button>
-                )}
+                <button
+                  type="button"
+                  disabled={!isHydrated || isPending}
+                  onClick={() => removeNewPlayer(i)}
+                  className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent text-base text-[var(--text-tertiary)]"
+                  aria-label="Hapus pemain"
+                >
+                  ✕
+                </button>
               </div>
             ))}
+            {filledNames.length < 8 && (
+              <button
+                type="button"
+                disabled={!isHydrated || isPending}
+                onClick={addNewPlayer}
+                className="min-h-11 cursor-pointer rounded-lg border border-dashed border-input bg-transparent text-sm text-muted-foreground"
+              >
+                + Tambah pemain baru
+              </button>
+            )}
           </div>
-
-          {playerNames.length < 8 && (
-            <button
-              type="button"
-              disabled={!isHydrated || isPending}
-              onClick={addPlayer}
-              className="min-h-11 cursor-pointer rounded-lg border border-dashed border-input bg-transparent text-sm text-muted-foreground"
-            >
-              + Tambah pemain
-            </button>
-          )}
 
           {filledNames.length >= 2 && new Set(filledNames.map((n) => n.toLowerCase())).size < filledNames.length && (
             <p className="m-0 text-[0.8125rem] text-destructive">
               Nama pemain harus unik.
             </p>
           )}
+
+          <p className="m-0 text-xs text-[var(--text-tertiary)]">
+            {filledNames.length} pemain dipilih
+            {filledNames.length > 0 ? ` · ${filledNames[0]} = pembuat` : ''}. Minimal 2.
+          </p>
 
           <Button
             type="button"

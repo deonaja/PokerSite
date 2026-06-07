@@ -5,7 +5,12 @@ import DashboardClient from '@/components/DashboardClient'
 
 async function getDashboardData(): Promise<{ initial: PollResponse; season: Season | null; sessionsPlayed: number }> {
   const [players, sessions, seasonRows, playedRows] = await Promise.all([
-    sql`SELECT id, name, balance, created_at FROM players ORDER BY name ASC`,
+    // Scope to the active season's MEMBERS (season_players), not every player row.
+    sql`SELECT p.id, p.name, p.balance, p.created_at
+        FROM players p
+        JOIN season_players mp ON mp.player_id = p.id
+        JOIN seasons s ON s.id = mp.season_id AND s.status = 'active'
+        ORDER BY p.name ASC`,
     sql`SELECT id FROM sessions WHERE status = 'active' LIMIT 1`,
     sql`SELECT id, number, status, preset_name, starting_balance, buy_in, bb, sb, max_pool, max_sessions, rake_rate, current_phase, creator_player_id, started_at, ended_at FROM seasons WHERE status = 'active' LIMIT 1`,
     // Ended sessions in the active season — drives the Phase 2 → end-game progress.

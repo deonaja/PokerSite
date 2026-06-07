@@ -111,6 +111,17 @@ async function globalSetup() {
     console.log('[setup] Created active test season')
   }
 
+  // Membership (migration 007): roster reads (dashboard/poll/setup/leaderboard)
+  // scope to season_players, so the test players must JOIN the active season or
+  // they'd be invisible. Backfill only ran once at migrate time; freshly-seeded
+  // [T…] players are not auto-added, so add them here. Cascades on teardown.
+  await sql`
+    INSERT INTO season_players (season_id, player_id)
+    SELECT ${seasonId}, id FROM players WHERE id = ANY(${players.map((p) => p.id)}::uuid[])
+    ON CONFLICT DO NOTHING
+  `
+  console.log('[setup] Added test players to active season roster (season_players)')
+
   const data: TestData = { runId, adminKey, defaultPin, seasonId, seasonCreated, seasonSnapshot, players }
   writeFileSync(resolve(process.cwd(), '.test-data.json'), JSON.stringify(data, null, 2))
   console.log(`\n[setup] Created ${players.length} test players (runId: ${runId})`)

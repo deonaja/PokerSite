@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { neon } from '@neondatabase/serverless'
 import { hashPin } from '../lib/auth'
-import { getTestData, setIdentity, clickLabelFor, resetTestPlayers } from './helpers'
+import { getTestData, setIdentity, clickLabelFor, resetTestPlayers, fillNewSeasonPlayers } from './helpers'
 
 const db = () => neon(process.env.DATABASE_URL!)
 
@@ -218,16 +218,11 @@ test.describe('M2: season creation flow', () => {
   test('walks through the multi-step form and creates an active season', async ({ page }) => {
     await page.goto('/season/new')
 
-    // Step 1: the form pre-fills with every existing player. Overwrite each input
-    // with a fresh [T]-prefixed name so we create brand-new players and never
-    // touch (reuse/reset) any real player that might exist in the DB.
+    // Step 1 is a checklist (existing players unchecked) + add-new section. Add
+    // 2 fresh [T]-prefixed players so we never touch any real registered player.
     await expect(page.getByText('Siapa yang main?')).toBeVisible()
     const runId = getTestData().runId
-    const nameInputs = page.getByPlaceholder(/Nama kamu|Pemain/)
-    const count = await nameInputs.count()
-    for (let i = 0; i < count; i++) {
-      await nameInputs.nth(i).fill(`[T${runId}] SC${i}`)
-    }
+    await fillNewSeasonPlayers(page, [`[T${runId}] SC0`, `[T${runId}] SC1`])
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
     // Step 2: buy-in & nyawa (defaults: buy_in 100 × nyawa 5 → starting_balance 500)
