@@ -12,6 +12,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.0',
+    date: '2026-06-08',
+    changes: [
+      'Setup musim baru: tentukan buy-in + jumlah nyawa (modal awal = buy-in × nyawa), lalu pilih tempo & durasi.',
+      'Pilih anggota lewat checklist saat bikin musim — dashboard hanya menampilkan pemain yang ikut musim aktif.',
+      'Dealer bisa "cuma bagi kartu" (netral) saat 4+ pemain; gaji dealer & rake menyesuaikan per fase.',
+      'Dashboard menampilkan progress pool menuju fase berikutnya + notifikasi sekali saat fase berganti.',
+      'Halaman Panduan (ikon "?" di header) + sambutan singkat untuk pemain baru.',
+    ],
+  },
+  {
     version: '0.6.0',
     date: '2026-06-06',
     changes: [
