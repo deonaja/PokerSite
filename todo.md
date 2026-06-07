@@ -370,6 +370,15 @@ Urutan & dependensi pas implement item 4–7:
      - **Register cabang per-phase + atomik:** baca phase → P1 (balance=starting_balance + bump max_pool) / P2 (balance 0); 1 transaction (buat player + season_players + update max_pool kalau P1).
      - **"Verified" = cukup baris `season_players`**, ga perlu kolom flag terpisah.
 
+10. **[DISKUSI 2026-06-07, belum diputusin] User manual / panduan + onboarding device baru.** Owner mau ada panduan buat device yang baru buka. Doable, **no migration/library** (precedent: halaman `/changelog` + indikator "new" via localStorage — pola sama).
+   - **2 lapis:** (a) **halaman `/panduan`** (atau `/help`) — konten statis ber-section, tema felt-green, akses kapan aja via ikon **"?"** di `(main)/layout`. (b) **Auto-welcome sekali per-device**: localStorage `panduan_seen` kosong → munculin **sheet sambutan** (pakai `components/Sheet.tsx`) + CTA "Lihat panduan" / "Lewati", lalu set `panduan_seen`.
+   - **Deteksi device baru:** localStorage flag (mirror `phase_seen`/changelog). Per-device, bukan per-user.
+   - **[DECIDED 2026-06-07] Struktur konten = overview ringkas + section expandable (accordion).** Bagian ATAS halaman = **alur main ringkas** (apa ini → pilih identitas → mulai sesi → main → end → season). Di bawahnya **section-section yang bisa dibuka** (collapsible, default tertutup) buat yang mau dalemin — biar ga jadi wall-of-text. UI accordion pakai React state atau `<details>` (no lib).
+     - Section deep (buka sesuai minat): Modal & nyawa · Dealer & gaji (free P1/cooldown/dealer netral) · **Phase 1 (Bootstrap) vs Phase 2 (Steady)** + bar pool · Rake · Season (durasi/reset/leaderboard/achievement) · Admin (opsional).
+   - **[DECIDED 2026-06-07] Auto-welcome:** link kecil **"Baru di sini?"** di `/identity` (buat orang paling awal) + **welcome-sheet sekali** pas dashboard pertama (localStorage `panduan_seen`). Owner approve saran ini.
+   - **Teknis:** client + JSX statis (no MD renderer). Route `app/(main)/panduan/page.tsx` + ikon "?" di `(main)/layout` + welcome-sheet client component + accordion. **No DB, no migration.**
+   - **Sinergi:** pasang bareng register/guest (item 9, Fase E) — orang baru/guest paling butuh; link dari flow register.
+
 ### 🛠️ RENCANA KERJA / BUILD ORDER (owner delegasiin ke Claude 2026-06-07 — "urutan rilis sesuaiin aja")
 
 6 fase, checkpoint per item (stop & report tiap selesai, sesuai CLAUDE.md). Migration kepisah per-fase (1 file/fitur, bukan gabungan).
@@ -384,6 +393,7 @@ Urutan & dependensi pas implement item 4–7:
 | **C** | Keanggotaan season: **C1** tabel + scope dashboard/poll/leaderboard/session-setup ke member musim aktif → **C2** wizard step1 jadi checklist dari `players` (default UNCHECK) + tambah baru (it.3) → **C3** E2E | `season_players` | A |
 | **D** | Fitur LOAN (desain FINAL di backlog atas) + endpoint `/api/loans` (no-cache per-user) + action types di-exclude dari stats + E2E | `loans` | — |
 | **E** | Register auth-code (it.9): form nama+PIN+kode (2-use rotating, throttle, atomik) + auto-join + join-tengah-musim (lama=PIN no-kode, baru=kode) + guest spectator + Telegram opsional (last) + E2E | `seasons.invite_code`(+uses) | A, C, D |
+| **F** | Panduan/manual (it.10): halaman `/panduan` + ikon "?" + auto-welcome sheet sekali per-device | — | independen (no dep, no migration — bisa diselip kapan aja; enak digabung sama E) |
 
 **Alasan urutan:** A3 butuh nyawa(A1)+gaji(A2) → A berurutan. B & C nempel ekonomi. E nyander keanggotaan(C) + loan(D, buat recovery P2-joiner) + balance-logic(A) → terakhir. D bisa diselip kapan aja sebelum E (independen).
 
