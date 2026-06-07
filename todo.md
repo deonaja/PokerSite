@@ -374,6 +374,8 @@ Urutan & dependensi pas implement item 4–7:
 
 6 fase, checkpoint per item (stop & report tiap selesai, sesuai CLAUDE.md). Migration kepisah per-fase (1 file/fitur, bukan gabungan).
 
+**PROGRESS (2026-06-07):** ✅ **Fase 0** (commit `6ba40d6`+`b0218c2`) · ✅ **A1** (input buy-in+nyawa, BB/SB rebase ke buy_in, createSeason derive starting_balance) · ✅ **A2** (gaji dealer 2× split: `balance += buyIn` + log `dealer_salary_balance`, di-exclude dari stats+rekonsiliasi; admin log ditambah) · ✅ **A3** (Opsi A max_pool derived + tempo picker default serius + ladder 10/15/24/36 + label hari + dashboard P1 bar pool) · ✅ **A4** (E2E di-rewrite: 2 wizard test + recap + free-dealer balance + dashboard pool bar; **full suite 84 pass**, 1 test alert flaky/unrelated). **FASE A SELESAI** → siap commit. **NEXT: Fase B** (dealer netral + rake rule, migration `dealer_plays`).
+
 | Fase | Isi | Migration | Depend |
 |---|---|---|---|
 | **0** | Commit item 1 (udah kelar & lulus tes, masih uncommitted di dev) — ⚠ butuh OK owner buat commit | — | — |
