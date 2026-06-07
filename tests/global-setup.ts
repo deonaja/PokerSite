@@ -29,6 +29,11 @@ export interface TestData {
   // would corrupt the real season. null when we created a fresh test season or
   // the existing one already looks like a leftover test value.
   seasonSnapshot: SeasonSnapshot | null
+  // Real (non-test) players that were members of the reused season at setup time.
+  // Tests can wipe season_players (debug ops / FK cascade), and post-007 an empty
+  // roster bricks the dashboard — teardown re-inserts these. Empty for a fresh
+  // test season (seasonCreated) or a season that had no real members.
+  seasonMemberIds: string[]
   players: { id: string; name: string; balance: number }[]
 }
 
@@ -111,6 +116,18 @@ async function globalSetup() {
     console.log('[setup] Created active test season')
   }
 
+  // Snapshot the season's REAL (non-test) members BEFORE we mutate anything, so
+  // teardown can restore them. Tests wipe season_players (debug ops / cascade on
+  // deletes) and post-007 an empty roster bricks the dashboard. Empty for a fresh
+  // test season or one with no real members.
+  const realMemberRows = await sql`
+    SELECT sp.player_id
+    FROM season_players sp
+    JOIN players p ON p.id = sp.player_id
+    WHERE sp.season_id = ${seasonId} AND p.name NOT LIKE '[T%'
+  ` as { player_id: string }[]
+  const seasonMemberIds = realMemberRows.map((r) => r.player_id)
+
   // Membership (migration 007): roster reads (dashboard/poll/setup/leaderboard)
   // scope to season_players, so the test players must JOIN the active season or
   // they'd be invisible. Backfill only ran once at migrate time; freshly-seeded
@@ -120,9 +137,9 @@ async function globalSetup() {
     SELECT ${seasonId}, id FROM players WHERE id = ANY(${players.map((p) => p.id)}::uuid[])
     ON CONFLICT DO NOTHING
   `
-  console.log('[setup] Added test players to active season roster (season_players)')
+  console.log(`[setup] Added test players to roster (season_players); snapshotted ${seasonMemberIds.length} real member(s)`)
 
-  const data: TestData = { runId, adminKey, defaultPin, seasonId, seasonCreated, seasonSnapshot, players }
+  const data: TestData = { runId, adminKey, defaultPin, seasonId, seasonCreated, seasonSnapshot, seasonMemberIds, players }
   writeFileSync(resolve(process.cwd(), '.test-data.json'), JSON.stringify(data, null, 2))
   console.log(`\n[setup] Created ${players.length} test players (runId: ${runId})`)
 }

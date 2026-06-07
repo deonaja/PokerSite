@@ -98,6 +98,21 @@ async function globalTeardown() {
     console.log('[teardown] Restored real season config')
   }
 
+  // Restore the base season's real-player membership. Tests can wipe season_players
+  // (debug ops / FK cascade on deletes); post-007 an empty roster bricks the
+  // dashboard. Only for a reused season (a fresh test season is deleted below).
+  // The JOIN to players guards against ids that no longer exist.
+  if (!data.seasonCreated && data.seasonMemberIds?.length) {
+    await sql`
+      INSERT INTO season_players (season_id, player_id)
+      SELECT ${data.seasonId}, id
+      FROM players
+      WHERE id = ANY(${data.seasonMemberIds}::uuid[])
+      ON CONFLICT DO NOTHING
+    `
+    console.log(`[teardown] Restored ${data.seasonMemberIds.length} real member(s) to base season`)
+  }
+
   // Delete the test season only if setup created it (don't touch a pre-existing one).
   // Sessions referencing it are already gone by now; wrap in try/catch as a safety net.
   if (data.seasonCreated && data.seasonId) {
