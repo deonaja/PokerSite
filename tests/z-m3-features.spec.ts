@@ -35,6 +35,15 @@ async function createActiveSeason({
       ((SELECT COALESCE(MAX(number), 0) + 1 FROM seasons), 'active', 'standard', ${startingBalance}, ${buyIn}, 10, 5, 100000000, ${maxSessions}, ${rakeRate}, ${phase})
     RETURNING id, number, starting_balance, buy_in
   ` as { id: string; number: number; starting_balance: number; buy_in: number }[]
+  // Membership (migration 007): /session/setup, the dashboard, and endSeason all
+  // scope to season_players now. This helper builds a season via raw SQL (it
+  // bypasses the createSeason action that would normally add members), so join
+  // every seeded [T…] player to its roster — mirrors global-setup.
+  await db()`
+    INSERT INTO season_players (season_id, player_id)
+    SELECT ${season.id}, id FROM players WHERE name LIKE '[T%'
+    ON CONFLICT DO NOTHING
+  `
   return season
 }
 
