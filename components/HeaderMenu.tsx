@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { KeyRound, LogOut, ChevronDown, Sparkles } from 'lucide-react'
+import { KeyRound, LogOut, ChevronDown, Sparkles, HelpCircle } from 'lucide-react'
 import Sheet from './Sheet'
 import { Badge } from './ui/badge'
 import { getLocalStorageItem } from '@/lib/safeStorage'
@@ -48,6 +48,14 @@ export default function HeaderMenu({ name }: { name: string }) {
         </span>
         <ChevronDown className="size-4 shrink-0 text-[var(--text-tertiary)]" />
       </button>
+
+      <Link
+        href="/panduan"
+        aria-label="Panduan"
+        className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-[var(--bg-elevated)]"
+      >
+        <HelpCircle className="size-5" />
+      </Link>
 
       <Sheet isOpen={open} onClose={() => setOpen(false)} title="Akun">
         <div className="mb-4 flex items-center gap-3">

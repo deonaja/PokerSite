@@ -6,14 +6,40 @@ import { hashPin } from '../lib/auth'
 
 loadDotenv({ path: resolve(process.cwd(), '.env.local') })
 
+export interface SeasonSnapshot {
+  preset_name: string | null
+  starting_balance: number
+  buy_in: number
+  bb: number
+  sb: number
+  max_pool: number
+  max_sessions: number
+  rake_rate: number
+  current_phase: string
+}
+
 export interface TestData {
   runId: number
   adminKey: string
   defaultPin: string
   seasonId: string
   seasonCreated: boolean
+  // When we REUSE the owner's real active season, snapshot its config here so
+  // teardown can restore it — otherwise our test overwrite (huge max_pool, etc.)
+  // would corrupt the real season. null when we created a fresh test season or
+  // the existing one already looks like a leftover test value.
+  seasonSnapshot: SeasonSnapshot | null
+  // Real (non-test) players that were members of the reused season at setup time.
+  // Tests can wipe season_players (debug ops / FK cascade), and post-007 an empty
+  // roster bricks the dashboard — teardown re-inserts these. Empty for a fresh
+  // test season (seasonCreated) or a season that had no real members.
+  seasonMemberIds: string[]
   players: { id: string; name: string; balance: number }[]
 }
+
+// max_pool we set during tests so the phase never auto-flips. Used as a sentinel
+// to detect a season left in test-state by a previous interrupted run.
+const TEST_MAX_POOL = 100_000_000
 
 async function globalSetup() {
   const dbUrl = process.env.DATABASE_URL
@@ -48,18 +74,33 @@ async function globalSetup() {
   // max_pool is huge so the phase never auto-transitions to 'steady' mid-test.
   let seasonId: string
   let seasonCreated: boolean
-  const existingSeason = await sql`SELECT id FROM seasons WHERE status = 'active' LIMIT 1` as { id: string }[]
+  let seasonSnapshot: SeasonSnapshot | null = null
+  const existingSeason = await sql`
+    SELECT id, preset_name, starting_balance, buy_in, bb, sb, max_pool, max_sessions, rake_rate, current_phase
+    FROM seasons WHERE status = 'active' LIMIT 1
+  ` as (SeasonSnapshot & { id: string })[]
   if (existingSeason.length > 0) {
     seasonId = existingSeason[0].id
     seasonCreated = false
+    // Snapshot the real config so teardown can restore it. Skip if it already
+    // looks like a leftover test value (interrupted run) — restoring that would
+    // just re-corrupt it; better to leave the snapshot null.
+    if (existingSeason[0].max_pool !== TEST_MAX_POOL) {
+      const { id: _id, ...snap } = existingSeason[0]
+      seasonSnapshot = snap
+    }
     await sql`
       UPDATE seasons
       SET starting_balance = 200, buy_in = 100, bb = 10, sb = 5,
-          max_pool = 100000000, max_sessions = 100000, rake_rate = 10,
+          max_pool = ${TEST_MAX_POOL}, max_sessions = 100000, rake_rate = 10,
           current_phase = 'bootstrap', preset_name = 'standard'
       WHERE id = ${seasonId}
     `
-    console.log('[setup] Reused existing active season')
+    console.log(
+      seasonSnapshot
+        ? '[setup] Reused existing active season (config snapshotted for restore)'
+        : '[setup] Reused existing active season (no snapshot — already test-state)'
+    )
   } else {
     const seasonRows = await sql`
       INSERT INTO seasons
@@ -75,7 +116,30 @@ async function globalSetup() {
     console.log('[setup] Created active test season')
   }
 
-  const data: TestData = { runId, adminKey, defaultPin, seasonId, seasonCreated, players }
+  // Snapshot the season's REAL (non-test) members BEFORE we mutate anything, so
+  // teardown can restore them. Tests wipe season_players (debug ops / cascade on
+  // deletes) and post-007 an empty roster bricks the dashboard. Empty for a fresh
+  // test season or one with no real members.
+  const realMemberRows = await sql`
+    SELECT sp.player_id
+    FROM season_players sp
+    JOIN players p ON p.id = sp.player_id
+    WHERE sp.season_id = ${seasonId} AND p.name NOT LIKE '[T%'
+  ` as { player_id: string }[]
+  const seasonMemberIds = realMemberRows.map((r) => r.player_id)
+
+  // Membership (migration 007): roster reads (dashboard/poll/setup/leaderboard)
+  // scope to season_players, so the test players must JOIN the active season or
+  // they'd be invisible. Backfill only ran once at migrate time; freshly-seeded
+  // [T…] players are not auto-added, so add them here. Cascades on teardown.
+  await sql`
+    INSERT INTO season_players (season_id, player_id)
+    SELECT ${seasonId}, id FROM players WHERE id = ANY(${players.map((p) => p.id)}::uuid[])
+    ON CONFLICT DO NOTHING
+  `
+  console.log(`[setup] Added test players to roster (season_players); snapshotted ${seasonMemberIds.length} real member(s)`)
+
+  const data: TestData = { runId, adminKey, defaultPin, seasonId, seasonCreated, seasonSnapshot, seasonMemberIds, players }
   writeFileSync(resolve(process.cwd(), '.test-data.json'), JSON.stringify(data, null, 2))
   console.log(`\n[setup] Created ${players.length} test players (runId: ${runId})`)
 }

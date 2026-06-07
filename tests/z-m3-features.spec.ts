@@ -35,6 +35,15 @@ async function createActiveSeason({
       ((SELECT COALESCE(MAX(number), 0) + 1 FROM seasons), 'active', 'standard', ${startingBalance}, ${buyIn}, 10, 5, 100000000, ${maxSessions}, ${rakeRate}, ${phase})
     RETURNING id, number, starting_balance, buy_in
   ` as { id: string; number: number; starting_balance: number; buy_in: number }[]
+  // Membership (migration 007): /session/setup, the dashboard, and endSeason all
+  // scope to season_players now. This helper builds a season via raw SQL (it
+  // bypasses the createSeason action that would normally add members), so join
+  // every seeded [T…] player to its roster — mirrors global-setup.
+  await db()`
+    INSERT INTO season_players (season_id, player_id)
+    SELECT ${season.id}, id FROM players WHERE name LIKE '[T%'
+    ON CONFLICT DO NOTHING
+  `
   return season
 }
 
@@ -238,20 +247,21 @@ test.describe('M3: season end, leaderboard, history', () => {
       ` as { cnt: number }[]
       expect(Number(seasonEndLogs.cnt)).toBe(3)
 
-      // /season/new prefill must follow previous season rank order.
-      const expectedNames = await db()`
+      // /season/new now lists ALL registered players as an (unchecked) checklist;
+      // previous-season players carry a "musim lalu" tag (no rank-order prefill).
+      const prevNames = await db()`
         SELECT p.name
         FROM season_results sr
         JOIN players p ON p.id = sr.player_id
         WHERE sr.season_id = ${season.id}
-        ORDER BY sr.rank ASC
       ` as { name: string }[]
 
       await expect(page.getByRole('heading', { name: 'Siapa yang main?' })).toBeVisible()
-      const nameInputs = page.getByPlaceholder(/Nama kamu|Pemain/)
-      const checkCount = Math.min(5, await nameInputs.count(), expectedNames.length)
-      for (let i = 0; i < checkCount; i++) {
-        await expect(nameInputs.nth(i)).toHaveValue(expectedNames[i].name)
+      for (const { name } of prevNames) {
+        const row = page.locator('label').filter({ hasText: name }).first()
+        await expect(row).toBeVisible()
+        await expect(row.locator('input[type="checkbox"]')).not.toBeChecked()
+        await expect(row.getByText('musim lalu')).toBeVisible()
       }
 
       // Ended season page should no longer be accessible once a new active season exists.

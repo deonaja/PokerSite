@@ -21,6 +21,8 @@ async function getSetupData(): Promise<{ players: PlayerWithMeta[]; buyIn: numbe
           ))
         END::int AS cooldown_remaining
       FROM players p
+      JOIN season_players mp ON mp.player_id = p.id
+      JOIN seasons s2 ON s2.id = mp.season_id AND s2.status = 'active'
       ORDER BY p.name ASC
     `,
     sql`SELECT buy_in, current_phase FROM seasons WHERE status = 'active' LIMIT 1`,

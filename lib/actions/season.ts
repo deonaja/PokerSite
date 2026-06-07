@@ -8,6 +8,8 @@ import { evaluateAchievements, type SeasonResultRow } from '@/lib/achievements'
 
 export interface CreateSeasonInput {
   playerNames: string[]
+  buyIn: number
+  nyawa: number
   startingBalance: number
   bb: number
   sb: number
@@ -20,21 +22,29 @@ export interface CreateSeasonInput {
 export async function createSeason(
   input: CreateSeasonInput
 ): Promise<{ error: string } | void> {
-  const { playerNames, startingBalance, bb, sb, maxPool, maxSessions, rakeRate, presetName } = input
+  const { playerNames, buyIn, nyawa, bb, sb, maxPool, maxSessions, rakeRate, presetName } = input
 
   const names = playerNames.map((n) => n.trim()).filter(Boolean)
   if (names.length < 2) return { error: 'Minimal 2 pemain' }
   if (new Set(names.map((n) => n.toLowerCase())).size !== names.length) {
     return { error: 'Nama pemain harus unik' }
   }
-  if (!Number.isInteger(startingBalance) || startingBalance < 10 || startingBalance > 100_000) {
-    return { error: 'Starting balance tidak valid' }
+  if (!Number.isInteger(buyIn) || buyIn < 10 || buyIn > 100_000) {
+    return { error: 'Buy-in tidak valid' }
   }
+  if (!Number.isInteger(nyawa) || nyawa < 2 || nyawa > 10) {
+    return { error: 'Nyawa tidak valid' }
+  }
+  // Derive starting_balance server-side (don't trust the client's copy) so
+  // starting_balance = buy_in × nyawa always holds.
+  const startingBalance = buyIn * nyawa
+  if (startingBalance > 1_000_000) return { error: 'Modal awal terlalu besar' }
   if (!Number.isInteger(maxPool) || maxPool < 100) return { error: 'Max pool tidak valid' }
+  // Opsi A invariant: max_pool must sit above the initial pool (n × starting_balance),
+  // otherwise the season would flip to Phase 2 on the very first session.
+  if (maxPool < names.length * startingBalance) return { error: 'Max pool tidak valid' }
   if (!Number.isInteger(maxSessions) || maxSessions < 1) return { error: 'Max sesi tidak valid' }
   if (!Number.isInteger(rakeRate) || rakeRate < 0 || rakeRate > 50) return { error: 'Rake rate tidak valid' }
-
-  const buyIn = Math.floor(startingBalance / 2)
   const defaultPinHash = await hashPin('1234')
   const client = createDbClient()
   await client.connect()
@@ -88,6 +98,12 @@ export async function createSeason(
         `INSERT INTO edit_log (player_id, actor_player_id, action, balance_before, balance_after, metadata)
          VALUES ($1, $2, 'season_start', 0, $3, $4)`,
         [playerId, creatorId, startingBalance, JSON.stringify({ season_id: season.id, season_number: seasonNumber })]
+      )
+      // Membership: every chosen player joins the season's roster.
+      await client.query(
+        `INSERT INTO season_players (season_id, player_id) VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [season.id, playerId]
       )
     }
 
@@ -170,9 +186,14 @@ export async function endSeason(seasonId: string): Promise<{ success: true } | {
       [seasonId]
     )
 
-    // Rank players by current balance (the final state before reset).
+    // Rank the season's MEMBERS by current balance (the final state before reset).
     const { rows: players } = await client.query<{ id: string; balance: number }>(
-      `SELECT id, balance FROM players ORDER BY balance DESC, id ASC FOR UPDATE`
+      `SELECT p.id, p.balance
+       FROM players p
+       JOIN season_players mp ON mp.player_id = p.id AND mp.season_id = $1
+       ORDER BY p.balance DESC, p.id ASC
+       FOR UPDATE OF p`,
+      [seasonId]
     )
 
     const statsMap = new Map(stats.map((s) => [s.player_id, s]))
@@ -215,10 +236,12 @@ export async function endSeason(seasonId: string): Promise<{ success: true } | {
       }
     }
 
-    // Reset all player balances to starting_balance.
+    // Reset the season members' balances to starting_balance (leave non-members,
+    // who aren't part of this season, untouched).
     await client.query(
-      `UPDATE players SET balance = $1`,
-      [season.starting_balance]
+      `UPDATE players SET balance = $1
+       WHERE id IN (SELECT player_id FROM season_players WHERE season_id = $2)`,
+      [season.starting_balance, seasonId]
     )
 
     // Log season_end for every player.

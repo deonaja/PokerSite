@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { neon } from '@neondatabase/serverless'
 import { hashPin } from '../lib/auth'
-import { getTestData, setIdentity, clickLabelFor, resetTestPlayers } from './helpers'
+import { getTestData, setIdentity, clickLabelFor, resetTestPlayers, fillNewSeasonPlayers } from './helpers'
 
 const db = () => neon(process.env.DATABASE_URL!)
 
@@ -218,24 +218,19 @@ test.describe('M2: season creation flow', () => {
   test('walks through the multi-step form and creates an active season', async ({ page }) => {
     await page.goto('/season/new')
 
-    // Step 1: the form pre-fills with every existing player. Overwrite each input
-    // with a fresh [T]-prefixed name so we create brand-new players and never
-    // touch (reuse/reset) any real player that might exist in the DB.
+    // Step 1 is a checklist (existing players unchecked) + add-new section. Add
+    // 2 fresh [T]-prefixed players so we never touch any real registered player.
     await expect(page.getByText('Siapa yang main?')).toBeVisible()
     const runId = getTestData().runId
-    const nameInputs = page.getByPlaceholder(/Nama kamu|Pemain/)
-    const count = await nameInputs.count()
-    for (let i = 0; i < count; i++) {
-      await nameInputs.nth(i).fill(`[T${runId}] SC${i}`)
-    }
+    await fillNewSeasonPlayers(page, [`[T${runId}] SC0`, `[T${runId}] SC1`])
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
-    // Step 2: modal & blind (defaults: starting_balance 200 → buy_in 100)
-    await expect(page.getByText('Modal & blind')).toBeVisible()
+    // Step 2: buy-in & nyawa (defaults: buy_in 100 × nyawa 5 → starting_balance 500)
+    await expect(page.getByText('Buy-in & nyawa')).toBeVisible()
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
-    // Step 3: preset (Standard selected by default)
-    await expect(page.getByText('Durasi season')).toBeVisible()
+    // Step 3: durasi & tempo (Standard + Langsung serius by default)
+    await expect(page.getByText('Durasi & tempo')).toBeVisible()
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
     // Step 4: confirm
@@ -248,7 +243,7 @@ test.describe('M2: season creation flow', () => {
       SELECT id, starting_balance, buy_in, current_phase
       FROM seasons WHERE status = 'active' ORDER BY started_at DESC LIMIT 1
     ` as { id: string; starting_balance: number; buy_in: number; current_phase: string }[]
-    expect(Number(season.starting_balance)).toBe(200)
+    expect(Number(season.starting_balance)).toBe(500)
     expect(Number(season.buy_in)).toBe(100)
     expect(season.current_phase).toBe('bootstrap')
   })

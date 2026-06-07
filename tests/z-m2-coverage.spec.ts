@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { neon } from '@neondatabase/serverless'
 import { hashPin } from '../lib/auth'
-import { getTestData, setIdentity, clickLabelFor, resetTestPlayers } from './helpers'
+import { getTestData, setIdentity, clickLabelFor, resetTestPlayers, fillNewSeasonPlayers } from './helpers'
 
 const db = () => neon(process.env.DATABASE_URL!)
 
@@ -128,8 +128,10 @@ test.describe('M2 coverage: dealer/cooldown matrix', () => {
       balance: number
       last_dealer_session_id: string | null
     }[]
-    // Free-entry dealer pays no buy-in → balance stays at the 500 starting value.
-    expect(Number(aliceBalance.balance)).toBe(500)
+    // Free-entry dealer pays no buy-in AND gets the bankroll half of the 2× salary
+    // (1× buy_in = 100) credited immediately → 500 + 100 = 600. (The other 1× is
+    // chips on the table, realised at session end.)
+    expect(Number(aliceBalance.balance)).toBe(600)
     expect(aliceBalance.last_dealer_session_id).toBe(sessionId)
 
     const [participant] = await db()`
@@ -147,6 +149,7 @@ test.describe('M2 coverage: dealer/cooldown matrix', () => {
     const actions = new Set(logs.map((l) => l.action))
     expect(actions.has('buy_in_dealer_free')).toBe(true)
     expect(actions.has('dealer_salary_chips')).toBe(true)
+    expect(actions.has('dealer_salary_balance')).toBe(true)
   })
 
   test('Phase 1 + cooldown + dealer can afford: pays buy-in, no salary, cooldown anchor unchanged', async ({ page }) => {
@@ -397,9 +400,10 @@ test.describe('M2 coverage: session-active + end-session details', () => {
     await page.getByRole('button', { name: /Lihat recap/ }).click()
 
     await expect(page.getByText('RECAP')).toBeVisible()
-    // Alice is the Phase 1 free-entry dealer: balance not deducted (stays 500),
-    // plays on 100 salary chips, ends with 250 → 500 + 250 = 750 (+250).
-    await expect(page.getByText(/500\s*→\s*750\s*\(\+250\)/)).toBeVisible()
+    // Alice is the Phase 1 free-entry dealer: no buy-in deduction, but gets the
+    // bankroll half of the 2× salary (+100) → current balance 600. Plays on the
+    // 100 table salary chips, ends with 250 → 600 + 250 = 850 (vs original 500 = +350).
+    await expect(page.getByText(/500\s*→\s*850\s*\(\+350\)/)).toBeVisible()
     // Bob paid buy-in 100 + 1 rebuy 100 (balance 300), stack 150 → 450 (-50).
     await expect(page.getByText(/500\s*→\s*450\s*\(-50\)/)).toBeVisible()
 
@@ -425,6 +429,7 @@ test.describe('M2 coverage: rake calculator and Approach C', () => {
   const { players, seasonId } = getTestData()
   const alice = players[0]
   const bob = players[1]
+  const charlie = players[2]
 
   test.beforeEach(async () => {
     await forceEndAllSessions()
@@ -438,20 +443,28 @@ test.describe('M2 coverage: rake calculator and Approach C', () => {
     await setSeasonBase(seasonId, { phase: 'bootstrap', buyIn: 100, maxPool: 100_000_000, rakeRate: 10 })
   })
 
-  test('shows rake calculator (rounded to nearest 5) and does not auto-credit dealer rake', async ({ page }) => {
+  test('rake calculator shows for a non-playing dealer and is NOT auto-credited', async ({ page }) => {
+    // New rule (item 8): only a non-playing (deals-only / neutral) dealer collects
+    // rake. Make Alice a broke deals-only dealer; Bob + Charlie play and pay buy-in,
+    // so the table total stays 2×95 = 190.
+    await db()`UPDATE players SET balance = 50 WHERE id = ${alice.id}`
     await startSessionFromSetup({
       page,
       actor: alice,
-      selectedNames: [alice.name, bob.name],
+      selectedNames: [alice.name, bob.name, charlie.name],
       dealerId: alice.id,
     })
 
     await page.goto('/session/end')
+    // Step order = dealer first (is_dealer DESC), so Alice's step shows the rake calc.
     await expect(page.getByText('KALKULATOR RAKE')).toBeVisible()
     await expect(page.getByText('190')).toBeVisible()
     await expect(page.getByText('10%')).toBeVisible()
     await expect(page.getByText('20 chip')).toBeVisible()
 
+    // Alice (deals-only) took no rake this time → inputs 0; Bob + Charlie cash out 95 each.
+    await page.locator('input[type="number"]').fill('0')
+    await page.getByRole('button', { name: 'Next →' }).click()
     await page.locator('input[type="number"]').fill('95')
     await page.getByRole('button', { name: 'Next →' }).click()
     await page.locator('input[type="number"]').fill('95')
@@ -461,7 +474,8 @@ test.describe('M2 coverage: rake calculator and Approach C', () => {
 
     const [aliceRow] = await db()`SELECT balance FROM players WHERE id = ${alice.id}` as { balance: number }[]
     const [bobRow] = await db()`SELECT balance FROM players WHERE id = ${bob.id}` as { balance: number }[]
-    expect(Number(aliceRow.balance)).toBe(500)
+    // No auto-credit: Alice ends at original 50 + her input 0 = 50 (NOT 50 + rake).
+    expect(Number(aliceRow.balance)).toBe(50)
     expect(Number(bobRow.balance)).toBe(500)
   })
 
@@ -479,32 +493,50 @@ test.describe('M2 coverage: rake calculator and Approach C', () => {
     await expect(page.getByText('KALKULATOR RAKE')).not.toBeVisible()
   })
 
-  test('shows rake calculator only on dealer step in steady phase', async ({ page }) => {
+  test('rake calculator shows only on the (non-playing) dealer step in steady phase', async ({ page }) => {
     await setSeasonBase(seasonId, { phase: 'steady', buyIn: 95, maxPool: 100, rakeRate: 10 })
+    await db()`UPDATE players SET balance = 50 WHERE id = ${alice.id}`
 
     await startSessionFromSetup({
       page,
       actor: alice,
-      selectedNames: [alice.name, bob.name],
+      selectedNames: [alice.name, bob.name, charlie.name],
       dealerId: alice.id,
     })
 
     await page.goto('/session/end')
     await expect(page.getByText('KALKULATOR RAKE')).toBeVisible()
 
-    await page.locator('input[type="number"]').fill('95')
+    await page.locator('input[type="number"]').fill('0')
     await page.getByRole('button', { name: /^Next/ }).click()
     await expect(page.getByText('KALKULATOR RAKE')).not.toBeVisible()
   })
 
-  test('rounds estimated rake to nearest 5 (down case)', async ({ page }) => {
-    // total_chip = 170, rake 10% = 17 -> nearest 5 = 15
-    await setSeasonBase(seasonId, { phase: 'steady', buyIn: 85, maxPool: 100, rakeRate: 10 })
+  test('a PLAYING dealer in steady gets NO rake calculator', async ({ page }) => {
+    // New rule: a dealer who plays (pays buy-in) collects no rake → no calculator.
+    await setSeasonBase(seasonId, { phase: 'steady', buyIn: 95, maxPool: 100, rakeRate: 10 })
 
     await startSessionFromSetup({
       page,
       actor: alice,
       selectedNames: [alice.name, bob.name],
+      dealerId: alice.id, // Alice can afford 95 (balance 500) → plays + pays buy-in.
+    })
+
+    await page.goto('/session/end')
+    await expect(page.getByText('KALKULATOR RAKE')).not.toBeVisible()
+  })
+
+  test('rounds estimated rake to nearest 5 (down case)', async ({ page }) => {
+    // total_chip = 2×85 = 170, rake 10% = 17 -> nearest 5 = 15. Alice = broke
+    // deals-only dealer; Bob + Charlie pay the 85 buy-in.
+    await setSeasonBase(seasonId, { phase: 'steady', buyIn: 85, maxPool: 100, rakeRate: 10 })
+    await db()`UPDATE players SET balance = 50 WHERE id = ${alice.id}`
+
+    await startSessionFromSetup({
+      page,
+      actor: alice,
+      selectedNames: [alice.name, bob.name, charlie.name],
       dealerId: alice.id,
     })
 
@@ -550,27 +582,26 @@ test.describe('M2 coverage: season setup custom values + default PIN for new pla
     await resetTestPlayers(500)
   })
 
-  test('creates custom season, saves computed buy-in/BB/SB, and new players can login with PIN 1234', async ({ page }) => {
+  test('creates custom season: derives buy-in/BB/SB/max_pool, new players login PIN 1234', async ({ page }) => {
     await page.goto('/season/new')
     await expect(page.getByText('Siapa yang main?')).toBeVisible()
 
-    const names = [playerA, `[T${runId}] M2C1`, `[T${runId}] M2C2`]
-    const inputs = page.getByPlaceholder(/Nama kamu|Pemain/)
-    const inputCount = await inputs.count()
-    for (let i = 0; i < inputCount; i++) {
-      await inputs.nth(i).fill(names[i] ?? `[T${runId}] M2C${i}`)
-    }
+    // Step 1 is now a checklist (existing players unchecked) + add-new section.
+    // Add exactly 2 brand-new players → n=2 (playerA = creator, login below).
+    await fillNewSeasonPlayers(page, [playerA, `[T${runId}] M2C1`])
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
-    await expect(page.getByText('Modal & blind')).toBeVisible()
-    await page.getByPlaceholder('cth. 200').fill('350')
+    // Step 2: buy-in + nyawa → modal = buy_in × nyawa; BB/SB from buy_in.
+    await expect(page.getByText('Buy-in & nyawa')).toBeVisible()
+    await page.getByPlaceholder('cth. 100').fill('100')
+    await page.getByRole('button', { name: '5×' }).click()
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
-    await expect(page.getByText('Durasi season')).toBeVisible()
+    // Step 3: custom 12 sesi + rake 13; tempo default = Langsung serius (0.25).
+    await expect(page.getByText('Durasi & tempo')).toBeVisible()
     await page.getByRole('button', { name: 'Custom' }).click()
-    await page.getByPlaceholder('cth. 3500').fill('4444')
     await page.getByPlaceholder('cth. 40').fill('12')
-    await page.getByPlaceholder('cth. 10').fill('13')
+    await page.getByPlaceholder('cth. 10', { exact: true }).fill('13')
     await page.getByRole('button', { name: /Lanjut/ }).click()
 
     await expect(page.getByRole('button', { name: 'Mulai Season' })).toBeVisible()
@@ -593,11 +624,14 @@ test.describe('M2 coverage: season setup custom values + default PIN for new pla
       rake_rate: number
       preset_name: string | null
     }[]
-    expect(Number(season.starting_balance)).toBe(350)
-    expect(Number(season.buy_in)).toBe(175)
-    expect(Number(season.bb)).toBe(18)
-    expect(Number(season.sb)).toBe(9)
-    expect(Number(season.max_pool)).toBe(4444)
+    // buy_in 100 × nyawa 5 = modal 500; bb = 100/10 = 10, sb = 5.
+    // We added 2 brand-new players → n=2. Custom 12 sesi, tempo serius 0.25 →
+    // targetP1 = round(3) = 3. Opsi A: max_pool = 2×500 + 3×(2×100) = 1600.
+    expect(Number(season.starting_balance)).toBe(500)
+    expect(Number(season.buy_in)).toBe(100)
+    expect(Number(season.bb)).toBe(10)
+    expect(Number(season.sb)).toBe(5)
+    expect(Number(season.max_pool)).toBe(1600)
     expect(Number(season.max_sessions)).toBe(12)
     expect(Number(season.rake_rate)).toBe(13)
     expect(season.preset_name).toBe('custom')
@@ -606,5 +640,78 @@ test.describe('M2 coverage: season setup custom values + default PIN for new pla
     await page.getByPlaceholder('PIN (4-6 digit)').fill('1234')
     await page.getByRole('button', { name: 'Masuk' }).click()
     await page.waitForURL('/')
+  })
+})
+
+test.describe('M2 coverage: preset max_pool scales with starting balance', () => {
+  const { seasonId, runId } = getTestData()
+
+  test.beforeAll(async () => {
+    await forceEndAllSessions()
+    await db()`UPDATE seasons SET status = 'ended', ended_at = now() WHERE id = ${seasonId}`
+  })
+
+  test.afterAll(async () => {
+    await forceEndAllSessions()
+
+    const straySeasons = await db()`
+      SELECT id FROM seasons WHERE status = 'active' AND id != ${seasonId}
+    ` as { id: string }[]
+    for (const season of straySeasons) {
+      await db()`DELETE FROM edit_log WHERE action = 'season_start' AND metadata->>'season_id' = ${season.id}`
+      await db()`DELETE FROM seasons WHERE id = ${season.id}`
+    }
+
+    await db()`
+      UPDATE seasons
+      SET status = 'active', ended_at = NULL, current_phase = 'bootstrap',
+          buy_in = 100, max_pool = 100000000, rake_rate = 10
+      WHERE id = ${seasonId}
+    `
+    await resetTestPlayers(500)
+  })
+
+  // Opsi A: max_pool = (n × starting_balance) + (target_P1 × 2×buy_in), where
+  // target_P1 = round(tempo_fraction × max_sessions). Standard = 24 sesi.
+  // We add 2 brand-new players → n=2. buy_in 100 (modal 500), tempo Pemanasan
+  // 0.60 → target_P1 = round(14.4)=14 → max_pool = 2×500 + 14×(2×100) = 3800.
+  test('Standard preset derives max_pool from tempo (Opsi A)', async ({ page }) => {
+    await page.goto('/season/new')
+    await expect(page.getByText('Siapa yang main?')).toBeVisible()
+
+    await fillNewSeasonPlayers(page, [`[T${runId}] PS0`, `[T${runId}] PS1`])
+    await page.getByRole('button', { name: /Lanjut/ }).click()
+
+    await expect(page.getByText('Buy-in & nyawa')).toBeVisible()
+    await page.getByPlaceholder('cth. 100').fill('100')
+    await page.getByRole('button', { name: '5×' }).click()
+    await page.getByRole('button', { name: /Lanjut/ }).click()
+
+    await expect(page.getByText('Durasi & tempo')).toBeVisible()
+    await page.getByRole('button', { name: 'Standard' }).click()
+    await page.getByRole('button', { name: /Pemanasan panjang/ }).click()
+    // Live summary reflects the tempo-derived bootstrap length.
+    await expect(page.getByText('≈ 14 sesi')).toBeVisible()
+    await page.getByRole('button', { name: /Lanjut/ }).click()
+
+    await expect(page.getByRole('button', { name: 'Mulai Season' })).toBeVisible()
+    await page.getByRole('button', { name: 'Mulai Season' }).click()
+    await page.waitForURL('**/identity')
+
+    const [season] = await db()`
+      SELECT starting_balance, buy_in, max_pool, max_sessions, preset_name
+      FROM seasons WHERE status = 'active' ORDER BY started_at DESC LIMIT 1
+    ` as {
+      starting_balance: number
+      buy_in: number
+      max_pool: number
+      max_sessions: number
+      preset_name: string | null
+    }[]
+    expect(Number(season.starting_balance)).toBe(500)
+    expect(Number(season.buy_in)).toBe(100)
+    expect(Number(season.max_pool)).toBe(3800)
+    expect(Number(season.max_sessions)).toBe(24)
+    expect(season.preset_name).toBe('standard')
   })
 })

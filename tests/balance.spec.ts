@@ -20,10 +20,10 @@ test.describe('Balance non-negative enforcement', () => {
     await sql`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`
   })
 
-  // M2: a low-balance dealer in Phase 1 (not in cooldown) plays with the salary
-  // chips printed onto the table. They do NOT pay buy-in (broke), are NOT marked
-  // as deals-only, and the salary is chips on table (not a balance credit).
-  test('low-balance dealer in Phase 1 plays with salary chips, balance untouched', async ({ page }) => {
+  // M2: a low-balance dealer in Phase 1 (not in cooldown) gets the 2× buy_in
+  // salary, SPLIT: 1× as chips on the table (played with) + 1× credited to their
+  // bankroll (spare life). They do NOT pay buy-in (broke) and are NOT deals-only.
+  test('low-balance dealer in Phase 1 gets salary: table chips + bankroll half', async ({ page }) => {
     const sql = neon(process.env.DATABASE_URL!)
     await sql`UPDATE players SET balance = 50 WHERE id = ${bob.id}`
 
@@ -41,9 +41,10 @@ test.describe('Balance non-negative enforcement', () => {
     await page.waitForURL('**/session')
 
     // Bob plays as a normal dealer (not deals-only) with the printed salary chips.
-    // No buy-in deduction (he is broke) — his balance stays at 50.
+    // No buy-in deduction (he is broke), but the bankroll half of the 2× salary
+    // (1× buy_in = 100) is credited immediately → 50 + 100 = 150.
     const [bobRow] = await sql`SELECT balance FROM players WHERE id = ${bob.id}` as { balance: number }[]
-    expect(Number(bobRow.balance)).toBe(50)
+    expect(Number(bobRow.balance)).toBe(150)
 
     const [participant] = await sql`
       SELECT sp.is_dealer, sp.no_gaji_dealer
@@ -106,6 +107,36 @@ test.describe('Balance non-negative enforcement', () => {
     // Now broke (0) → rebuy disabled with "Saldo habis".
     await expect(bobCard.getByText(/Saldo: 0/)).toBeVisible({ timeout: 5000 })
     await expect(bobCard.getByRole('button', { name: 'Saldo habis' })).toBeDisabled()
+  })
+
+  test('undo of a partial rebuy restores the partial amount, not a full buy-in', async ({ page }) => {
+    const sql = neon(process.env.DATABASE_URL!)
+
+    await setIdentity(page, alice)
+    await page.goto('/session/setup')
+    await clickLabelFor(page, alice.name)
+    await clickLabelFor(page, bob.name)
+    const aliceRadio = page.locator('label', { hasText: alice.name }).locator('input[type="radio"]')
+    await aliceRadio.check()
+    await page.getByRole('button', { name: 'Mulai' }).click()
+    await page.waitForURL('**/session')
+
+    // Below buy_in (100): a partial rebuy takes the remaining 50.
+    await sql`UPDATE players SET balance = 50 WHERE id = ${bob.id}`
+    const bobCard = page.locator('div').filter({
+      has: page.locator('p, span', { hasText: /^Rebuy: \d+$/ }),
+    }).filter({ hasText: bob.name }).last()
+    await expect(bobCard.getByText(/Saldo: 50/)).toBeVisible({ timeout: 5000 })
+
+    await bobCard.getByRole('button', { name: 'Rebuy' }).click()
+    await page.getByRole('button', { name: 'Rebuy' }).last().click()
+    await expect(bobCard.getByText('Rebuy: 1')).toBeVisible({ timeout: 5000 })
+
+    // Undo must give back exactly 50 (the partial), not a full 100 buy-in.
+    await bobCard.getByRole('button', { name: 'Undo' }).click()
+    await expect(bobCard.getByText('Rebuy: 0')).toBeVisible({ timeout: 5000 })
+    const [bobRow] = await sql`SELECT balance FROM players WHERE id = ${bob.id}` as { balance: number }[]
+    expect(Number(bobRow.balance)).toBe(50)
   })
 
   test('admin edit balance to negative is rejected', async ({ page }) => {

@@ -4,7 +4,12 @@ import type { Player, PollParticipant, PollResponse } from '@/lib/types'
 
 export async function GET() {
   const [players, sessions] = await Promise.all([
-    sql`SELECT id, name, balance, created_at FROM players ORDER BY name ASC`,
+    // Scope to the active season's MEMBERS (season_players), not every player row.
+    sql`SELECT p.id, p.name, p.balance, p.created_at
+        FROM players p
+        JOIN season_players mp ON mp.player_id = p.id
+        JOIN seasons s ON s.id = mp.season_id AND s.status = 'active'
+        ORDER BY p.name ASC`,
     sql`SELECT id FROM sessions WHERE status = 'active' LIMIT 1`,
   ])
 

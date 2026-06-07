@@ -18,6 +18,8 @@ export interface SessionParticipant {
   session_id: string
   player_id: string
   is_dealer: boolean
+  // false = neutral dealer (deals only, doesn't play). Default true.
+  dealer_plays: boolean
   rebuy_count: number
   final_stack: number | null
 }

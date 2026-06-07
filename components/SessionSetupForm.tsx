@@ -33,6 +33,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [dealerId, setDealerId] = useState<string | null>(null)
   const [dealerManuallySet, setDealerManuallySet] = useState(false)
+  const [dealerPlays, setDealerPlays] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // On slower mobile devices, users can tap checkboxes before React hydration
@@ -94,6 +95,9 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   }
 
   const selectedPlayers = players.filter((p) => selectedIds.has(p.id))
+  // A neutral dealer (deals only, doesn't play) needs 4+ players so 3 still play.
+  const canBeNeutral = selectedIds.size >= 4
+  const effectiveDealerPlays = canBeNeutral ? dealerPlays : true
   // A low-balance player can only join as the dealer. Selecting them as a
   // non-dealer is blocked — they have nothing to ante.
   const brokeNonDealers = selectedPlayers.filter((p) => p.id !== dealerId && p.balance < buyIn)
@@ -124,7 +128,14 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   // What will the chosen dealer actually do this session?
   const dealer = players.find((p) => p.id === dealerId)
   let dealerHint = ''
-  if (dealer) {
+  if (dealer && !effectiveDealerPlays) {
+    // Neutral dealer: deals only, doesn't play.
+    if (currentPhase === 'steady') {
+      dealerHint = `${dealer.name}: cuma bagi kartu (ga ikut main) — ambil rake sebagai bandar.`
+    } else {
+      dealerHint = `${dealer.name}: cuma bagi kartu (ga ikut main) — gaji 1× buy-in (+${buyIn} chip di meja).`
+    }
+  } else if (dealer) {
     const canAfford = dealer.balance >= buyIn
     const p1NoCooldown = currentPhase === 'bootstrap' && dealer.cooldown_remaining === 0
     if (p1NoCooldown) {
@@ -151,6 +162,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
       const result = await startSession({
         playerIds: Array.from(selectedIds),
         dealerId: dealerId!,
+        dealerPlays: effectiveDealerPlays,
         actorPlayerId,
       })
       if ('error' in result) {
@@ -233,6 +245,31 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
               </label>
             ))}
           </div>
+
+          {/* Dealer mode — only when 4+ players (a neutral dealer needs 3 others to play) */}
+          {canBeNeutral && (
+            <div className="mb-3">
+              <p className={sectionLabel}>DEALER IKUT MAIN?</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => setDealerPlays(true)}
+                  className={rowClass(dealerPlays) + ' flex-1 justify-center text-sm font-medium'}
+                >
+                  Ikut main
+                </button>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => setDealerPlays(false)}
+                  className={rowClass(!dealerPlays) + ' flex-1 justify-center text-sm font-medium'}
+                >
+                  Cuma bagi kartu
+                </button>
+              </div>
+            </div>
+          )}
 
           {dealerHint && (
             <p className={'text-[0.8125rem] text-muted-foreground ' + (brokeNonDealers.length > 0 ? 'mb-2' : 'mb-6')}>
