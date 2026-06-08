@@ -2,21 +2,31 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import type { Player } from '@/lib/types'
+import type { PickerPlayer } from '@/lib/types'
 import Button from './Button'
 import RegisterForm from './RegisterForm'
 import { setLocalStorageItem } from '@/lib/safeStorage'
 
 interface Props {
-  players: Player[]
+  players: PickerPlayer[]
   error?: string
 }
 
 const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
 export default function IdentityPicker({ players, error }: Props) {
+  // players arrives members-first (active-season members, then everyone else).
   const [selectedId, setSelectedId] = useState<string>(players[0]?.id ?? '')
   const [mode, setMode] = useState<'login' | 'register'>('login')
+
+  const { members, others } = useMemo(() => {
+    const members: PickerPlayer[] = []
+    const others: PickerPlayer[] = []
+    for (const p of players) (p.is_member ? members : others).push(p)
+    return { members, others }
+  }, [players])
+  // Only label the groups when there's an actual distinction to draw.
+  const showGroups = members.length > 0 && others.length > 0
 
   const selectedPlayer = useMemo(
     () => players.find((p) => p.id === selectedId) ?? null,
@@ -55,30 +65,14 @@ export default function IdentityPicker({ players, error }: Props) {
         >
           <input type="hidden" name="playerId" value={selectedId} />
 
-          <div className="flex flex-col gap-2">
-            {players.map((p) => {
-              const active = p.id === selectedId
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setSelectedId(p.id)}
-                  className={
-                    'flex min-h-11 w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors duration-150 ' +
-                    (active ? 'border-primary bg-accent' : 'border-border bg-card')
-                  }
-                >
-                  <span
-                    aria-hidden
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground"
-                  >
-                    {initialOf(p.name)}
-                  </span>
-                  <span className="truncate text-foreground">{p.name}</span>
-                </button>
-              )
-            })}
-          </div>
+          {showGroups ? (
+            <>
+              <PlayerGroup label="Musim ini" players={members} selectedId={selectedId} onSelect={setSelectedId} />
+              <PlayerGroup label="Lainnya" players={others} selectedId={selectedId} onSelect={setSelectedId} />
+            </>
+          ) : (
+            <PlayerGroup players={players} selectedId={selectedId} onSelect={setSelectedId} />
+          )}
 
           <input
             name="pin"
@@ -127,6 +121,51 @@ export default function IdentityPicker({ players, error }: Props) {
           Baru di sini? Lihat panduan
         </Link>
       </div>
+    </div>
+  )
+}
+
+function PlayerGroup({
+  label,
+  players,
+  selectedId,
+  onSelect,
+}: {
+  label?: string
+  players: PickerPlayer[]
+  selectedId: string
+  onSelect: (id: string) => void
+}) {
+  if (players.length === 0) return null
+  return (
+    <div className="flex flex-col gap-2">
+      {label && (
+        <p className="mt-1 px-1 text-[0.6875rem] font-medium uppercase tracking-wider text-[var(--text-tertiary)]">
+          {label}
+        </p>
+      )}
+      {players.map((p) => {
+        const active = p.id === selectedId
+        return (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onSelect(p.id)}
+            className={
+              'flex min-h-11 w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors duration-150 ' +
+              (active ? 'border-primary bg-accent' : 'border-border bg-card')
+            }
+          >
+            <span
+              aria-hidden
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground"
+            >
+              {initialOf(p.name)}
+            </span>
+            <span className="truncate text-foreground">{p.name}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
