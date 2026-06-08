@@ -7,6 +7,7 @@ import Button from './Button'
 import BalanceDisplay from './BalanceDisplay'
 import Sheet from './Sheet'
 import LoanWidget from './LoanWidget'
+import JoinSeasonPrompt from './JoinSeasonPrompt'
 import { getLocalStorageItem, setLocalStorageItem } from '@/lib/safeStorage'
 import type { Player, PollResponse, Season } from '@/lib/types'
 
@@ -47,6 +48,10 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
     if (seen && seen !== current) setPhaseNotice(current)
     setLocalStorageItem(PHASE_SEEN_KEY, current)
   }, [season])
+
+  // A logged-in player who isn't on the active season roster can join mid-season.
+  const isMember = currentPlayerId != null && players.some((p) => p.id === currentPlayerId)
+  const showJoinPrompt = currentPlayerId != null && season != null && !isMember
 
   // Standings: ranked by balance (desc). Copy first — never mutate poll state.
   const ranked = [...players].sort((a, b) => b.balance - a.balance)
@@ -145,6 +150,9 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
           </div>
         </div>
       )}
+
+      {/* Mid-season join prompt for a logged-in non-member */}
+      {showJoinPrompt && season && <JoinSeasonPrompt phase={season.current_phase} />}
 
       {/* Peer-to-peer loans (requests, repay, indicators) */}
       <LoanWidget />
