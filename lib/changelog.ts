@@ -12,6 +12,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.0',
+    date: '2026-06-08',
+    changes: [
+      'Minjem udah bisa cuy, kalo saldo dibawah buy in kalian bisa pinjem ke pemain lain dengan catatan pemain lain tersebut harus setuju dengan pinjaman tersebut. pinjaman bisa dibayar kapan aja dan kalo keburu season end nanti di potong balance akhir season.',
+      'Register is here!!! pemain baru bisa register dengan kode yang dikasi undangan dari atmin.',
+      'Pemain lama bisa gabung musim yang udah jalan langsung dari dashboard.',
+      'Guest mode is here too!!! biar bisa jadi porto wkwkkw',
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-06-08',
     changes: [
