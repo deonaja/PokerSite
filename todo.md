@@ -1,6 +1,6 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-05-31 (Vercel production deploy)
+Last updated: 2026-06-08 (Fase A–F + LOAN + register + no-emoji UI all shipped to prod)
 
 ## 🚀 Deployment (Vercel) — 2026-05-31
 
@@ -66,12 +66,19 @@ flashy animation still banned. **Revert savepoint: git tag `v0.95-pre-redesign`.
 
 | Milestone | Status | Weight |
 |---|---|---|
-| M1 — MVP tracking | ✅ 100% | ~40% |
-| M2 — Season system | ✅ 100% | ~35% |
-| M3 — Season end + leaderboard | ✅ 100% | ~15% |
-| M4 — Polish (stats, export) | ❌ 0% | ~10% |
+| M1 — MVP tracking | ✅ 100% | — |
+| M2 — Season system | ✅ 100% | — |
+| M3 — Season end + leaderboard | ✅ 100% | — |
+| M4 — Polish (stats, export, achievements) | ✅ 100% | — |
+| Fase A — nyawa economy | ✅ prod 2026-06-08 | — |
+| Fase B — dealer netral + rake rule | ✅ prod 2026-06-08 | — |
+| Fase C — season membership | ✅ prod 2026-06-08 | — |
+| Fase D — LOAN antar pemain | ✅ prod 2026-06-08 | — |
+| Fase E — register auth-code + join + guest | ✅ prod 2026-06-08 | — |
+| Fase F — panduan / onboarding | ✅ prod 2026-06-08 | — |
+| UI no-emoji (lucide SVG) | ✅ prod 2026-06-08 | — |
 
-Roughly **95%** of the M1–M4 roadmap done.
+**Semua roadmap yang direncanain udah SHIP ke prod.** Sisa = backlog ide yang belum dijadwalin: **LATE JOIN** (gabung sesi berjalan), **item 11** (rapihin /identity picker), Telegram notif (opsional/skip), + tech debt (test-DB isolation, filename `002_*` dobel).
 
 ---
 
@@ -193,7 +200,7 @@ Treatment is derived at session start based on phase + cooldown + balance:
 
 ---
 
-## 💡 Backlog — Fitur LOAN antar pemain (IDE, belum diimplement — 2026-06-06)
+## ✅ DONE (Fase D, prod 2026-06-08) — Fitur LOAN antar pemain (desain historis di bawah)
 
 Pemain dengan saldo kurang bisa minjem chip dari pemain lain biar tetep bisa main.
 Owner-directed design session; semua keputusan di bawah udah disepakati owner.
@@ -228,7 +235,10 @@ Owner-directed design session; semua keputusan di bawah udah disepakati owner.
 
 ---
 
-## 💡 Backlog — Fitur LATE JOIN (IDE, belum diimplement — 2026-06-06)
+## 💡 Backlog — Fitur LATE JOIN (IDE, BELUM diimplement — masih open)
+
+> ⚠ BEDA dari Fase E "gabung musim" (`joinActiveSeason`, udah ada): LATE JOIN = gabung ke **SESI yang lagi jalan** (masuk `session_participants`, bayar buy-in tengah sesi). Ini yang belum dibangun.
+
 
 Pemain bisa gabung sesi yang **udah jalan** (orang telat dateng). Owner-approved.
 
@@ -261,7 +271,7 @@ App ga track stack live (cuma nyatet chip yang *masuk*: buy-in + rebuy). Cash-ou
    - **Phase 1 → 2 (bootstrap→steady):** internalnya pool-based — `SUM(balance) >= max_pool` (`session.ts:428`). **TAPI bisa di-ESTIMATE jadi sesi** (owner-approved approach): tiap sesi nyuntik chip baru tetap dari **gaji dealer Phase 1** (free dealer dapet `+buy_in` chip cetak baru yang masuk sistem). Jadi pool naik ~`buy_in` per sesi → **estimasi sisa sesi ke P2 = `ceil((max_pool − SUM(balance)) / buy_in)`**. Caveat: injeksi cuma kejadian kalau sesi itu ada free dealer (P1, non-cooldown); sesi tanpa free dealer (cooldown/broke deals-only) ga nambah pool → estimasi bisa undershoot. Owner oke ini cuma estimasi ("estimate aja").
    - Tempat tampil: dashboard (deket badge phase) + mungkin halaman season. Label P1 boleh "≈ sisa N sesi ke Phase 2" (kasih tanda ≈ biar jelas estimasi).
 
-3. **[DECIDED sebagian 2026-06-07] Carry-over pemain + keanggotaan season.** Berkembang dari "checklist" jadi 2 lapis setelah owner report bug.
+3. **[✅ DONE Fase C — prod 2026-06-08] Carry-over pemain + keanggotaan season.** Berkembang dari "checklist" jadi 2 lapis setelah owner report bug.
    - **Bug yang dialamin owner:** abis pencet **"Reset season"** (`debugResetSeason` — debug WIPE: hapus semua season + `season_results`, keep pemain+balance), bikin season baru → wizard minta ketik nama ulang (carry-over kosong) TAPI dashboard tetep nampilin pemain lama. Root cause = (a) carry-over pre-fill baca dari `season_results` musim-terakhir-ended → kehapus pas reset; (b) dashboard query GLOBAL (`SELECT … FROM players`, [app/(main)/page.tsx:8](app/(main)/page.tsx)) — ga ada konsep keanggotaan season, jadi semua pemain selalu nongol. CATATAN: tombol "Force end season" (`adminForceEndSeason`→`endSeason`) yg PROPER nulis `season_results`; owner salah pencet "Reset season". Pertimbangkan pertegas beda 2 tombol ini di admin.
    - **LAPIS A — Wizard `/season/new` jadi checklist.** Tampilin **semua pemain dari tabel `players`** (tahan banting, bukan dari `season_results`) sebagai checklist + "tambah pemain baru" di bawah. **DECIDED: default UNCHECK semua** (opt-in eksplisit, owner 2026-06-07). Ubah `components/SeasonSetup.tsx` step 1 + query di `app/season/new/page.tsx` (ganti sumber dari season_results → players).
    - **LAPIS B — Keanggotaan season** biar dashboard cuma nampilin anggota musim aktif. **DECIDED: Opsi 1 — tabel `season_players` (owner 2026-06-07).**
@@ -269,12 +279,12 @@ App ga track stack live (cuma nyatet chip yang *masuk*: buy-in + rebuy). Cash-ou
      - (Opsi 2 derive-dari-log DITOLAK: query JSONB di hot path lambat + ga bisa keluarin anggota krn log append-only.)
      - ⚠ Lapis B nyentuh semua yg baca `players` global: dashboard ([app/(main)/page.tsx:8](app/(main)/page.tsx)), `/api/poll`, mungkin `/session/setup` + leaderboard → filter ke anggota musim aktif via JOIN `season_players`. Bukan perubahan kecil.
 
-4. **[DECIDED 2026-06-07, belum implement] Starting balance = 5× buy-in ("5 nyawa") + balik arah input wizard.** Owner SETUJU semua:
+4. **[✅ DONE Fase A — prod 2026-06-08] Starting balance = 5× buy-in ("5 nyawa") + balik arah input wizard.** Owner SETUJU semua:
    - **Nyawa = 5× (default), configurable 3/4/5.** `starting_balance = buy_in × nyawa`.
    - **Balik arah input wizard:** user isi **buy_in + jumlah nyawa** (BUKAN starting balance lagi). starting_balance jadi turunan.
    - ✅ **BB/SB rebase ke `buy_in`** (bukan `starting_balance`). Rencana `bb = buy_in/10`, `sb = bb/2` (mis. buy_in 100 → BB 10 / SB 5, stack meja = 10 BB). Konfirmasi formula final pas implement.
 
-5. **[DECIDED 2026-06-07, belum implement] Phase split = tetap pool-based (Opsi A), preferensi user di wizard, dashboard P1 ganti jadi bar pool.** Keputusan owner:
+5. **[✅ DONE Fase A — prod 2026-06-08] Phase split = tetap pool-based (Opsi A), preferensi user di wizard, dashboard P1 ganti jadi bar pool.** Keputusan owner:
    - **TETAP pakai `max_pool` / pool-based buat bedain phase** (owner: "gaseru kalo dibaginya per sesi"). Opsi B (session-based) DITOLAK.
    - **Opsi A:** `max_pool = modal_awal_total + (target_P1_sesi × gaji_dealer)` di mana `modal_awal_total = n × buy_in × nyawa` dan `gaji_dealer = laju suntikan chip/sesi free-dealer` (lihat item 6: jadi **2× buy_in**). Preferensi tempo dipilih user (lihat desain wizard di bawah). Tetap estimasi (cooldown/no-free-dealer ga nyuntik → P1 bisa molor) — diterima. **Default tempo = 🔥 Langsung serius** (owner 2026-06-07). **Mid-season join (item 9):** Phase 1 → `max_pool += starting_balance` joiner (phase-neutral); Phase 2 → max_pool moot, joiner balance 0.
    - **Dashboard Phase 1: ganti dari "≈ N sesi lagi" jadi BAR pool langsung** — tampil `SUM(balance) / max_pool` (mis. "1000 / 2500"), no "≈". Lebih jujur & ga kena masalah undershoot. **Phase 2 tetap sesi-based** (`sesi_ended / max_sessions`, eksakta). Ubah di `DashboardClient.tsx`. ⚠ Catatan: selama sesi AKTIF, SUM(balance) turun sementara (buy-in kepotong, chip meja ga keitung di balance) → bar bisa keliatan dip lalu balik pas sesi end. Ini perilaku existing (estimasi lama juga gitu); pertimbangkan freeze/label "sesi berjalan" pas ada sesi aktif.
@@ -302,7 +312,7 @@ Flow 4 step (sama jumlahnya, isi step 2 & 3 berubah):
 - **Step 4 — Konfirmasi** (tambah baris Nyawa, Tempo, Bootstrap/Steady estimasi).
   - Default tempo: **🔥 Langsung serius** (owner 2026-06-07).
 
-6. **[DECIDED 2026-06-07, belum implement] Gaji dealer Phase 1 naik 1× → 2× buy-in (di-SPLIT meja+saldo, lihat detail bawah).** Karena nyawa jadi 5, gaji free-dealer digedein biar dealer yang abis duitnya bisa main lagi. Kode: [session.ts:481](lib/actions/session.ts) deduction tetap 0 (dealer main GRATIS, stack meja 1× lewat `dealer_salary_chips` [session.ts:522](lib/actions/session.ts) tetap `chips: buyIn`), TAMBAH `balance += buyIn` (nyawa cadangan ke saldo). Total = 2× buy_in tapi kepisah meja+saldo (BUKAN 2× numpuk di meja).
+6. **[✅ DONE Fase A — prod 2026-06-08] Gaji dealer Phase 1 naik 1× → 2× buy-in (di-SPLIT meja+saldo, lihat detail bawah).** Karena nyawa jadi 5, gaji free-dealer digedein biar dealer yang abis duitnya bisa main lagi. Kode: [session.ts:481](lib/actions/session.ts) deduction tetap 0 (dealer main GRATIS, stack meja 1× lewat `dealer_salary_chips` [session.ts:522](lib/actions/session.ts) tetap `chips: buyIn`), TAMBAH `balance += buyIn` (nyawa cadangan ke saldo). Total = 2× buy_in tapi kepisah meja+saldo (BUKAN 2× numpuk di meja).
    - **Efek domino ke phase:** laju suntikan chip/sesi free-dealer jadi 2× → pool nyampe max_pool 2× lebih cepat. Opsi A (item 5) udah pakai `gaji_dealer` sebagai laju suntikan, jadi max_pool otomatis nyesuain (`max_pool = modal_awal + target_P1 × 2×buy_in`); split phase ga berubah.
    - **BUKAN bug "total meja kembung" lama** (yg dulu: dealer bayar buy-in SEKALIGUS dapet gaji = double). Ini dealer gratis (deduction 0) + 2× gaji. Total meja P1 = `(n−1)×buy_in + 2×buy_in = (n+1)×buy_in`, konsisten; rekonsiliasi end-session udah ngitung dari `dealer_salary_chips`.
    - ⚠ **Cooldown jadi lebih krusial** — tiap free-deal worth 2 nyawa gratis → insentif farming naik. Pas implement cek window cooldown (skrg: ga dapet gaji lagi kalau jarak < 2 sesi) masih cukup ga.
@@ -311,13 +321,13 @@ Flow 4 step (sama jumlahnya, isi step 2 & 3 berubah):
    - ⚠ Beda dari kode existing: sekarang free dealer cuma dapet 1× di meja & balance ga berubah. Perubahan = tambah `balance += buyIn` di loop dealer ([session.ts:474-495](lib/actions/session.ts)), `dealer_salary_chips` tetap 1× buy_in (BUKAN 2× — separuh gaji udah masuk saldo). Total injeksi pool tetap 2× buy_in/sesi (100 ke saldo langsung + 100 ke meja yg konversi pas end).
    - ⚠ **Pas implement: update "Key design decisions" #3 di bawah** (yg masih nulis "1× buy_in printed chips" & "table total = n × buy_in") biar ga jadi catatan basi/kontradiksi. Jadi 2× & `(n+1)×buy_in`.
 
-7. **[DECIDED 2026-06-07, belum implement] Opsi dealer "main" vs "ambil gaji doang" (dealer netral) di session/setup.** Masalah: dealer selalu ikut main → ga netral, kalau dealer menang berasa ga enak (bandar lawan pemain). Ide owner: kalau pemain yg dipilih **> 3 (=4+)**, dealer yg kepilih dapet pilihan: **(a) ikut main** (existing) atau **(b) cuma jadi dealer, ga main**. Per-sesi (diputus pas setup), bukan per-musim. Logika 4+ pas: kalau dealer ga main butuh ≥3 yg main.
+7. **[✅ DONE Fase B — prod 2026-06-08] Opsi dealer "main" vs "ambil gaji doang" (dealer netral) di session/setup.** Masalah: dealer selalu ikut main → ga netral, kalau dealer menang berasa ga enak (bandar lawan pemain). Ide owner: kalau pemain yg dipilih **> 3 (=4+)**, dealer yg kepilih dapet pilihan: **(a) ikut main** (existing) atau **(b) cuma jadi dealer, ga main**. Per-sesi (diputus pas setup), bukan per-musim. Logika 4+ pas: kalau dealer ga main butuh ≥3 yg main.
    - **FINAL gaji dealer-netral = flat 1× buy_in** (owner pilih opsi 1 "flat kecil"). Dealer main dapet stack 2× beresiko; dealer netral dapet 1× (lebih kecil). Adil & gampang dijelasin. Hindari kredit langsung ke balance tanpa resiko (mesin cetak duit) — lihat model chips-on-table di bawah.
    - **FINAL: wizard end-session dealer-netral TETEP ADA** (koreksi owner) — karena **dealer netral bisa dapet TIP** dari pemain selama main. Jadi JANGAN di-skip di `/session/end`.
    - **Model yg konsisten (saran implement):** gaji flat 1× = **chip di MEJA** (bukan kredit balance langsung), persis pola dealer main tapi 1× bukan 2×. Dealer netral ga main tangan, tapi stack-nya bisa nambah dari tip. Pas end-session dia lapor stack akhir (= gaji 1× + tip) → konversi ke balance. Ini otomatis ngehindarin bug "kredit balance langsung".
    - **Catatan teknis:** (a) **suntikan pool** jadi variabel per-sesi: dealer main inject 2×buy_in, dealer netral inject 1×buy_in. Bikin estimasi P1 makin fuzzy — TAPI ga masalah krn dashboard P1 udah pindah ke BAR pool aktual (item 5), bukan estimasi sesi. (b) **Schema: butuh MIGRATION** — tambah flag mis. `session_participants.dealer_plays` (atau `dealer_neutral`). Udah ada `is_dealer`/`no_gaji_dealer` tapi belum cukup. (c) Tip antar pemain = transfer chip (zero-sum), bukan suntikan baru.
 
-8. **[DECIDED 2026-06-07, belum implement] Rake Phase 2: dealer IKUT MAIN → NO rake; dealer NETRAL → ngambil rake.** Masalah yg diangkat owner: rake ke dealer-yg-ikut-main = edge struktural (profit dari rake lepas dari menang/kalah) + numpuk ke yg sering jadi dealer (data CSV: MEK'S 44% sesi). Rake juga berat relatif ke stack pendek (buy-in 100 = 10 BB; rake floor~5-10/cap 20 = 0.5-1 BB/hand; ~15 hand = 5-15 BB kehisap; total se-sesi ~setara gaji P1). Owner pilih solusi **bersih**: bukan tuning cap, tapi **dealer yg tanding ga narik upah sama sekali**.
+8. **[✅ DONE Fase B — prod 2026-06-08] Rake Phase 2: dealer IKUT MAIN → NO rake; dealer NETRAL → ngambil rake.** Masalah yg diangkat owner: rake ke dealer-yg-ikut-main = edge struktural (profit dari rake lepas dari menang/kalah) + numpuk ke yg sering jadi dealer (data CSV: MEK'S 44% sesi). Rake juga berat relatif ke stack pendek (buy-in 100 = 10 BB; rake floor~5-10/cap 20 = 0.5-1 BB/hand; ~15 hand = 5-15 BB kehisap; total se-sesi ~setara gaji P1). Owner pilih solusi **bersih**: bukan tuning cap, tapi **dealer yg tanding ga narik upah sama sekali**.
    - **P2 dealer main** → bayar buy-in normal, main biasa, **rake = 0** (pemain biasa aja, zero-sum sejati).
    - **P2 dealer netral** → ga main, **ngambil rake** (= upah house, model casino yg fair krn bukan kompetitor) + tip.
    - **Upah dealer-netral BEDA per-phase, bukan ditambah:** P1 netral = flat 1× buy_in (rake belum ada di bootstrap); P2 netral = rake (BUKAN flat 1× lagi). Jangan double.
@@ -347,7 +357,7 @@ Urutan & dependensi pas implement item 4–7:
 
 ---
 
-9. **[DECIDED sebagian 2026-06-07] Self-register pemain (auth code) + guest mode.** Gap: pemain baru ga bisa gabung tanpa admin nambahin (`addPlayer`) / diketik di wizard. Owner mau ada **register** + **guest mode**.
+9. **[✅ DONE Fase E — prod 2026-06-08] Self-register pemain (auth code) + guest mode.** (Telegram bot notif sengaja di-skip; sisanya jalan.) Gap: pemain baru ga bisa gabung tanpa admin nambahin (`addPlayer`) / diketik di wizard. Owner mau ada **register** + **guest mode**.
    - **Framing (insight Claude):** ini tracker duit grup temen, BUKAN signup SaaS publik. Register terbuka-bebas bahaya (pemain sampah, impersonasi, randos ngacak). Harus ada gerbang tapi ga seketat app publik.
    - **Insight inti — pisahin "identitas" dari "keanggotaan":** berkat item 3 (`season_players`), identitas (baris `players` + nama + PIN) ≠ keanggotaan (di `season_players` musim aktif = yg muncul di dashboard). Jadi: **biarin orang self-register bikin identitas, TAPI belum jadi anggota sampe di-add lewat checklist.** Gerbangnya di KEANGGOTAAN, bukan registrasi. Bonus: pemain sampah ga ngotorin dashboard krn udah di-scope ke anggota (item 3). Sinergi.
    - **Rekomendasi register:** form nama (unik, case-insensitive — udah ada cek) + **PIN sendiri** (lebih aman dari default 1234 flow admin sekarang). Entry dari `/identity` → "+ Daftar pemain baru". Admin-add tetep ada opsional. ⚠ WAJIB rate-limit/throttle (security review: server action self-authorize, ID publik). Opsional: **kode join grup** biar cuma yg diundang bisa daftar (cocok vibe underground).
@@ -370,7 +380,7 @@ Urutan & dependensi pas implement item 4–7:
      - **Register cabang per-phase + atomik:** baca phase → P1 (balance=starting_balance + bump max_pool) / P2 (balance 0); 1 transaction (buat player + season_players + update max_pool kalau P1).
      - **"Verified" = cukup baris `season_players`**, ga perlu kolom flag terpisah.
 
-10. **[DISKUSI 2026-06-07, belum diputusin] User manual / panduan + onboarding device baru.** Owner mau ada panduan buat device yang baru buka. Doable, **no migration/library** (precedent: halaman `/changelog` + indikator "new" via localStorage — pola sama).
+10. **[✅ DONE Fase F — prod 2026-06-08] User manual / panduan + onboarding device baru.** Owner mau ada panduan buat device yang baru buka. Doable, **no migration/library** (precedent: halaman `/changelog` + indikator "new" via localStorage — pola sama).
    - **2 lapis:** (a) **halaman `/panduan`** (atau `/help`) — konten statis ber-section, tema felt-green, akses kapan aja via ikon **"?"** di `(main)/layout`. (b) **Auto-welcome sekali per-device**: localStorage `panduan_seen` kosong → munculin **sheet sambutan** (pakai `components/Sheet.tsx`) + CTA "Lihat panduan" / "Lewati", lalu set `panduan_seen`.
    - **Deteksi device baru:** localStorage flag (mirror `phase_seen`/changelog). Per-device, bukan per-user.
    - **[DECIDED 2026-06-07] Struktur konten = overview ringkas + section expandable (accordion).** Bagian ATAS halaman = **alur main ringkas** (apa ini → pilih identitas → mulai sesi → main → end → season). Di bawahnya **section-section yang bisa dibuka** (collapsible, default tertutup) buat yang mau dalemin — biar ga jadi wall-of-text. UI accordion pakai React state atau `<details>` (no lib).
