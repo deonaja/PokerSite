@@ -5,6 +5,12 @@ export interface Player {
   created_at: string
 }
 
+// Player row for the /identity picker, annotated with active-season membership so
+// members sort to the top ("Musim ini" vs "Lainnya"). The picker still lists everyone.
+export interface PickerPlayer extends Player {
+  is_member: boolean
+}
+
 export interface Session {
   id: string
   dealer_id: string

@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.0',
+    date: '2026-06-09',
+    changes: [
+      'Fitur join di tengah sesi udah up cuy. tinggal tambahin pas sesi aktip',
+      'Fix list anggota yang gaje jir.',
+    ],
+  },
+  {
     version: '0.8.0',
     date: '2026-06-08',
     changes: [

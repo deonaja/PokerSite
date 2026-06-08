@@ -157,6 +157,93 @@ export async function undoRebuy({
   }
 }
 
+export async function joinSession({
+  sessionId,
+  playerId,
+}: {
+  sessionId: string
+  playerId: string
+}): Promise<{ success: true } | { error: string }> {
+  // LATE JOIN: a member who arrived after the session started buys in mid-game.
+  // They always enter as a regular player (the dealer was fixed at start) and must
+  // afford the full buy-in — low-balance players can only sit as the dealer, so a
+  // broke late-comer must top up (e.g. via a loan) first. Reconciliation carries
+  // automatically: the end-wizard derives each player's delta from the FIRST
+  // edit_log entry, which for a late joiner is this buy-in, so their result and the
+  // session chip total come out right with no special-casing.
+  const actorPlayerId = await getAuthenticatedPlayerId()
+  if (!actorPlayerId) return { error: 'Belum login' }
+  const client = createDbClient()
+  await client.connect()
+  try {
+    await client.query('BEGIN')
+
+    // Lock the active session row — all joins/rebuys/end on this session serialize
+    // here, so the duplicate-participant re-check below reliably sees a rival commit.
+    const { rows: [session] } = await client.query<{ id: string; season_id: string | null }>(
+      `SELECT id, season_id FROM sessions WHERE id = $1 AND status = 'active' FOR UPDATE`,
+      [sessionId]
+    )
+    if (!session) { await client.query('ROLLBACK'); return { error: 'Sesi tidak aktif' } }
+
+    const { rows: [existing] } = await client.query<{ id: string }>(
+      `SELECT id FROM session_participants WHERE session_id = $1 AND player_id = $2`,
+      [sessionId, playerId]
+    )
+    if (existing) { await client.query('ROLLBACK'); return { error: 'Pemain sudah ikut sesi ini' } }
+
+    const { rows: [player] } = await client.query<{ id: string; balance: number }>(
+      `SELECT id, balance FROM players WHERE id = $1 FOR UPDATE`,
+      [playerId]
+    )
+    if (!player) { await client.query('ROLLBACK'); return { error: 'Pemain tidak ditemukan' } }
+
+    const { rows: [season] } = await client.query<{ buy_in: number }>(
+      `SELECT buy_in FROM seasons WHERE id = $1`,
+      [session.season_id]
+    )
+    const buyIn = season?.buy_in ?? 100
+
+    // Server actions self-authorize: only a member of this season's roster may join.
+    const { rows: [member] } = await client.query<{ ok: number }>(
+      `SELECT 1 AS ok FROM season_players WHERE season_id = $1 AND player_id = $2`,
+      [session.season_id, playerId]
+    )
+    if (!member) { await client.query('ROLLBACK'); return { error: 'Pemain bukan anggota musim ini' } }
+
+    if (player.balance < buyIn) {
+      await client.query('ROLLBACK')
+      return { error: 'Saldo kurang untuk gabung (minimal 1 buy-in)' }
+    }
+
+    await client.query(
+      `INSERT INTO session_participants (session_id, player_id, is_dealer, no_gaji_dealer, dealer_plays)
+       VALUES ($1, $2, false, false, true)`,
+      [sessionId, playerId]
+    )
+    await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [buyIn, playerId])
+    await client.query(
+      `INSERT INTO edit_log (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
+       VALUES ($1, $2, $3, 'buy_in', $4, $5, $6)`,
+      [sessionId, playerId, actorPlayerId, player.balance, player.balance - buyIn,
+       JSON.stringify({ buy_in: buyIn, late_join: true })]
+    )
+
+    await client.query('COMMIT')
+    revalidatePath('/')
+    revalidatePath('/session')
+    return { success: true }
+  } catch (e: unknown) {
+    await client.query('ROLLBACK')
+    const pg = e as { code?: string }
+    if (pg.code === '23505') return { error: 'Pemain sudah ikut sesi ini' }
+    console.error('joinSession error:', e)
+    return { error: 'Gagal gabung sesi' }
+  } finally {
+    await client.end()
+  }
+}
+
 export async function cancelSession({
   sessionId,
 }: {
