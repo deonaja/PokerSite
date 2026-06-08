@@ -49,6 +49,7 @@ Sebelum nyatakan screen "selesai", pastikan ada:
 
 ## Yang harus dilakukan
 
+- **Screenshot / verifikasi visual UI: PAKAI chrome-devtools MCP** (`mcp__chrome-devtools__navigate_page` ke dev server `localhost:3000`, lalu `mcp__chrome-devtools__take_screenshot`). JANGAN bikin Playwright `*.spec.ts` sekali-pakai cuma buat ambil gambar. Butuh `pnpm dev` jalan + Chrome ke-connect (MCP bisa "still connecting" di awal sesi — tunggu / re-check). Tools udah di-allowlist di `.claude/settings.local.json`.
 - Jalanin `pnpm dev` dan tes manual semua flow di SPEC.md "Acceptance criteria".
 - Pastikan endpoint `/admin?key=salah` return 404 betulan (pake `notFound()` dari `next/navigation`), bukan custom error message yang ngasih tau ada endpoint admin.
 - **Test concurrency:** buka 2 tab dengan identitas berbeda, klik rebuy bareng untuk pemain yang sama. Balance pemain itu HARUS kepotong 200 total (2× rebuy = -200), bukan cuma -100. Kalau cuma -100, ada race condition — fix dengan `SELECT ... FOR UPDATE` di dalam transaction.
