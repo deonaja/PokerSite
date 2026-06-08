@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { Circle } from 'lucide-react'
 import Button from './Button'
 import Sheet from './Sheet'
 import { useLoans } from '@/lib/useLoans'
@@ -99,9 +100,12 @@ export default function LoanWidget() {
       {/* My active debt — repay */}
       {myBorrow?.status === 'active' && (
         <div className="mb-2 rounded-lg border border-border bg-card p-3">
-          <p className="text-sm text-foreground">
-            🔴 Ngutang ke <span className="font-medium">{myBorrow.lenderName}</span>:{' '}
-            <span className="font-mono tabular-nums text-warn">{fmt(myBorrow.amount)}</span>
+          <p className="flex items-center gap-1.5 text-sm text-foreground">
+            <Circle aria-hidden className="h-2.5 w-2.5 shrink-0 fill-destructive text-destructive" />
+            <span>
+              Ngutang ke <span className="font-medium">{myBorrow.lenderName}</span>:{' '}
+              <span className="font-mono tabular-nums text-warn">{fmt(myBorrow.amount)}</span>
+            </span>
           </p>
           <div className="mt-2.5">
             <Button variant="primary" fullWidth disabled={isPending || !myBorrow.canRepay || sessionActive}
@@ -122,9 +126,12 @@ export default function LoanWidget() {
       {/* I'm the lender on an active loan */}
       {myLend && (
         <div className="mb-2 rounded-lg border border-border bg-card p-3">
-          <p className="text-sm text-foreground">
-            🟢 Minjemin <span className="font-medium">{myLend.borrowerName}</span>:{' '}
-            <span className="font-mono tabular-nums text-success">{fmt(myLend.amount)}</span>
+          <p className="flex items-center gap-1.5 text-sm text-foreground">
+            <Circle aria-hidden className="h-2.5 w-2.5 shrink-0 fill-success text-success" />
+            <span>
+              Minjemin <span className="font-medium">{myLend.borrowerName}</span>:{' '}
+              <span className="font-mono tabular-nums text-success">{fmt(myLend.amount)}</span>
+            </span>
           </p>
           <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
             Ditarik balik otomatis saat {myLend.borrowerName} melunasi atau di akhir musim.

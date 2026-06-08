@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { Star, TriangleAlert } from 'lucide-react'
 import { endSession } from '@/lib/actions/session'
 import BalanceDisplay from './BalanceDisplay'
 import Button from './Button'
@@ -209,7 +210,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
                       {initialOf(p.player_name)}
                     </span>
                     <span className="min-w-0 truncate text-sm font-medium text-foreground">{p.player_name}</span>
-                    {p.is_dealer && <Badge className="px-1.5 py-0.5">★</Badge>}
+                    {p.is_dealer && <Badge className="px-1.5 py-0.5"><Star aria-label="dealer" className="h-3 w-3 fill-current" /></Badge>}
                     {p.no_gaji_dealer && (
                       <span className="text-[0.625rem] text-[var(--text-tertiary)]">bagi kartu</span>
                     )}
@@ -244,9 +245,10 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
               <span className="font-mono text-foreground">{inputTotal}</span>
             </div>
             {chipDiff !== 0 && (
-              <p className="m-0 border-t border-border pt-2 text-[0.8125rem] text-warn">
-                ⚠ Selisih {chipDiff > 0 ? '+' : ''}
-                {chipDiff}. Confirm tetap atau revisi?
+              <p className="m-0 flex items-start gap-1.5 border-t border-border pt-2 text-[0.8125rem] text-warn">
+                <TriangleAlert aria-hidden className="mt-px h-3.5 w-3.5 shrink-0" />
+                <span>Selisih {chipDiff > 0 ? '+' : ''}
+                {chipDiff}. Confirm tetap atau revisi?</span>
               </p>
             )}
           </Card>
@@ -290,8 +292,9 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
         </span>
         <p className="m-0 text-xl font-medium text-foreground">{current.player_name}</p>
         {current.is_dealer && (
-          <Badge className="px-2 py-0.5 text-xs tracking-wider">
-            ★ DEALER{current.no_gaji_dealer ? ' (BAGI KARTU)' : ''}
+          <Badge className="inline-flex items-center gap-1 px-2 py-0.5 text-xs tracking-wider">
+            <Star aria-hidden className="h-3 w-3 fill-current" />
+            DEALER{current.no_gaji_dealer ? ' (BAGI KARTU)' : ''}
           </Badge>
         )}
       </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { TriangleAlert } from 'lucide-react'
 import { usePoll } from '@/lib/usePoll'
 import Button from './Button'
 import BalanceDisplay from './BalanceDisplay'
@@ -200,9 +201,7 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
                   </span>
                   <span className="flex shrink-0 items-center justify-end gap-1.5">
                     {lowBalance && (
-                      <span className="text-warn" aria-label="saldo di bawah buy-in" title="saldo di bawah buy-in">
-                        ⚠
-                      </span>
+                      <TriangleAlert aria-label="saldo di bawah buy-in" className="h-3.5 w-3.5 shrink-0 text-warn" />
                     )}
                     <BalanceDisplay
                       balance={p.balance}

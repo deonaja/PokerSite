@@ -115,8 +115,8 @@ test.describe('Full session flow', () => {
     await expect(page.getByText('Sesi aktif')).toBeVisible()
     await expect(page.getByRole('main').getByText(alice.name)).toBeVisible()
     await expect(page.getByText(bob.name)).toBeVisible()
-    // Alice is dealer
-    await expect(page.getByText('★ DEALER')).toBeVisible()
+    // Alice is dealer (star icon + label)
+    await expect(page.getByText('DEALER', { exact: true })).toBeVisible()
     // Both start with rebuy_count = 0
     await expect(page.getByText('Rebuy: 0')).toHaveCount(2)
   })

@@ -29,7 +29,7 @@ export default function WelcomeGuide() {
   }
 
   return (
-    <Sheet isOpen={open} onClose={dismiss} title="Selamat datang 👋">
+    <Sheet isOpen={open} onClose={dismiss} title="Selamat datang">
       <p className="m-0 mb-4 text-sm leading-relaxed text-muted-foreground">
         Aplikasi ini buat ngatur chip & saldo poker grup kamu — pilih identitas,
         mulai sesi, main, lalu tutup sesi buat rekap. Baru pertama kali? Ada
