@@ -379,6 +379,12 @@ Urutan & dependensi pas implement item 4–7:
    - **Teknis:** client + JSX statis (no MD renderer). Route `app/(main)/panduan/page.tsx` + ikon "?" di `(main)/layout` + welcome-sheet client component + accordion. **No DB, no migration.**
    - **Sinergi:** pasang bareng register/guest (item 9, Fase E) — orang baru/guest paling butuh; link dari flow register.
 
+11. **[IDE 2026-06-08, belum diputusin] Rapihkan tampilan `/identity` picker.** Owner nyadarin (bener): picker `app/identity/page.tsx` query `SELECT … FROM players` (GLOBAL, semua akun di DB) — BUKAN scoped ke `season_players`. **Ini by design** (identitas ≠ keanggotaan): pemain lama non-member harus bisa login dulu baru "Gabung musim" (JoinSeasonPrompt Fase E3); kalau picker di-scope ke member → deadlock (non-member ga bisa login buat gabung). Dashboard/leaderboard tetep member-only. **Konsekuensi:** seiring waktu list login makin panjang/berantakan (akun lama/sampah/test semua nongol). **Opsi rapihin (pilih nanti):**
+   - **(a) Member-first sorting** — anggota musim aktif di atas (mungkin sub-judul "Musim ini" vs "Lainnya"), sisanya di bawah. Paling aman, ga ngilangin siapa pun. Butuh JOIN `season_players` buat nentuin urutan, picker tetep nampilin semua.
+   - **(b) Sembunyiin akun "mati"** — misal yang belum pernah jadi member musim manapun (`NOT EXISTS di season_players histori`) atau ga ada `auth_sessions` baru. ⚠ hati-hati jangan sembunyiin pemain baru/legit.
+   - **(c) Admin "arsipkan pemain"** — flag `players.archived` (butuh migration kecil) + filter dari picker; admin bisa un-arsip. Paling proper buat akun beneran mati, tapi paling banyak kerjaan.
+   - **Rekomendasi Claude: mulai dari (a)** — murah, ga ada migration, langsung ngerapihin tanpa risiko ngilangin akun. (b)/(c) kalau (a) masih kerasa rame. **No migration buat (a)/(b); (c) butuh migration.**
+
 ### 🛠️ RENCANA KERJA / BUILD ORDER (owner delegasiin ke Claude 2026-06-07 — "urutan rilis sesuaiin aja")
 
 6 fase, checkpoint per item (stop & report tiap selesai, sesuai CLAUDE.md). Migration kepisah per-fase (1 file/fitur, bukan gabungan).
