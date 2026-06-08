@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
-import { hashPin } from '@/lib/auth'
+import { hashPin, generateInviteCode } from '@/lib/auth'
 import { evaluateAchievements, type SeasonResultRow } from '@/lib/achievements'
 
 export interface CreateSeasonInput {
@@ -87,10 +87,10 @@ export async function createSeason(
 
     const { rows: [season] } = await client.query<{ id: string }>(
       `INSERT INTO seasons
-         (number, status, preset_name, starting_balance, buy_in, bb, sb, max_pool, max_sessions, rake_rate, creator_player_id)
-       VALUES ($1, 'active', $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         (number, status, preset_name, starting_balance, buy_in, bb, sb, max_pool, max_sessions, rake_rate, creator_player_id, invite_code)
+       VALUES ($1, 'active', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING id`,
-      [seasonNumber, presetName, startingBalance, buyIn, bb, sb, maxPool, maxSessions, rakeRate, creatorId]
+      [seasonNumber, presetName, startingBalance, buyIn, bb, sb, maxPool, maxSessions, rakeRate, creatorId, generateInviteCode()]
     )
 
     for (const playerId of playerIds) {

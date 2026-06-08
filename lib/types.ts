@@ -51,6 +51,8 @@ export interface Season {
   rake_rate: number
   current_phase: 'bootstrap' | 'steady'
   creator_player_id: string | null
+  invite_code: string | null
+  invite_code_uses: number
   started_at: string
   ended_at: string | null
 }

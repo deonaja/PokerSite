@@ -6,6 +6,8 @@ import EditBalanceForm from './EditBalanceForm'
 import ForceEndSection from './ForceEndSection'
 import ResetPinForm from './ResetPinForm'
 import DebugSection from './DebugSection'
+import InviteCodeSection from './InviteCodeSection'
+import { MAX_INVITE_CODE_USES } from '@/lib/auth'
 
 const PAGE_SIZE = 20
 
@@ -70,7 +72,7 @@ export default async function AdminPage({
   const [players, sessions, season, logs, logCount] = await Promise.all([
     sql`SELECT id, name, balance FROM players ORDER BY name ASC`,
     sql`SELECT id FROM sessions WHERE status = 'active' LIMIT 1`,
-    sql`SELECT starting_balance FROM seasons WHERE status = 'active' LIMIT 1`,
+    sql`SELECT starting_balance, invite_code, invite_code_uses FROM seasons WHERE status = 'active' LIMIT 1`,
     logAction
       ? sql`
           SELECT el.id, el.action, el.balance_before, el.balance_after, el.voided, el.created_at, el.metadata,
@@ -96,7 +98,8 @@ export default async function AdminPage({
 
   const playerList = players as unknown as Player[]
   const activeSessionId = (sessions as unknown as { id: string }[])[0]?.id ?? null
-  const startingBalance = (season as unknown as { starting_balance: number }[])[0]?.starting_balance ?? 200
+  const seasonRow = (season as unknown as { starting_balance: number; invite_code: string | null; invite_code_uses: number }[])[0]
+  const startingBalance = seasonRow?.starting_balance ?? 200
   const totalLogs = (logCount as unknown as { cnt: number }[])[0]?.cnt ?? 0
   const totalPages = Math.max(1, Math.ceil(totalLogs / PAGE_SIZE))
   const logPage = Math.min(rawPage, totalPages)
@@ -138,6 +141,15 @@ export default async function AdminPage({
           <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">SESI AKTIF</p>
           <ForceEndSection sessionId={activeSessionId} />
         </section>
+      )}
+
+      {/* Invite code */}
+      {seasonRow && (
+        <InviteCodeSection
+          code={seasonRow.invite_code}
+          uses={seasonRow.invite_code_uses ?? 0}
+          maxUses={MAX_INVITE_CODE_USES}
+        />
       )}
 
       {/* Debug */}
