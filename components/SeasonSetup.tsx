@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { Flame, Scale, Turtle, X } from 'lucide-react'
+import { Flame, Scale, Turtle, X, ArrowLeft, ArrowRight } from 'lucide-react'
 import { createSeason } from '@/lib/actions/season'
 import Button from './Button'
 import { Card } from './ui/card'
@@ -271,7 +271,7 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
             onClick={() => setStep(2)}
             className="h-12 text-base font-semibold uppercase tracking-wide"
           >
-            Lanjut →
+            Lanjut<ArrowRight className="ml-1 inline h-4 w-4 align-middle" />
           </Button>
         </div>
       )}
@@ -333,10 +333,10 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
 
           <div className="flex gap-2">
             <Button type="button" onClick={() => setStep(1)} disabled={!isHydrated || isPending} className="flex-1">
-              ← Kembali
+              <ArrowLeft className="mr-1 inline h-4 w-4 align-middle" />Kembali
             </Button>
             <Button type="button" fullWidth disabled={!isHydrated || !step2Valid || isPending} onClick={() => setStep(3)} className="flex-[2] h-12 text-base font-semibold uppercase tracking-wide">
-              Lanjut →
+              Lanjut<ArrowRight className="ml-1 inline h-4 w-4 align-middle" />
             </Button>
           </div>
         </div>
@@ -446,10 +446,10 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
 
           <div className="flex gap-2">
             <Button type="button" onClick={() => setStep(2)} disabled={!isHydrated || isPending} className="flex-1">
-              ← Kembali
+              <ArrowLeft className="mr-1 inline h-4 w-4 align-middle" />Kembali
             </Button>
             <Button type="button" fullWidth disabled={!isHydrated || !step3Valid || isPending} onClick={() => setStep(4)} className="flex-[2] h-12 text-base font-semibold uppercase tracking-wide">
-              Lanjut →
+              Lanjut<ArrowRight className="ml-1 inline h-4 w-4 align-middle" />
             </Button>
           </div>
         </div>
@@ -500,7 +500,7 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
 
           <div className="flex gap-2">
             <Button type="button" onClick={() => setStep(3)} disabled={!isHydrated || isPending} className="flex-1">
-              ← Kembali
+              <ArrowLeft className="mr-1 inline h-4 w-4 align-middle" />Kembali
             </Button>
             <Button
               type="button"

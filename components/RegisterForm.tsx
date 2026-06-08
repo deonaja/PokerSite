@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 import Button from './Button'
 import { registerPlayer } from '@/lib/actions/invite'
 import { setLocalStorageItem } from '@/lib/safeStorage'
@@ -79,9 +80,9 @@ export default function RegisterForm({ onBack }: { onBack: () => void }) {
       <button
         type="button"
         onClick={onBack}
-        className="min-h-11 self-center text-[0.8125rem] text-muted-foreground underline-offset-4 hover:underline"
+        className="inline-flex min-h-11 items-center gap-1 self-center text-[0.8125rem] text-muted-foreground underline-offset-4 hover:underline"
       >
-        ← Kembali ke pilih nama
+        <ArrowLeft className="h-3.5 w-3.5" /> Kembali ke pilih nama
       </button>
     </form>
   )

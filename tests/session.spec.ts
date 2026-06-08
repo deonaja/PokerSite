@@ -178,7 +178,7 @@ test.describe('Full session flow', () => {
     for (let i = 0; i < count; i++) {
       await page.locator('input[type="number"]').fill('200')
       const isLast = i === count - 1
-      await page.getByRole('button', { name: isLast ? 'Lihat recap' : 'Next →' }).click()
+      await page.getByRole('button', { name: isLast ? 'Lihat recap' : 'Next', exact: true }).click()
     }
 
     // Recap screen
@@ -214,7 +214,7 @@ test.describe('Full session flow', () => {
     await page.waitForURL('**/session/end')
 
     // Back on step 0 → /session
-    await page.getByRole('button', { name: '←' }).click()
+    await page.getByRole('button', { name: 'Kembali' }).click()
     await page.waitForURL('**/session')
 
     // Force-end via admin so cleanup works
@@ -254,7 +254,7 @@ test.describe('Session end — back navigation', () => {
 
     // Fill both stacks and reach the recap
     await page.locator('input[type="number"]').fill('150')
-    await page.getByRole('button', { name: 'Next →' }).click()
+    await page.getByRole('button', { name: 'Next', exact: true }).click()
     await page.locator('input[type="number"]').fill('100')
     await page.getByRole('button', { name: /recap/ }).click()
     await expect(page.getByText('RECAP')).toBeVisible()

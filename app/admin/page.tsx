@@ -8,6 +8,7 @@ import ResetPinForm from './ResetPinForm'
 import DebugSection from './DebugSection'
 import InviteCodeSection from './InviteCodeSection'
 import { MAX_INVITE_CODE_USES } from '@/lib/auth'
+import { Download, ArrowLeft, ArrowRight } from 'lucide-react'
 
 const PAGE_SIZE = 20
 
@@ -169,9 +170,9 @@ export default async function AdminPage({
             <a
               key={x.type}
               href={`/admin/export?type=${x.type}`}
-              className="rounded-md border border-input bg-[var(--bg-elevated)] px-3 py-2 text-[0.8125rem] text-foreground no-underline transition-colors hover:bg-secondary"
+              className="inline-flex items-center gap-1 rounded-md border border-input bg-[var(--bg-elevated)] px-3 py-2 text-[0.8125rem] text-foreground no-underline transition-colors hover:bg-secondary"
             >
-              ↓ {x.label}
+              <Download className="h-3.5 w-3.5" /> {x.label}
             </a>
           ))}
         </div>
@@ -237,10 +238,10 @@ export default async function AdminPage({
           <span className="text-[var(--text-tertiary)]">Hal {logPage}/{totalPages}</span>
           <div className="flex gap-2">
             {logPage > 1 && (
-              <a href={`${baseUrl}?logAction=${rawAction}&logPage=${logPage - 1}`} className="rounded-sm border border-border px-2 py-1 text-muted-foreground no-underline">← Prev</a>
+              <a href={`${baseUrl}?logAction=${rawAction}&logPage=${logPage - 1}`} className="inline-flex items-center gap-1 rounded-sm border border-border px-2 py-1 text-muted-foreground no-underline"><ArrowLeft className="h-3.5 w-3.5" />Prev</a>
             )}
             {logPage < totalPages && (
-              <a href={`${baseUrl}?logAction=${rawAction}&logPage=${logPage + 1}`} className="rounded-sm border border-border px-2 py-1 text-muted-foreground no-underline">Next →</a>
+              <a href={`${baseUrl}?logAction=${rawAction}&logPage=${logPage + 1}`} className="inline-flex items-center gap-1 rounded-sm border border-border px-2 py-1 text-muted-foreground no-underline">Next<ArrowRight className="h-3.5 w-3.5" /></a>
             )}
           </div>
         </div>

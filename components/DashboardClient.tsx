@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { TriangleAlert } from 'lucide-react'
+import { TriangleAlert, ChevronRight } from 'lucide-react'
 import { usePoll } from '@/lib/usePoll'
 import Button from './Button'
 import BalanceDisplay from './BalanceDisplay'
@@ -123,8 +123,8 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
             Season {season.number}{' · '}
             <span className="text-primary">{season.current_phase === 'steady' ? 'STEADY' : 'BOOTSTRAP'}</span>
           </span>
-          <Link href="/season/history" className="shrink-0 transition-colors hover:text-muted-foreground">
-            Riwayat musim →
+          <Link href="/season/history" className="inline-flex shrink-0 items-center gap-0.5 transition-colors hover:text-muted-foreground">
+            Riwayat musim <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       )}
@@ -227,7 +227,7 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
             className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-primary bg-accent px-4 py-3 transition-colors hover:bg-[var(--bg-elevated)]"
           >
             <span className="text-sm text-foreground">Sesi sedang berjalan</span>
-            <span className="text-xs text-[var(--text-tertiary)]">tap untuk lanjut →</span>
+            <span className="inline-flex items-center gap-0.5 text-xs text-[var(--text-tertiary)]">tap untuk lanjut <ChevronRight className="h-3.5 w-3.5" /></span>
           </Link>
         </div>
       )}

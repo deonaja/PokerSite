@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Star } from 'lucide-react'
+import { Star, ArrowLeft } from 'lucide-react'
 import { rebuy, undoRebuy } from '@/lib/actions/session'
 import { usePoll } from '@/lib/usePoll'
 import { useElapsedSeconds } from '@/lib/useElapsed'
@@ -65,8 +65,8 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
       {/* Sticky header */}
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <Link href="/" className="flex min-h-11 min-w-11 items-center justify-center text-lg text-muted-foreground">
-            ←
+          <Link href="/" className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground">
+            <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
           </Link>
           <div className="flex flex-col">
             <span className="text-sm font-medium text-foreground">Sesi aktif</span>

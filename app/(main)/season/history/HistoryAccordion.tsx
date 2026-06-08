@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Trophy } from 'lucide-react'
+import { Trophy, ChevronUp, ChevronDown } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 
 interface SeasonResult {
@@ -68,8 +68,8 @@ function SeasonCard({ season }: { season: Season }) {
             )}
           </div>
         </div>
-        <span className="flex-shrink-0 text-sm text-[var(--text-tertiary)]">
-          {open ? '▲' : '▼'}
+        <span className="flex-shrink-0 text-[var(--text-tertiary)]">
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </span>
       </button>
 

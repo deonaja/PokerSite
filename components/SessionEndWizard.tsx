@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Star, TriangleAlert } from 'lucide-react'
+import { Star, TriangleAlert, ArrowLeft, ArrowRight } from 'lucide-react'
 import { endSession } from '@/lib/actions/session'
 import BalanceDisplay from './BalanceDisplay'
 import Button from './Button'
@@ -173,9 +173,9 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
   const backButton = (
     <button
       onClick={handleBack}
-      className="flex min-h-11 min-w-11 items-center bg-transparent text-lg text-muted-foreground"
+      className="flex min-h-11 min-w-11 items-center bg-transparent text-muted-foreground"
     >
-      ←
+      <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
     </button>
   )
 
@@ -370,7 +370,9 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
 
       <div className={STICKY_BOTTOM}>
         <Button fullWidth disabled={currentInput === ''} onClick={handleNext}>
-          {editingFromRecap ? 'Simpan' : (step === totalSteps - 1 ? 'Lihat recap' : 'Next →')}
+          {editingFromRecap ? 'Simpan' : step === totalSteps - 1 ? 'Lihat recap' : (
+            <span className="inline-flex items-center gap-1.5">Next <ArrowRight className="h-4 w-4" /></span>
+          )}
         </Button>
       </div>
     </div>

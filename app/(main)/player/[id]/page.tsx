@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ACHIEVEMENTS } from '@/lib/achievements'
 import { formatDurationShort } from '@/lib/duration'
-import { Trophy, Medal, Award, Crown, Coins, TrendingUp, type LucideIcon } from 'lucide-react'
+import { Trophy, Medal, Award, Crown, Coins, TrendingUp, ArrowLeft, type LucideIcon } from 'lucide-react'
 
 // Achievement icons keyed by key (kept out of the logic module).
 const ACH_ICONS: Record<string, LucideIcon> = {
@@ -110,9 +110,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
         <Link
           href="/"
-          className="flex min-h-11 min-w-11 items-center text-lg text-muted-foreground no-underline"
+          className="flex min-h-11 min-w-11 items-center text-muted-foreground no-underline"
         >
-          ←
+          <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
         <span
           aria-hidden

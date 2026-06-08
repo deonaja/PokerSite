@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { sql } from '@/lib/db'
 import type { Player } from '@/lib/types'
 import SessionSetupForm from '@/components/SessionSetupForm'
@@ -47,9 +48,9 @@ export default async function SessionSetupPage() {
       <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
         <Link
           href="/"
-          className="flex min-h-11 min-w-11 items-center text-lg leading-none text-muted-foreground"
+          className="flex min-h-11 min-w-11 items-center leading-none text-muted-foreground"
         >
-          ←
+          <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
         <span className="text-sm font-medium text-foreground">Setup sesi</span>
       </div>
