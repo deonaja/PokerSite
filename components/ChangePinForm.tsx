@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 import { changePin } from '@/lib/actions/players'
 import Button from './Button'
 
@@ -61,9 +62,9 @@ export default function ChangePinForm() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex min-h-11 min-w-11 items-center p-0 text-lg text-muted-foreground"
+          className="flex min-h-11 min-w-11 items-center p-0 text-muted-foreground"
         >
-          ←
+          <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </button>
         <h1 className="text-lg font-medium text-foreground">
           Ganti PIN

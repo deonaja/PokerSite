@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
+import { Flame, Scale, Turtle, X, ArrowLeft, ArrowRight } from 'lucide-react'
 import { createSeason } from '@/lib/actions/season'
 import Button from './Button'
 import { Card } from './ui/card'
@@ -20,10 +21,12 @@ type PresetName = typeof PRESETS[number]['name']
 // Tempo = preferensi panjang Phase 1 (bootstrap) sebagai fraksi total sesi.
 // max_pool = modal_awal_total + (target_P1_sesi × gaji_dealer), gaji_dealer = 2×buy_in.
 const TEMPOS = [
-  { name: 'serius',    label: '🔥 Langsung serius',   desc: 'Bootstrap singkat, ekonomi cepat serius', p1Frac: 0.25 },
-  { name: 'seimbang',  label: '⚖️ Seimbang',          desc: 'Pemanasan & serius rata',                 p1Frac: 0.40 },
-  { name: 'pemanasan', label: '🐢 Pemanasan panjang', desc: 'Dealer lama main gratis',                 p1Frac: 0.60 },
+  { name: 'serius',    label: 'Langsung serius',   desc: 'Bootstrap singkat, ekonomi cepat serius', p1Frac: 0.25 },
+  { name: 'seimbang',  label: 'Seimbang',          desc: 'Pemanasan & serius rata',                 p1Frac: 0.40 },
+  { name: 'pemanasan', label: 'Pemanasan panjang', desc: 'Dealer lama main gratis',                 p1Frac: 0.60 },
 ] as const
+
+const TEMPO_ICONS = { serius: Flame, seimbang: Scale, pemanasan: Turtle } as const
 
 type TempoName = typeof TEMPOS[number]['name']
 
@@ -234,7 +237,7 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
                   className="flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent text-base text-[var(--text-tertiary)]"
                   aria-label="Hapus pemain"
                 >
-                  ✕
+                  <X aria-hidden className="h-4 w-4" />
                 </button>
               </div>
             ))}
@@ -268,7 +271,7 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
             onClick={() => setStep(2)}
             className="h-12 text-base font-semibold uppercase tracking-wide"
           >
-            Lanjut →
+            Lanjut<ArrowRight className="ml-1 inline h-4 w-4 align-middle" />
           </Button>
         </div>
       )}
@@ -330,10 +333,10 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
 
           <div className="flex gap-2">
             <Button type="button" onClick={() => setStep(1)} disabled={!isHydrated || isPending} className="flex-1">
-              ← Kembali
+              <ArrowLeft className="mr-1 inline h-4 w-4 align-middle" />Kembali
             </Button>
             <Button type="button" fullWidth disabled={!isHydrated || !step2Valid || isPending} onClick={() => setStep(3)} className="flex-[2] h-12 text-base font-semibold uppercase tracking-wide">
-              Lanjut →
+              Lanjut<ArrowRight className="ml-1 inline h-4 w-4 align-middle" />
             </Button>
           </div>
         </div>
@@ -413,6 +416,7 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
           <div className="flex flex-col gap-2">
             {TEMPOS.map((t) => {
               const active = tempo === t.name
+              const Icon = TEMPO_ICONS[t.name]
               return (
                 <button
                   key={t.name}
@@ -424,7 +428,10 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
                     (active ? 'border-primary bg-accent' : 'border-border bg-card')
                   }
                 >
-                  <span className="text-sm font-medium text-foreground">{t.label}</span>
+                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Icon aria-hidden className="h-4 w-4 shrink-0 text-primary" />
+                    {t.label}
+                  </span>
                   <div className="mt-0.5 text-xs text-[var(--text-tertiary)]">{t.desc}</div>
                 </button>
               )
@@ -439,10 +446,10 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
 
           <div className="flex gap-2">
             <Button type="button" onClick={() => setStep(2)} disabled={!isHydrated || isPending} className="flex-1">
-              ← Kembali
+              <ArrowLeft className="mr-1 inline h-4 w-4 align-middle" />Kembali
             </Button>
             <Button type="button" fullWidth disabled={!isHydrated || !step3Valid || isPending} onClick={() => setStep(4)} className="flex-[2] h-12 text-base font-semibold uppercase tracking-wide">
-              Lanjut →
+              Lanjut<ArrowRight className="ml-1 inline h-4 w-4 align-middle" />
             </Button>
           </div>
         </div>
@@ -493,7 +500,7 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
 
           <div className="flex gap-2">
             <Button type="button" onClick={() => setStep(3)} disabled={!isHydrated || isPending} className="flex-1">
-              ← Kembali
+              <ArrowLeft className="mr-1 inline h-4 w-4 align-middle" />Kembali
             </Button>
             <Button
               type="button"

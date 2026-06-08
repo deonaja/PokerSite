@@ -45,6 +45,9 @@ async function globalTeardown() {
   // season_results FK-references players (M3) — must go before deleting players.
   await sql`DELETE FROM season_results WHERE player_id = ANY(${playerIds}::uuid[])`
 
+  // loans FK-reference players (no ON DELETE CASCADE) — must go before players.
+  await sql`DELETE FROM loans WHERE lender_id = ANY(${playerIds}::uuid[]) OR borrower_id = ANY(${playerIds}::uuid[])`
+
   // Delete test players
   await sql`DELETE FROM players WHERE id = ANY(${playerIds}::uuid[])`
 
@@ -74,6 +77,8 @@ async function globalTeardown() {
     await sql`DELETE FROM edit_log WHERE player_id = ANY(${strayIds}::uuid[])`
     // season_results FK-references players (M3) — must go before deleting players.
     await sql`DELETE FROM season_results WHERE player_id = ANY(${strayIds}::uuid[])`
+    // loans FK-reference players (no cascade) — must go before players.
+    await sql`DELETE FROM loans WHERE lender_id = ANY(${strayIds}::uuid[]) OR borrower_id = ANY(${strayIds}::uuid[])`
     await sql`DELETE FROM players WHERE id = ANY(${strayIds}::uuid[])`
     console.log(`[teardown] Deleted ${strayPlayers.length} stray test player(s)`)
   }

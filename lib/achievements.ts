@@ -4,19 +4,19 @@
 
 export interface AchievementDef {
   key: string
-  emoji: string
   label: string
   description: string
 }
 
-// Order = display order.
+// Order = display order. Icons live in the render layer (player profile) keyed
+// by `key`, so this stays a pure data/logic module (no JSX/icon imports).
 export const ACHIEVEMENTS: AchievementDef[] = [
-  { key: 'juara', emoji: '🏆', label: 'Juara', description: 'Finish peringkat #1 di sebuah musim' },
-  { key: 'podium', emoji: '🥈', label: 'Podium', description: 'Finish 3 besar di sebuah musim' },
-  { key: 'veteran', emoji: '🎖️', label: 'Veteran', description: 'Main di 3 musim atau lebih' },
-  { key: 'raja_bandar', emoji: '🃏', label: 'Raja Bandar', description: 'Total jadi dealer 15 kali atau lebih' },
-  { key: 'sultan', emoji: '💰', label: 'Sultan', description: 'Saldo akhir musim ≥ 1.5× saldo awal' },
-  { key: 'musim_untung', emoji: '📈', label: 'Musim Untung', description: 'Punya musim dengan total menang > total kalah' },
+  { key: 'juara', label: 'Juara', description: 'Finish peringkat #1 di sebuah musim' },
+  { key: 'podium', label: 'Podium', description: 'Finish 3 besar di sebuah musim' },
+  { key: 'veteran', label: 'Veteran', description: 'Main di 3 musim atau lebih' },
+  { key: 'raja_bandar', label: 'Raja Bandar', description: 'Total jadi dealer 15 kali atau lebih' },
+  { key: 'sultan', label: 'Sultan', description: 'Saldo akhir musim ≥ 1.5× saldo awal' },
+  { key: 'musim_untung', label: 'Musim Untung', description: 'Punya musim dengan total menang > total kalah' },
 ]
 
 export const ACHIEVEMENT_KEYS = ACHIEVEMENTS.map((a) => a.key)

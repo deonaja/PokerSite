@@ -43,7 +43,7 @@ test.describe('Session duration', () => {
     for (let i = 0; i < count; i++) {
       await page.locator('input[type="number"]').fill('200')
       const isLast = i === count - 1
-      await page.getByRole('button', { name: isLast ? 'Lihat recap' : 'Next →' }).click()
+      await page.getByRole('button', { name: isLast ? 'Lihat recap' : 'Next', exact: true }).click()
     }
 
     await expect(page.getByText('RECAP')).toBeVisible()

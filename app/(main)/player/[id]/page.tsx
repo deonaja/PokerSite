@@ -6,6 +6,17 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ACHIEVEMENTS } from '@/lib/achievements'
 import { formatDurationShort } from '@/lib/duration'
+import { Trophy, Medal, Award, Crown, Coins, TrendingUp, ArrowLeft, type LucideIcon } from 'lucide-react'
+
+// Achievement icons keyed by key (kept out of the logic module).
+const ACH_ICONS: Record<string, LucideIcon> = {
+  juara: Trophy,
+  podium: Medal,
+  veteran: Award,
+  raja_bandar: Crown,
+  sultan: Coins,
+  musim_untung: TrendingUp,
+}
 
 interface PlayerRow {
   id: string
@@ -99,9 +110,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
         <Link
           href="/"
-          className="flex min-h-11 min-w-11 items-center text-lg text-muted-foreground no-underline"
+          className="flex min-h-11 min-w-11 items-center text-muted-foreground no-underline"
         >
-          ←
+          <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
         <span
           aria-hidden
@@ -148,6 +159,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         <div className="mb-6 grid grid-cols-2 gap-2">
           {ACHIEVEMENTS.map((a) => {
             const earned = earnedKeys.has(a.key)
+            const Icon = ACH_ICONS[a.key] ?? Award
             return (
               <div
                 key={a.key}
@@ -156,9 +168,10 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                   (earned ? 'border-primary bg-accent' : 'border-border bg-card opacity-60')
                 }
               >
-                <span className={'text-xl ' + (earned ? '' : 'grayscale')} aria-hidden>
-                  {a.emoji}
-                </span>
+                <Icon
+                  aria-hidden
+                  className={'h-5 w-5 shrink-0 ' + (earned ? 'text-warn' : 'text-[var(--text-tertiary)]')}
+                />
                 <div className="min-w-0">
                   <p className={'truncate text-xs font-medium ' + (earned ? 'text-foreground' : 'text-muted-foreground')}>
                     {a.label}

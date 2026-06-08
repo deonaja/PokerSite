@@ -1,5 +1,6 @@
 import { sql } from '@/lib/db'
 import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import HistoryAccordion from './HistoryAccordion'
 
 interface SeasonRow {
@@ -83,9 +84,9 @@ export default async function SeasonHistoryPage() {
       <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
         <Link
           href="/"
-          className="flex min-h-11 min-w-11 items-center text-lg text-muted-foreground no-underline"
+          className="flex min-h-11 min-w-11 items-center text-muted-foreground no-underline"
         >
-          ←
+          <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
         <span className="text-sm font-medium text-foreground">Riwayat Musim</span>
       </div>

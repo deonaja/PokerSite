@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import MarkGuideSeen from '@/components/MarkGuideSeen'
 
@@ -17,10 +18,10 @@ export default function PanduanPage() {
       <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
         <Link
           href="/"
-          className="flex min-h-11 min-w-11 items-center text-lg text-muted-foreground no-underline"
+          className="flex min-h-11 min-w-11 items-center text-muted-foreground no-underline"
           aria-label="Kembali"
         >
-          ←
+          <ArrowLeft className="h-5 w-5" />
         </Link>
         <span className="text-sm font-medium text-foreground">Panduan</span>
       </div>

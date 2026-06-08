@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Trophy, ChevronUp, ChevronDown } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 
 interface SeasonResult {
@@ -54,14 +55,21 @@ function SeasonCard({ season }: { season: Season }) {
               </span>
             )}
           </div>
-          <div className="text-xs text-[var(--text-tertiary)]">
-            {season.sessions_played} sesi
-            {season.ended_at ? ` · ${formatDate(season.ended_at)}` : ''}
-            {winner ? ` · 🏆 ${winner.player_name}` : ''}
+          <div className="flex items-center gap-1 text-xs text-[var(--text-tertiary)]">
+            <span>
+              {season.sessions_played} sesi
+              {season.ended_at ? ` · ${formatDate(season.ended_at)}` : ''}
+            </span>
+            {winner && (
+              <span className="inline-flex items-center gap-1">
+                ·<Trophy aria-hidden className="h-3 w-3" />
+                {winner.player_name}
+              </span>
+            )}
           </div>
         </div>
-        <span className="flex-shrink-0 text-sm text-[var(--text-tertiary)]">
-          {open ? '▲' : '▼'}
+        <span className="flex-shrink-0 text-[var(--text-tertiary)]">
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </span>
       </button>
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { Player } from '@/lib/types'
 import Button from './Button'
+import RegisterForm from './RegisterForm'
 import { setLocalStorageItem } from '@/lib/safeStorage'
 
 interface Props {
@@ -15,6 +16,7 @@ const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUp
 
 export default function IdentityPicker({ players, error }: Props) {
   const [selectedId, setSelectedId] = useState<string>(players[0]?.id ?? '')
+  const [mode, setMode] = useState<'login' | 'register'>('login')
 
   const selectedPlayer = useMemo(
     () => players.find((p) => p.id === selectedId) ?? null,
@@ -29,9 +31,16 @@ export default function IdentityPicker({ players, error }: Props) {
 
   return (
     <div className="flex flex-col px-4 pt-12 pb-8">
-      <p className="mb-6 text-sm text-muted-foreground">Pilih nama kamu</p>
+      {mode === 'register' ? (
+        <>
+          <p className="mb-6 text-sm text-muted-foreground">Daftar pemain baru</p>
+          <RegisterForm onBack={() => setMode('login')} />
+        </>
+      ) : (
+        <>
+          <p className="mb-6 text-sm text-muted-foreground">Pilih nama kamu</p>
 
-      {players.length === 0 ? (
+          {players.length === 0 ? (
         <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
       ) : (
         <form
@@ -92,14 +101,32 @@ export default function IdentityPicker({ players, error }: Props) {
             Masuk
           </Button>
         </form>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setMode('register')}
+            className="mt-4 min-h-11 self-center text-[0.8125rem] text-primary underline-offset-4 hover:underline"
+          >
+            + Daftar pemain baru
+          </button>
+        </>
       )}
 
-      <Link
-        href="/panduan"
-        className="mt-6 self-center text-[0.8125rem] text-muted-foreground underline-offset-4 hover:underline"
-      >
-        Baru di sini? Lihat panduan
-      </Link>
+      <div className="mt-6 flex flex-col items-center gap-2">
+        <Link
+          href="/lihat"
+          className="text-[0.8125rem] text-muted-foreground underline-offset-4 hover:underline"
+        >
+          Lihat dulu (tanpa daftar)
+        </Link>
+        <Link
+          href="/panduan"
+          className="text-[0.8125rem] text-muted-foreground underline-offset-4 hover:underline"
+        >
+          Baru di sini? Lihat panduan
+        </Link>
+      </div>
     </div>
   )
 }

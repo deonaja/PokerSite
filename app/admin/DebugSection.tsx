@@ -91,10 +91,10 @@ export default function DebugSection() {
         <p className={rowLabelClass}>Set phase season aktif</p>
         <div className="flex gap-2">
           <Button variant="secondary" fullWidth disabled={isPending} onClick={() => run('Set phase', () => debugSetPhase('bootstrap'))}>
-            → Bootstrap
+            Bootstrap
           </Button>
           <Button variant="secondary" fullWidth disabled={isPending} onClick={() => run('Set phase', () => debugSetPhase('steady'))}>
-            → Steady
+            Steady
           </Button>
         </div>
       </div>

@@ -395,7 +395,7 @@ test.describe('M2 coverage: session-active + end-session details', () => {
 
     await page.goto('/session/end')
     await page.locator('input[type="number"]').fill('250')
-    await page.getByRole('button', { name: 'Next →' }).click()
+    await page.getByRole('button', { name: 'Next', exact: true }).click()
     await page.locator('input[type="number"]').fill('150')
     await page.getByRole('button', { name: /Lihat recap/ }).click()
 
@@ -464,9 +464,9 @@ test.describe('M2 coverage: rake calculator and Approach C', () => {
 
     // Alice (deals-only) took no rake this time → inputs 0; Bob + Charlie cash out 95 each.
     await page.locator('input[type="number"]').fill('0')
-    await page.getByRole('button', { name: 'Next →' }).click()
+    await page.getByRole('button', { name: 'Next', exact: true }).click()
     await page.locator('input[type="number"]').fill('95')
-    await page.getByRole('button', { name: 'Next →' }).click()
+    await page.getByRole('button', { name: 'Next', exact: true }).click()
     await page.locator('input[type="number"]').fill('95')
     await page.getByRole('button', { name: /Lihat recap/ }).click()
     await page.getByRole('button', { name: 'Confirm' }).click()

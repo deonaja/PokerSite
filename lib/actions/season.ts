@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
-import { hashPin } from '@/lib/auth'
+import { hashPin, generateInviteCode } from '@/lib/auth'
 import { evaluateAchievements, type SeasonResultRow } from '@/lib/achievements'
 
 export interface CreateSeasonInput {
@@ -87,10 +87,10 @@ export async function createSeason(
 
     const { rows: [season] } = await client.query<{ id: string }>(
       `INSERT INTO seasons
-         (number, status, preset_name, starting_balance, buy_in, bb, sb, max_pool, max_sessions, rake_rate, creator_player_id)
-       VALUES ($1, 'active', $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         (number, status, preset_name, starting_balance, buy_in, bb, sb, max_pool, max_sessions, rake_rate, creator_player_id, invite_code)
+       VALUES ($1, 'active', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING id`,
-      [seasonNumber, presetName, startingBalance, buyIn, bb, sb, maxPool, maxSessions, rakeRate, creatorId]
+      [seasonNumber, presetName, startingBalance, buyIn, bb, sb, maxPool, maxSessions, rakeRate, creatorId, generateInviteCode()]
     )
 
     for (const playerId of playerIds) {
@@ -137,6 +137,59 @@ export async function endSeason(seasonId: string): Promise<{ success: true } | {
     )
     if (!season) { await client.query('ROLLBACK'); return { error: 'Season tidak ditemukan' } }
     if (season.status !== 'active') { await client.query('ROLLBACK'); return { error: 'Season sudah berakhir' } }
+
+    // Auto-settle outstanding loans BEFORE ranking so the leaderboard reflects
+    // debts pulled back. For each active loan claw back min(borrower balance,
+    // amount) borrower→lender; any shortfall is written off (the lender's loss).
+    // Pending (never-disbursed) requests are just cancelled so they don't leak
+    // into the next season. Loan edit_log actions stay out of the win/loss stats
+    // (the stats query whitelists session actions + requires session_id).
+    const { rows: activeLoans } = await client.query<{
+      id: string; lender_id: string; borrower_id: string; amount: number
+    }>(
+      `SELECT id, lender_id, borrower_id, amount FROM loans
+       WHERE season_id = $1 AND status = 'active' FOR UPDATE`,
+      [seasonId]
+    )
+    for (const loan of activeLoans) {
+      const { rows: lp } = await client.query<{ id: string; balance: number }>(
+        `SELECT id, balance FROM players WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`,
+        [[loan.lender_id, loan.borrower_id]]
+      )
+      const lender = lp.find((p) => p.id === loan.lender_id)
+      const borrower = lp.find((p) => p.id === loan.borrower_id)
+      if (!lender || !borrower) continue
+      const settle = Math.min(borrower.balance, loan.amount)
+      const lenderAfter = lender.balance + settle
+      if (settle > 0) {
+        await client.query(`UPDATE players SET balance = balance - $1 WHERE id = $2`, [settle, loan.borrower_id])
+        await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [settle, loan.lender_id])
+        await client.query(
+          `INSERT INTO edit_log (player_id, action, balance_before, balance_after, metadata)
+           VALUES ($1, 'loan_settle', $2, $3, $4)`,
+          [loan.borrower_id, borrower.balance, borrower.balance - settle, JSON.stringify({ loan_id: loan.id, to: loan.lender_id })]
+        )
+        await client.query(
+          `INSERT INTO edit_log (player_id, action, balance_before, balance_after, metadata)
+           VALUES ($1, 'loan_settle', $2, $3, $4)`,
+          [loan.lender_id, lender.balance, lenderAfter, JSON.stringify({ loan_id: loan.id, from: loan.borrower_id })]
+        )
+      }
+      const writeoff = loan.amount - settle
+      if (writeoff > 0) {
+        // Lender eats the shortfall — record it (no balance change).
+        await client.query(
+          `INSERT INTO edit_log (player_id, action, balance_before, balance_after, metadata)
+           VALUES ($1, 'loan_writeoff', $2, $2, $3)`,
+          [loan.lender_id, lenderAfter, JSON.stringify({ loan_id: loan.id, amount: writeoff, borrower_id: loan.borrower_id })]
+        )
+      }
+      await client.query(`UPDATE loans SET status = 'settled', settled_at = now() WHERE id = $1`, [loan.id])
+    }
+    await client.query(
+      `UPDATE loans SET status = 'cancelled' WHERE season_id = $1 AND status = 'pending'`,
+      [seasonId]
+    )
 
     // Compute per-player stats across all ended sessions in this season.
     const { rows: stats } = await client.query<{

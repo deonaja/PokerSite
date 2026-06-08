@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { TriangleAlert, ChevronRight } from 'lucide-react'
 import { usePoll } from '@/lib/usePoll'
 import Button from './Button'
 import BalanceDisplay from './BalanceDisplay'
 import Sheet from './Sheet'
+import LoanWidget from './LoanWidget'
+import JoinSeasonPrompt from './JoinSeasonPrompt'
 import { getLocalStorageItem, setLocalStorageItem } from '@/lib/safeStorage'
 import type { Player, PollResponse, Season } from '@/lib/types'
 
@@ -46,6 +49,10 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
     if (seen && seen !== current) setPhaseNotice(current)
     setLocalStorageItem(PHASE_SEEN_KEY, current)
   }, [season])
+
+  // A logged-in player who isn't on the active season roster can join mid-season.
+  const isMember = currentPlayerId != null && players.some((p) => p.id === currentPlayerId)
+  const showJoinPrompt = currentPlayerId != null && season != null && !isMember
 
   // Standings: ranked by balance (desc). Copy first — never mutate poll state.
   const ranked = [...players].sort((a, b) => b.balance - a.balance)
@@ -116,8 +123,8 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
             Season {season.number}{' · '}
             <span className="text-primary">{season.current_phase === 'steady' ? 'STEADY' : 'BOOTSTRAP'}</span>
           </span>
-          <Link href="/season/history" className="shrink-0 transition-colors hover:text-muted-foreground">
-            Riwayat musim →
+          <Link href="/season/history" className="inline-flex shrink-0 items-center gap-0.5 transition-colors hover:text-muted-foreground">
+            Riwayat musim <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       )}
@@ -144,6 +151,12 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
           </div>
         </div>
       )}
+
+      {/* Mid-season join prompt for a logged-in non-member */}
+      {showJoinPrompt && season && <JoinSeasonPrompt phase={season.current_phase} />}
+
+      {/* Peer-to-peer loans (requests, repay, indicators) */}
+      <LoanWidget />
 
       {/* Podium — top 3 (visual order: #2, #1, #3) */}
       {top3.length > 0 && (
@@ -188,9 +201,7 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
                   </span>
                   <span className="flex shrink-0 items-center justify-end gap-1.5">
                     {lowBalance && (
-                      <span className="text-warn" aria-label="saldo di bawah buy-in" title="saldo di bawah buy-in">
-                        ⚠
-                      </span>
+                      <TriangleAlert aria-label="saldo di bawah buy-in" className="h-3.5 w-3.5 shrink-0 text-warn" />
                     )}
                     <BalanceDisplay
                       balance={p.balance}
@@ -216,7 +227,7 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
             className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-primary bg-accent px-4 py-3 transition-colors hover:bg-[var(--bg-elevated)]"
           >
             <span className="text-sm text-foreground">Sesi sedang berjalan</span>
-            <span className="text-xs text-[var(--text-tertiary)]">tap untuk lanjut →</span>
+            <span className="inline-flex items-center gap-0.5 text-xs text-[var(--text-tertiary)]">tap untuk lanjut <ChevronRight className="h-3.5 w-3.5" /></span>
           </Link>
         </div>
       )}
