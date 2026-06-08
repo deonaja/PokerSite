@@ -235,6 +235,10 @@ Owner-directed design session; semua keputusan di bawah udah disepakati owner.
 
 ---
 
+## ✅ SHIPPED TO PROD 2026-06-09 (follow-up) — UI tweak dot "Baru" + tooling
+
+> **LIVE** (merge `11e7c27`, no migration, UI/docs only). (1) Dot notif changelog di header (`HeaderMenu.tsx`) sekarang **solid fill ijo terang (`#2fb074`) + outline mint (`#9fe8c4`) + offset gelap** — dulu felt-green polos kebaca rongga; owner pilih versi B (banding A vs B via chrome-devtools SS). (2) **Default tooling: screenshot/verifikasi visual → chrome-devtools MCP** (bukan Playwright spec dadakan) — dicatat di CLAUDE.md + memory `feedback_screenshots` + allowlist `mcp__chrome-devtools__*` di settings.local. Catatan: dot baru cuma keliatan kalau `changelog_seen != LATEST_VERSION`, jadi owner (udah seen 0.9.0) ga liat di prod sampe ada versi baru.
+
 ## ✅ SHIPPED TO PROD 2026-06-09 (changelog 0.9.0) — LATE JOIN + /identity member-first (item 11a)
 
 > **LIVE di `pokeraja.vercel.app`.** Merge `dev→main` (merge commit `8086b65`, lokal `--no-ff` krn `gh` ga ada di env → push langsung ke main → auto-deploy). **ZERO migration** (late join + 11a dua-duanya pake tabel existing) → ga perlu `pnpm db:migrate` PROD. Changelog di-bump ke **0.9.0** (`71ceef9`, owner-worded). Post-deploy smoke 7/7 struktur hijau; 1 "fail" = `/admin correct key` cuma krn `.env.local` ADMIN_KEY = dev key ≠ prod key (admin gating OK, wrong-key→404 pass) — UNRELATED (diff `33d301a..main` ga nyentuh admin/auth/middleware). Verifikasi versi remote ga bisa via smoke (/changelog auth-gated) — owner konfirm dgn buka app (dot "Baru").
