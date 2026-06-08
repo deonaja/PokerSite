@@ -113,12 +113,20 @@ export default function IdentityPicker({ players, error }: Props) {
         </>
       )}
 
-      <Link
-        href="/panduan"
-        className="mt-6 self-center text-[0.8125rem] text-muted-foreground underline-offset-4 hover:underline"
-      >
-        Baru di sini? Lihat panduan
-      </Link>
+      <div className="mt-6 flex flex-col items-center gap-2">
+        <Link
+          href="/lihat"
+          className="text-[0.8125rem] text-muted-foreground underline-offset-4 hover:underline"
+        >
+          Lihat dulu (tanpa daftar)
+        </Link>
+        <Link
+          href="/panduan"
+          className="text-[0.8125rem] text-muted-foreground underline-offset-4 hover:underline"
+        >
+          Baru di sini? Lihat panduan
+        </Link>
+      </div>
     </div>
   )
 }
