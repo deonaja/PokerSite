@@ -55,6 +55,26 @@ export interface Season {
   ended_at: string | null
 }
 
+export type LoanStatus =
+  | 'pending'
+  | 'active'
+  | 'repaid'
+  | 'settled'
+  | 'declined'
+  | 'cancelled'
+
+export interface Loan {
+  id: string
+  season_id: string
+  lender_id: string
+  borrower_id: string
+  amount: number
+  status: LoanStatus
+  created_at: string
+  approved_at: string | null
+  settled_at: string | null
+}
+
 export interface SessionWithParticipants extends Session {
   participants: (SessionParticipant & { player: Player })[]
 }
@@ -76,4 +96,50 @@ export interface PollParticipant {
 export interface PollResponse {
   players: Player[]
   activeSession: { id: string; participants: PollParticipant[] } | null
+}
+
+// ---- Loans (per-user, served by /api/loans; never edge-cached) ----
+
+export interface LoanCandidate {
+  id: string
+  name: string
+  balance: number
+}
+
+export interface IncomingLoanRequest {
+  loanId: string
+  borrowerId: string
+  borrowerName: string
+  amount: number
+}
+
+export interface MyBorrowLoan {
+  loanId: string
+  status: 'pending' | 'active'
+  lenderId: string
+  lenderName: string
+  amount: number
+  // true only when the loan is active AND balance covers the full amount.
+  canRepay: boolean
+}
+
+export interface MyLendLoan {
+  loanId: string
+  borrowerId: string
+  borrowerName: string
+  amount: number
+}
+
+export interface LoansResponse {
+  loggedIn: boolean
+  balance: number
+  buyIn: number
+  sessionActive: boolean
+  // eligible to open a NEW request right now (member, short-stacked, no open
+  // loan, no live session). The candidate list may still be empty.
+  canBorrow: boolean
+  candidates: LoanCandidate[]
+  incoming: IncomingLoanRequest[] // pending requests where I'm the lender
+  myBorrow: MyBorrowLoan | null // my pending/active loan as borrower
+  myLend: MyLendLoan | null // my active loan as lender
 }

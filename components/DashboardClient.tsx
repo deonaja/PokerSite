@@ -6,6 +6,7 @@ import { usePoll } from '@/lib/usePoll'
 import Button from './Button'
 import BalanceDisplay from './BalanceDisplay'
 import Sheet from './Sheet'
+import LoanWidget from './LoanWidget'
 import { getLocalStorageItem, setLocalStorageItem } from '@/lib/safeStorage'
 import type { Player, PollResponse, Season } from '@/lib/types'
 
@@ -144,6 +145,9 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
           </div>
         </div>
       )}
+
+      {/* Peer-to-peer loans (requests, repay, indicators) */}
+      <LoanWidget />
 
       {/* Podium — top 3 (visual order: #2, #1, #3) */}
       {top3.length > 0 && (

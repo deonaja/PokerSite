@@ -29,6 +29,11 @@ const ACTION_COLORS: Record<string, string> = {
   admin_player_add: '#7a4ab5',
   admin_session_force_end: 'var(--accent-danger)',
   admin_session_cancel: 'var(--accent-danger)',
+  loan_out: '#3a8f7a',
+  loan_in: '#3a8f7a',
+  loan_repay: '#4a9ab5',
+  loan_settle: '#4a9ab5',
+  loan_writeoff: 'var(--accent-danger)',
 }
 
 const ACTION_TYPES = [
@@ -41,6 +46,7 @@ const ACTION_TYPES = [
   'pin_change',
   'admin_balance_edit', 'admin_pin_reset', 'admin_player_add', 'admin_session_force_end',
   'admin_session_cancel',
+  'loan_out', 'loan_in', 'loan_repay', 'loan_settle', 'loan_writeoff',
 ]
 
 interface SearchParams {
