@@ -235,9 +235,11 @@ Owner-directed design session; semua keputusan di bawah udah disepakati owner.
 
 ---
 
-## 💡 Backlog — Fitur LATE JOIN (IDE, BELUM diimplement — masih open)
+## ✅ DONE 2026-06-09 (branch `dev`) — Fitur LATE JOIN (desain di bawah)
 
-> ⚠ BEDA dari Fase E "gabung musim" (`joinActiveSeason`, udah ada): LATE JOIN = gabung ke **SESI yang lagi jalan** (masuk `session_participants`, bayar buy-in tengah sesi). Ini yang belum dibangun.
+> **SELESAI & TERVERIFIKASI.** Server action `joinSession` ([lib/actions/session.ts](lib/actions/session.ts)) — **no migration** (model existing support): lock sesi aktif `FOR UPDATE` (serialize sama rebuy/undo/end), tolak kalau udah peserta (+ backstop unique `(session_id, player_id)` → 23505), lock saldo joiner `FOR UPDATE`, guard membership `season_players` (server action self-authorize), tolak kalau `balance < buy_in` (low-balance cuma boleh masuk sebagai dealer pas start), potong 1× buy_in, INSERT participant (is_dealer=false, dealer_plays=true), log `action='buy_in'` + metadata `{late_join:true}` (action `buy_in` = ke-INCLUDE di stats & ke-refund di cancelSession, persis kayak buy-in normal). Rekonsiliasi end-wizard kebawa otomatis (delta dari edit_log pertama joiner = buy-in ini). UI: tombol "+ Tambah pemain" + sheet pilih kandidat (anggota musim aktif yg belum duduk & `balance >= buy_in`, dari poll member-scoped) di [SessionView.tsx](components/SessionView.tsx). E2E `tests/late-join.spec.ts` (join → participant + saldo −buy_in; low-balance member bukan kandidat) **2/2 pass**; session+identity regression **24/24 pass**. ⚠ Edge diterima (per desain): kalau ada yg lagi di recap end-wizard pas late-join kejadian, submit endSession-nya gagal "stack harus lengkap" (guard integritas) → reload /session/end ambil peserta baru. **Belum bump changelog.**
+
+> ⚠ BEDA dari Fase E "gabung musim" (`joinActiveSeason`, udah ada): LATE JOIN = gabung ke **SESI yang lagi jalan** (masuk `session_participants`, bayar buy-in tengah sesi).
 
 
 Pemain bisa gabung sesi yang **udah jalan** (orang telat dateng). Owner-approved.

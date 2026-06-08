@@ -3,8 +3,8 @@
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Star, ArrowLeft } from 'lucide-react'
-import { rebuy, undoRebuy } from '@/lib/actions/session'
+import { Star, ArrowLeft, UserPlus } from 'lucide-react'
+import { rebuy, undoRebuy, joinSession } from '@/lib/actions/session'
 import { usePoll } from '@/lib/usePoll'
 import { useElapsedSeconds } from '@/lib/useElapsed'
 import { formatClock } from '@/lib/duration'
@@ -26,18 +26,25 @@ const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUp
 
 export default function SessionView({ sessionId, initial, buyIn = 100, startedAt = null, currentPlayerId = null }: Props) {
   const router = useRouter()
-  const { activeSession } = usePoll(initial)
+  const { players, activeSession } = usePoll(initial)
   const participants: PollParticipant[] = activeSession?.participants ?? []
   const elapsed = useElapsedSeconds(startedAt)
 
   const [isPending, startTransition] = useTransition()
   const [rebuying, setRebuying] = useState<PollParticipant | null>(null)
+  const [joinOpen, setJoinOpen] = useState(false)
+  const [joinSelectedId, setJoinSelectedId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
 
   useEffect(() => {
     setIsHydrated(true)
   }, [])
+
+  // Late-join candidates: active-season members not already seated who can afford
+  // the full buy-in (low-balance players can only enter as the dealer, set at start).
+  const participantIds = new Set(participants.map((p) => p.player_id))
+  const joinCandidates = players.filter((p) => !participantIds.has(p.id) && p.balance >= buyIn)
 
   function confirmRebuy() {
     if (!rebuying || isPending) return
@@ -55,6 +62,23 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
     const actorPlayerId = getLocalStorageItem('playerId') ?? ''
     startTransition(async () => {
       const result = await undoRebuy({ sessionId, playerId: p.player_id, actorPlayerId })
+      if ('error' in result) setError(result.error)
+      else router.refresh()
+    })
+  }
+
+  function closeJoin() {
+    if (isPending || !isHydrated) return
+    setJoinOpen(false)
+    setJoinSelectedId(null)
+  }
+
+  function confirmJoin() {
+    if (!joinSelectedId || isPending) return
+    startTransition(async () => {
+      const result = await joinSession({ sessionId, playerId: joinSelectedId })
+      setJoinOpen(false)
+      setJoinSelectedId(null)
       if ('error' in result) setError(result.error)
       else router.refresh()
     })
@@ -172,7 +196,71 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
             </div>
           )
         })}
+
+        {/* Late join — add a member who arrived after the session started */}
+        <Button
+          variant="secondary"
+          disabled={!isHydrated || isPending}
+          onClick={() => setJoinOpen(true)}
+          className="mt-1 inline-flex min-h-11 items-center justify-center gap-2 text-[0.8125rem]"
+        >
+          <UserPlus aria-hidden className="h-4 w-4" />
+          Tambah pemain
+        </Button>
       </div>
+
+      {/* Late-join sheet */}
+      <Sheet isOpen={joinOpen} onClose={closeJoin} title="Tambah pemain ke sesi">
+        {joinCandidates.length === 0 ? (
+          <p className="mb-5 text-sm text-muted-foreground">
+            Tidak ada anggota lain yang bisa gabung — semua sudah ikut atau saldonya kurang dari {buyIn}.
+          </p>
+        ) : (
+          <>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Pemain yang gabung bayar buy-in {buyIn} dan main sebagai pemain biasa.
+            </p>
+            <div className="mb-5 flex flex-col gap-2">
+              {joinCandidates.map((p) => {
+                const active = p.id === joinSelectedId
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setJoinSelectedId(p.id)}
+                    className={
+                      'flex min-h-11 w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors duration-150 ' +
+                      (active ? 'border-primary bg-accent' : 'border-border bg-card')
+                    }
+                  >
+                    <span
+                      aria-hidden
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card font-mono text-xs font-medium text-foreground"
+                    >
+                      {initialOf(p.name)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-foreground">{p.name}</span>
+                    <span className="font-mono text-[0.8125rem] tabular-nums text-muted-foreground">Saldo: {p.balance}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex gap-3">
+              <Button variant="secondary" fullWidth disabled={!isHydrated || isPending} onClick={closeJoin}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                fullWidth
+                disabled={!isHydrated || isPending || !joinSelectedId}
+                onClick={confirmJoin}
+              >
+                {isPending ? 'Loading...' : 'Gabungkan'}
+              </Button>
+            </div>
+          </>
+        )}
+      </Sheet>
 
       {/* Rebuy confirmation sheet */}
       <Sheet
