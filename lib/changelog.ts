@@ -12,6 +12,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.10.0',
+    date: '2026-06-09',
+    changes: [
+      'Sekarang bisa di-install ke HP cuy! buka menu browser → "Tambahkan ke layar utama", langsung full-screen kaya app beneran (ada iconnya juga).',
+      'Riwayat sesi is here!! biar bisa liat orang kalahan yang mana',
+      'Fix keterangan dealer: pas dealer lagi cooldown trus pilih "cuma bagi kartu", sekarang jelas tulisannya gak dapet gaji.',
+    ],
+  },
+  {
     version: '0.9.0',
     date: '2026-06-09',
     changes: [

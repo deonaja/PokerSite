@@ -1,6 +1,73 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-06-08 (Fase A–F + LOAN + register + no-emoji UI all shipped to prod)
+Last updated: 2026-06-09 (PWA + economy unit tests + setup-hint cooldown fix on `dev`; riwayat on its own branch — none merged)
+
+## 🐛 Fix hint dealer netral + cooldown (2026-06-09, branch `dev`) — NEW
+
+Owner nemu: dealer yg lagi **cooldown** trus dipilih **"cuma bagi kartu"** (netral)
+di Phase 1 → hint setup bilang "gaji 1× buy-in (+chip di meja)" PADAHAL pas main ga
+dapet apa-apa. **Logika game-nya BENAR** (cooldown netral → `buy_in_no_gaji_dealer`,
+0 gaji); yang salah cuma **teks hint** — cabang Phase 1 netral di
+[SessionSetupForm.tsx](components/SessionSetupForm.tsx) ga ngecek `cooldown_remaining`.
+Fix: tambah cek cooldown → kalau cooling tampil "cooldown, gak dapat gaji" (match
+`startSession`'s `dealerFreeEntry = !isPhase2 && !cooldown`). Verified via MCP (OwnerTaveve
+cooldown→"gak dapat gaji"; PAN8 non-cooldown→tetep "gaji 1× buy-in"). tsc + build green.
+
+## 🧪 Unit test math ekonomi (2026-06-09, branch `dev`) — NEW
+
+Logika matriks dealer/buy-in (paling rumit & sensitif-duit) dulu inline di loop
+`startSession`. Di-extract jadi **pure function** + di-unit-test. **No new dep**
+(pakai `node:test` bawaan + `tsx` yg udah ada), **no migration**.
+
+- `lib/economy.ts` — `deriveParticipantTreatment({isDealer, dealerPlays, dealerFreeEntry,
+  balance, buyIn})` → `{deduction, action, noGaji, salaryChips, salaryBankroll}`. Single
+  source of truth buat matriks dealer (mirror persis logika lama).
+- `lib/actions/session.ts` — loop sekarang manggil pure fn itu (diff minimal,
+  behavior-identical; dealerGotSalary/Chips/BankrollHalf di-derive dari hasilnya).
+- `lib/economy.test.ts` — 10 test nge-cover seluruh matriks (non-dealer afford/capped,
+  P1 playing-free 2× split, P1 free broke, P2 playing pay, P2 broke deals-only, P1/P2
+  neutral, + invariant: neutral never-bankroll, bankroll-implies-chips).
+- `package.json` script `test:unit` = `tsx --test lib/**/*.test.ts` (file di luar
+  `tests/` → ga ke-pickup Playwright; `testDir: './tests'`).
+- **Verified:** `pnpm test:unit` 10/10, `tsc --noEmit` clean, `pnpm build` green, dan
+  **re-test sesi live via chrome-devtools MCP** (start P1 free-dealer → JAGO 500→600
+  +100 bankroll, lain −100, persis kayak sebelum refactor → cancel via admin → saldo
+  balik baseline). Behavior-preserving terkonfirmasi end-to-end.
+- **Follow-up (belum):** extract + test `max_pool` derivation (createSeason) & recap
+  delta (end-wizard) pakai harness yg sama; bump changelog (ga perlu — internal); merge main.
+
+## 📱 PWA / installable (2026-06-09, branch `dev`) — NEW
+
+App-nya mobile-first & dipakai rame-rame di HP di meja, tapi sebelumnya **ga ada
+manifest/icon sama sekali** → ga bisa "Add to Home Screen". Sekarang installable +
+standalone (full-screen). **No new dep, no migration.**
+
+- `app/manifest.ts` — `MetadataRoute.Manifest` (name, short_name "PokerAja", display
+  `standalone`, orientation portrait, theme/bg `#0a0a0a`, 3 icon any+maskable). Next
+  auto-serve di `/manifest.webmanifest` + inject `<link rel="manifest">`.
+- `app/layout.tsx` — tambah `description`, `applicationName`, `appleWebApp`
+  (capable + title + status-bar `black-translucent`) biar iOS standalone.
+- Icon felt-green (chip poker + spade, cream edge-spots): `app/icon.png` (favicon 512,
+  auto-link), `app/apple-icon.png` (180), `public/icon-{192,512}.png` (any),
+  `public/icon-maskable-512.png` (full-bleed felt, safe-zone). Di-generate via
+  `scripts/gen-icons.mjs` (sharp via .pnpm path → SVG→PNG; re-run kalau artwork berubah).
+- **Verified:** `/manifest.webmanifest` 200 + shape benar, head links ke-inject (manifest
+  + apple meta + icon + apple-touch), `tsc --noEmit` clean, `pnpm build` green (manifest +
+  icon + apple-icon ke-emit static), app render normal di Chrome (devtools MCP).
+- **BELUM:** bump `lib/changelog.ts` (sengaja — biar dot "Baru" ga nyala sebelum rilis),
+  merge ke `main`. Service-worker/offline sengaja di-SKIP (app butuh network/DB; installable
+  + standalone udah jadi win utamanya).
+
+### 💡 Rekomendasi pengembangan lain (dari review menyeluruh 2026-06-09)
+- ✅ **Unit test math ekonomi** — DONE (lihat seksi di atas; pakai `node:test`, BUKAN vitest).
+- **Isolasi test DB** (tech debt lama) — harness UDAH siap: `playwright.config.ts` baca
+  `TEST_DATABASE_URL` (kalau di-set → override DATABASE/POSTGRES_URL + spin dev server
+  sendiri). **Tinggal owner-action:** bikin Neon test branch lalu set `TEST_DATABASE_URL`
+  di `.env.local`. Tanpa itu, suite tetap jalan di dev DB asli (warning ke-print).
+- **Riwayat per-sesi / "malam ini"** — stats sekarang agregat per-musim; recap per-malam seru
+  buat grup (pakai edit_log existing).
+- **`/lihat` guest nampilin saldo** — beda dari niat awal ("tanpa balance"); konfirmasi intent.
+
 
 ## 🚀 Deployment (Vercel) — 2026-05-31
 
@@ -234,6 +301,10 @@ Owner-directed design session; semua keputusan di bawah udah disepakati owner.
 - Butuh: tabel `loans` baru (id, season_id, lender_id, borrower_id, amount, status, created_at, settled_at) + migration + tambah action types ke filter admin log + 2 notif (lender: ada permintaan; borrower: udah bisa repay).
 
 ---
+
+## ✅ SHIPPED TO PROD 2026-06-09 (follow-up) — UI tweak dot "Baru" + tooling
+
+> **LIVE** (merge `11e7c27`, no migration, UI/docs only). (1) Dot notif changelog di header (`HeaderMenu.tsx`) sekarang **solid fill ijo terang (`#2fb074`) + outline mint (`#9fe8c4`) + offset gelap** — dulu felt-green polos kebaca rongga; owner pilih versi B (banding A vs B via chrome-devtools SS). (2) **Default tooling: screenshot/verifikasi visual → chrome-devtools MCP** (bukan Playwright spec dadakan) — dicatat di CLAUDE.md + memory `feedback_screenshots` + allowlist `mcp__chrome-devtools__*` di settings.local. Catatan: dot baru cuma keliatan kalau `changelog_seen != LATEST_VERSION`, jadi owner (udah seen 0.9.0) ga liat di prod sampe ada versi baru.
 
 ## ✅ SHIPPED TO PROD 2026-06-09 (changelog 0.9.0) — LATE JOIN + /identity member-first (item 11a)
 

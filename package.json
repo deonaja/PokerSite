@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "db:migrate": "node --env-file=.env.local --import=tsx/esm db/migrate.ts",
     "test": "playwright test",
+    "test:unit": "tsx --test lib/**/*.test.ts",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "smoke": "node scripts/smoke-prod.mjs"
