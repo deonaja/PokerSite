@@ -1,6 +1,38 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-06-08 (Fase A–F + LOAN + register + no-emoji UI all shipped to prod)
+Last updated: 2026-06-09 (PWA/installable added on `dev`, not yet merged)
+
+## 📱 PWA / installable (2026-06-09, branch `dev`) — NEW
+
+App-nya mobile-first & dipakai rame-rame di HP di meja, tapi sebelumnya **ga ada
+manifest/icon sama sekali** → ga bisa "Add to Home Screen". Sekarang installable +
+standalone (full-screen). **No new dep, no migration.**
+
+- `app/manifest.ts` — `MetadataRoute.Manifest` (name, short_name "PokerAja", display
+  `standalone`, orientation portrait, theme/bg `#0a0a0a`, 3 icon any+maskable). Next
+  auto-serve di `/manifest.webmanifest` + inject `<link rel="manifest">`.
+- `app/layout.tsx` — tambah `description`, `applicationName`, `appleWebApp`
+  (capable + title + status-bar `black-translucent`) biar iOS standalone.
+- Icon felt-green (chip poker + spade, cream edge-spots): `app/icon.png` (favicon 512,
+  auto-link), `app/apple-icon.png` (180), `public/icon-{192,512}.png` (any),
+  `public/icon-maskable-512.png` (full-bleed felt, safe-zone). Di-generate via
+  `scripts/gen-icons.mjs` (sharp via .pnpm path → SVG→PNG; re-run kalau artwork berubah).
+- **Verified:** `/manifest.webmanifest` 200 + shape benar, head links ke-inject (manifest
+  + apple meta + icon + apple-touch), `tsc --noEmit` clean, `pnpm build` green (manifest +
+  icon + apple-icon ke-emit static), app render normal di Chrome (devtools MCP).
+- **BELUM:** bump `lib/changelog.ts` (sengaja — biar dot "Baru" ga nyala sebelum rilis),
+  merge ke `main`. Service-worker/offline sengaja di-SKIP (app butuh network/DB; installable
+  + standalone udah jadi win utamanya).
+
+### 💡 Rekomendasi pengembangan lain (dari review menyeluruh 2026-06-09, belum dikerjain)
+- **Isolasi test DB** (tech debt lama) — 16 spec Playwright jalan di Neon dev DB asli, udah
+  2× ngerusak season owner. Neon test branch terpisah.
+- **Unit test math ekonomi murni** (gaji dealer / max_pool / recap delta) — paling rumit &
+  sensitif-duit, cuma ke-cover E2E lambat. Extract pure fn + vitest.
+- **Riwayat per-sesi / "malam ini"** — stats sekarang agregat per-musim; recap per-malam seru
+  buat grup (pakai edit_log existing).
+- **`/lihat` guest nampilin saldo** — beda dari niat awal ("tanpa balance"); konfirmasi intent.
+
 
 ## 🚀 Deployment (Vercel) — 2026-05-31
 

@@ -10,6 +10,13 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'Poker Chip Tracker',
+  description: 'Tracker chip & saldo buat sesi poker grup — dealer, rebuy, season, leaderboard.',
+  applicationName: 'PokerAja',
+  appleWebApp: {
+    capable: true,
+    title: 'PokerAja',
+    statusBarStyle: 'black-translucent',
+  },
 }
 
 export const viewport: Viewport = {
