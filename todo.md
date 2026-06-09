@@ -1,8 +1,8 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-06-09 — **v0.10.0 SHIPPED to prod** (merge `d93d6aa`): PWA installable, riwayat sesi (/riwayat), dealer cooldown hint fix, economy unit tests. No migration; manifest+icon verified live on pokeraja.vercel.app.
+Last updated: 2026-06-09 — **Web Push notif committed ke `dev`** (`a9266ef`, auto-pushed origin/dev). Belum merge `main`/deploy. Sebelumnya: v0.10.0 di prod (`d93d6aa`) + security fix `cf64b61` (auth gate musim) udah ke-merge.
 
-## 🔔 Web Push notification (2026-06-09, branch `dev`) — NEW, belum commit
+## 🔔 Web Push notification (2026-06-09, branch `dev`) — COMMITTED `a9266ef`, belum merge/deploy
 
 Push notification beneran (nongol di HP walau app tutup), owner-pilih Web Push.
 Bangun infra generic + wire ke LOAN sebagai event pertama. **Butuh migration (011)
@@ -32,9 +32,12 @@ Bangun infra generic + wire ke LOAN sebagai event pertama. **Butuh migration (01
   `supported:true`/`secureContext:true`/VAPID kebaca. **⚠ Belum di-tes delivery push
   end-to-end** — grant permission native + delivery ke device wajib MANUAL di HP asli
   (intrinsik Web Push: per-device, native prompt, iOS perlu PWA installed).
-- **BELUM**: bump `lib/changelog.ts`, e2e test, commit `dev` + merge `main`. **Deploy
-  prod**: set 3 env VAPID di Vercel + **migrate DB prod (011) SEBELUM push** (post-commit
-  hook auto-push). Server action loan WAJIB Node runtime (web-push ga jalan di edge).
+- **DONE**: committed `dev` (`a9266ef`, 16 file, auto-pushed origin/dev). `AGENTS.md` sengaja ga ikut.
+- **BELUM (urut buat deploy prod):** (1) generate VAPID keys PROD + set 3 env di Vercel
+  (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`) — JANGAN pakai dev keys;
+  (2) **migrate DB prod `011` DULU** sebelum merge; (3) merge `dev → main` (auto-deploy);
+  (4) opsional bump `lib/changelog.ts` biar dot "Baru" nyala; (5) tes delivery di HP asli.
+  Belum ada e2e test push. Server action loan WAJIB Node runtime (web-push ga jalan di edge).
 - **Post-review hardening (2026-06-09):** (1) **Logout/"ganti identitas" sekarang
   unsubscribe + hapus sub browser ini** (`HeaderMenu.handleLogout`) — fix bocor lintas-user
   di device sharing (pemain lama berhenti dapet notif di device yang udah ganti identitas;
