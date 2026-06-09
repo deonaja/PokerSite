@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
 import { getAuthenticatedPlayerId, isAdmin } from '@/lib/auth-server'
+import { deriveParticipantTreatment } from '@/lib/economy'
 
 export async function rebuy({
   sessionId,
@@ -567,49 +568,19 @@ export async function startSession({
     let dealerSalaryBankrollHalf = false
     for (const player of players) {
       const isDealer = player.id === dealerId
-      let deduction = Math.min(player.balance, buyIn)
-      let action = 'buy_in'
-      let noGaji = false
-
-      if (isDealer && !dealerPlays) {
-        // NEUTRAL dealer: deals only, does NOT sit in. Always flagged no_gaji so
-        // the active-session UI marks them "BAGI KARTU" (no rebuy controls) — they
-        // are not a playing participant regardless of phase.
-        noGaji = true
-        if (dealerFreeEntry) {
-          // Phase 1 neutral → flat 1× buy_in salary as table chips (no 2× split,
-          // no play). They may still collect tips into this stack.
-          deduction = 0
-          action = 'buy_in_dealer_free'
-          dealerGotSalary = true
-          dealerGotSalaryChips = true
-        } else {
-          // Phase 2 (or cooldown) neutral → deals only, no salary, starts 0 chips.
-          // In Phase 2 they collect the rake during play (realised at session end).
-          deduction = 0
-          action = 'buy_in_no_gaji_dealer'
-        }
-      } else if (isDealer) {
-        if (dealerFreeEntry) {
-          // Phase 1 not in cooldown — the PLAYING dealer plays FREE: balance not
-          // deducted, and the 2× buy_in salary is SPLIT into a 1× table stack
-          // (printed below) + a 1× bankroll credit (spare life). Both has-balance
-          // and broke dealers get this; the table seat still holds one buy-in.
-          deduction = 0
-          action = 'buy_in_dealer_free'
-          dealerGotSalary = true
-          dealerGotSalaryChips = true
-          dealerSalaryBankrollHalf = true
-        } else if (player.balance < buyIn) {
-          // Phase 2 or Phase 1 cooldown + broke → deals only (no salary, no ante).
-          noGaji = true
-          deduction = 0
-          action = 'buy_in_no_gaji_dealer'
-        } else {
-          // Phase 2 or Phase 1 cooldown, can afford → pays buy-in, plays.
-          deduction = buyIn
-          action = 'buy_in_dealer_phase2'
-        }
+      // Dealer/buy-in matrix lives in lib/economy.ts (pure + unit-tested).
+      const { deduction, action, noGaji, salaryChips, salaryBankroll } =
+        deriveParticipantTreatment({
+          isDealer,
+          dealerPlays,
+          dealerFreeEntry,
+          balance: player.balance,
+          buyIn,
+        })
+      if (isDealer && salaryChips) {
+        dealerGotSalary = true
+        dealerGotSalaryChips = true
+        if (salaryBankroll) dealerSalaryBankrollHalf = true
       }
 
       await client.query(

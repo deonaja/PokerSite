@@ -1,6 +1,29 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-06-09 (PWA/installable added on `dev`, not yet merged)
+Last updated: 2026-06-09 (PWA/installable + economy unit tests on `dev`, not yet merged)
+
+## 🧪 Unit test math ekonomi (2026-06-09, branch `dev`) — NEW
+
+Logika matriks dealer/buy-in (paling rumit & sensitif-duit) dulu inline di loop
+`startSession`. Di-extract jadi **pure function** + di-unit-test. **No new dep**
+(pakai `node:test` bawaan + `tsx` yg udah ada), **no migration**.
+
+- `lib/economy.ts` — `deriveParticipantTreatment({isDealer, dealerPlays, dealerFreeEntry,
+  balance, buyIn})` → `{deduction, action, noGaji, salaryChips, salaryBankroll}`. Single
+  source of truth buat matriks dealer (mirror persis logika lama).
+- `lib/actions/session.ts` — loop sekarang manggil pure fn itu (diff minimal,
+  behavior-identical; dealerGotSalary/Chips/BankrollHalf di-derive dari hasilnya).
+- `lib/economy.test.ts` — 10 test nge-cover seluruh matriks (non-dealer afford/capped,
+  P1 playing-free 2× split, P1 free broke, P2 playing pay, P2 broke deals-only, P1/P2
+  neutral, + invariant: neutral never-bankroll, bankroll-implies-chips).
+- `package.json` script `test:unit` = `tsx --test lib/**/*.test.ts` (file di luar
+  `tests/` → ga ke-pickup Playwright; `testDir: './tests'`).
+- **Verified:** `pnpm test:unit` 10/10, `tsc --noEmit` clean, `pnpm build` green, dan
+  **re-test sesi live via chrome-devtools MCP** (start P1 free-dealer → JAGO 500→600
+  +100 bankroll, lain −100, persis kayak sebelum refactor → cancel via admin → saldo
+  balik baseline). Behavior-preserving terkonfirmasi end-to-end.
+- **Follow-up (belum):** extract + test `max_pool` derivation (createSeason) & recap
+  delta (end-wizard) pakai harness yg sama; bump changelog (ga perlu — internal); merge main.
 
 ## 📱 PWA / installable (2026-06-09, branch `dev`) — NEW
 
@@ -24,11 +47,12 @@ standalone (full-screen). **No new dep, no migration.**
   merge ke `main`. Service-worker/offline sengaja di-SKIP (app butuh network/DB; installable
   + standalone udah jadi win utamanya).
 
-### 💡 Rekomendasi pengembangan lain (dari review menyeluruh 2026-06-09, belum dikerjain)
-- **Isolasi test DB** (tech debt lama) — 16 spec Playwright jalan di Neon dev DB asli, udah
-  2× ngerusak season owner. Neon test branch terpisah.
-- **Unit test math ekonomi murni** (gaji dealer / max_pool / recap delta) — paling rumit &
-  sensitif-duit, cuma ke-cover E2E lambat. Extract pure fn + vitest.
+### 💡 Rekomendasi pengembangan lain (dari review menyeluruh 2026-06-09)
+- ✅ **Unit test math ekonomi** — DONE (lihat seksi di atas; pakai `node:test`, BUKAN vitest).
+- **Isolasi test DB** (tech debt lama) — harness UDAH siap: `playwright.config.ts` baca
+  `TEST_DATABASE_URL` (kalau di-set → override DATABASE/POSTGRES_URL + spin dev server
+  sendiri). **Tinggal owner-action:** bikin Neon test branch lalu set `TEST_DATABASE_URL`
+  di `.env.local`. Tanpa itu, suite tetap jalan di dev DB asli (warning ke-print).
 - **Riwayat per-sesi / "malam ini"** — stats sekarang agregat per-musim; recap per-malam seru
   buat grup (pakai edit_log existing).
 - **`/lihat` guest nampilin saldo** — beda dari niat awal ("tanpa balance"); konfirmasi intent.
