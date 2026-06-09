@@ -132,8 +132,13 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
     // Neutral dealer: deals only, doesn't play.
     if (currentPhase === 'steady') {
       dealerHint = `${dealer.name}: cuma bagi kartu (ga ikut main) — ambil rake sebagai bandar.`
-    } else {
+    } else if (dealer.cooldown_remaining === 0) {
+      // Phase 1, not cooling down → flat 1× buy-in salary on the table.
       dealerHint = `${dealer.name}: cuma bagi kartu (ga ikut main) — gaji 1× buy-in (+${buyIn} chip di meja).`
+    } else {
+      // Phase 1 but cooling down → NO salary (matches startSession's
+      // dealerFreeEntry = !isPhase2 && !cooldown → buy_in_no_gaji_dealer).
+      dealerHint = `${dealer.name}: cuma bagi kartu (ga ikut main) — cooldown, gak dapat gaji.`
     }
   } else if (dealer) {
     const canAfford = dealer.balance >= buyIn

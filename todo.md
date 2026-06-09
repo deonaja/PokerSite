@@ -1,6 +1,17 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-06-09 (PWA/installable + economy unit tests on `dev`, not yet merged)
+Last updated: 2026-06-09 (PWA + economy unit tests + setup-hint cooldown fix on `dev`; riwayat on its own branch — none merged)
+
+## 🐛 Fix hint dealer netral + cooldown (2026-06-09, branch `dev`) — NEW
+
+Owner nemu: dealer yg lagi **cooldown** trus dipilih **"cuma bagi kartu"** (netral)
+di Phase 1 → hint setup bilang "gaji 1× buy-in (+chip di meja)" PADAHAL pas main ga
+dapet apa-apa. **Logika game-nya BENAR** (cooldown netral → `buy_in_no_gaji_dealer`,
+0 gaji); yang salah cuma **teks hint** — cabang Phase 1 netral di
+[SessionSetupForm.tsx](components/SessionSetupForm.tsx) ga ngecek `cooldown_remaining`.
+Fix: tambah cek cooldown → kalau cooling tampil "cooldown, gak dapat gaji" (match
+`startSession`'s `dealerFreeEntry = !isPhase2 && !cooldown`). Verified via MCP (OwnerTaveve
+cooldown→"gak dapat gaji"; PAN8 non-cooldown→tetep "gaji 1× buy-in"). tsc + build green.
 
 ## 🧪 Unit test math ekonomi (2026-06-09, branch `dev`) — NEW
 
