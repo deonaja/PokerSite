@@ -193,7 +193,7 @@ test.describe('M2: deals-only dealer in Phase 2', () => {
 // M2: Season creation flow (/season/new)
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('M2: season creation flow', () => {
-  const { seasonId } = getTestData()
+  const { seasonId, players } = getTestData()
 
   test.beforeAll(async () => {
     const sql = db()
@@ -216,6 +216,9 @@ test.describe('M2: season creation flow', () => {
   })
 
   test('walks through the multi-step form and creates an active season', async ({ page }) => {
+    // createSeason now requires login once players exist (security: server actions
+    // self-authorize; only an empty DB may bootstrap unauthenticated).
+    await setIdentity(page, players[0])
     await page.goto('/season/new')
 
     // Step 1 is a checklist (existing players unchecked) + add-new section. Add

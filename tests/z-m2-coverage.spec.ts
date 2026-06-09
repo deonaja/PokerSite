@@ -548,7 +548,7 @@ test.describe('M2 coverage: rake calculator and Approach C', () => {
 })
 
 test.describe('M2 coverage: season setup custom values + default PIN for new players', () => {
-  const { seasonId, runId } = getTestData()
+  const { seasonId, runId, players } = getTestData()
   const playerA = `[T${runId}] M2C0`
 
   test.beforeAll(async () => {
@@ -583,6 +583,8 @@ test.describe('M2 coverage: season setup custom values + default PIN for new pla
   })
 
   test('creates custom season: derives buy-in/BB/SB/max_pool, new players login PIN 1234', async ({ page }) => {
+    // createSeason requires login once players exist (server-action self-authz).
+    await setIdentity(page, players[0])
     await page.goto('/season/new')
     await expect(page.getByText('Siapa yang main?')).toBeVisible()
 
@@ -644,7 +646,7 @@ test.describe('M2 coverage: season setup custom values + default PIN for new pla
 })
 
 test.describe('M2 coverage: preset max_pool scales with starting balance', () => {
-  const { seasonId, runId } = getTestData()
+  const { seasonId, runId, players } = getTestData()
 
   test.beforeAll(async () => {
     await forceEndAllSessions()
@@ -676,6 +678,8 @@ test.describe('M2 coverage: preset max_pool scales with starting balance', () =>
   // We add 2 brand-new players → n=2. buy_in 100 (modal 500), tempo Pemanasan
   // 0.60 → target_P1 = round(14.4)=14 → max_pool = 2×500 + 14×(2×100) = 3800.
   test('Standard preset derives max_pool from tempo (Opsi A)', async ({ page }) => {
+    // createSeason requires login once players exist (server-action self-authz).
+    await setIdentity(page, players[0])
     await page.goto('/season/new')
     await expect(page.getByText('Siapa yang main?')).toBeVisible()
 

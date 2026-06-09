@@ -2,6 +2,28 @@
 
 Last updated: 2026-06-09 — **v0.10.0 SHIPPED to prod** (merge `d93d6aa`): PWA installable, riwayat sesi (/riwayat), dealer cooldown hint fix, economy unit tests. No migration; manifest+icon verified live on pokeraja.vercel.app.
 
+## 🔒 Security follow-up — auth gate musim (2026-06-09, branch `dev`) — NEW, belum commit
+
+Review keamanan kedua (post Fase A–F). Dua server action musim kelewat dari aturan
+"setiap action self-authorize" (kelas sama kayak fix `37c2d41`, tapi buat action yang
+ditambah belakangan):
+- **`endSeason(seasonId)`** & **`createSeason(input)`** di [lib/actions/season.ts](lib/actions/season.ts)
+  **TANPA auth check sama sekali**. `endSeason` destruktif berat (reset SEMUA saldo +
+  tutup musim + settle loan). Halaman `/season/end` & `/season/new` ke-gate
+  `(main)/layout.tsx`, TAPI server action invocable via POST langsung (bypass render layout).
+- **Live-pentest di dev** (browser, logged-out): POST action langsung via `fetch`
+  (action id dari `.next/dev/server/app/.../server-reference-manifest.json`, body = JSON
+  array args, header `Next-Action`). Non-destruktif: `endSeason` UUID bogus → "Season
+  tidak ditemukan"; `createSeason` (musim aktif ada) → "Sudah ada season aktif". Keduanya
+  EXECUTE tanpa cookie auth → vuln confirmed.
+- **Fix:** `endSeason` → wajib login + (admin ATAU member musim). `createSeason` → wajib
+  login/admin kecuali tabel players kosong (bootstrap pertama). `adminForceEndSeason`
+  tetep jalan (isAdmin → skip cek member).
+- **Verified:** unauth→"Belum login", member(JAGO)→lolos ("Season tidak ditemukan");
+  `tsc --noEmit` clean; `pnpm build` green; saldo dev DB utuh (gak ada yang ke-reset).
+- **BELUM:** commit ke `dev` + merge `main` (deploy prod). Pertimbangkan re-run full E2E
+  (z-m3 nyentuh endSeason via member + force-end via admin → harusnya tetep hijau).
+
 ## 🐛 Fix hint dealer netral + cooldown (2026-06-09, branch `dev`) — NEW
 
 Owner nemu: dealer yg lagi **cooldown** trus dipilih **"cuma bagi kartu"** (netral)
