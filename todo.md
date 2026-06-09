@@ -1,6 +1,6 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-06-09 (PWA + economy unit tests + setup-hint cooldown fix on `dev`; riwayat on its own branch — none merged)
+Last updated: 2026-06-09 — **v0.10.0 SHIPPED to prod** (merge `d93d6aa`): PWA installable, riwayat sesi (/riwayat), dealer cooldown hint fix, economy unit tests. No migration; manifest+icon verified live on pokeraja.vercel.app.
 
 ## 🐛 Fix hint dealer netral + cooldown (2026-06-09, branch `dev`) — NEW
 
