@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
+import { getAuthenticatedPlayerId, isAdmin } from '@/lib/auth-server'
 import { hashPin, generateInviteCode } from '@/lib/auth'
 import { evaluateAchievements, type SeasonResultRow } from '@/lib/achievements'
 
@@ -51,6 +52,18 @@ export async function createSeason(
 
   try {
     await client.query('BEGIN')
+
+    // Auth gate — server actions are publicly invocable, so this must self-authorize.
+    // Once any player exists, creating a season (which resets existing players'
+    // balances) requires login or admin. Only a truly empty DB (genuine first-run
+    // bootstrap, nobody to log in yet) may create a season unauthenticated.
+    const { rows: [{ count: playerCount }] } = await client.query<{ count: number }>(
+      `SELECT COUNT(*)::int AS count FROM players`
+    )
+    if (playerCount > 0 && !(await getAuthenticatedPlayerId()) && !(await isAdmin())) {
+      await client.query('ROLLBACK')
+      return { error: 'Belum login' }
+    }
 
     const { rows: activeSeason } = await client.query(
       `SELECT id FROM seasons WHERE status = 'active' LIMIT 1`
@@ -124,6 +137,14 @@ export async function createSeason(
 }
 
 export async function endSeason(seasonId: string): Promise<{ success: true } | { error: string }> {
+  // Auth gate — server actions are publicly invocable. Ending a season resets EVERY
+  // member's balance, so require auth: allow an admin (force-end from the panel) or a
+  // member of this season (the normal /season/end flow). A logged-out caller is
+  // rejected here, before any DB work.
+  const admin = await isAdmin()
+  const callerId = admin ? null : await getAuthenticatedPlayerId()
+  if (!admin && !callerId) return { error: 'Belum login' }
+
   const client = createDbClient()
   await client.connect()
   try {
@@ -137,6 +158,15 @@ export async function endSeason(seasonId: string): Promise<{ success: true } | {
     )
     if (!season) { await client.query('ROLLBACK'); return { error: 'Season tidak ditemukan' } }
     if (season.status !== 'active') { await client.query('ROLLBACK'); return { error: 'Season sudah berakhir' } }
+
+    // Non-admin callers must be a member of the season they're ending.
+    if (!admin) {
+      const { rows: [member] } = await client.query(
+        `SELECT 1 FROM season_players WHERE season_id = $1 AND player_id = $2`,
+        [seasonId, callerId]
+      )
+      if (!member) { await client.query('ROLLBACK'); return { error: 'Hanya anggota musim yang bisa mengakhiri' } }
+    }
 
     // Auto-settle outstanding loans BEFORE ranking so the leaderboard reflects
     // debts pulled back. For each active loan claw back min(borrower balance,
