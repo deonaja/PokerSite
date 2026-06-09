@@ -123,9 +123,14 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
             Season {season.number}{' · '}
             <span className="text-primary">{season.current_phase === 'steady' ? 'STEADY' : 'BOOTSTRAP'}</span>
           </span>
-          <Link href="/season/history" className="inline-flex shrink-0 items-center gap-0.5 transition-colors hover:text-muted-foreground">
-            Riwayat musim <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
+            <Link href="/riwayat" className="inline-flex items-center gap-0.5 transition-colors hover:text-muted-foreground">
+              Riwayat sesi <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+            <Link href="/season/history" className="inline-flex items-center gap-0.5 transition-colors hover:text-muted-foreground">
+              Riwayat musim <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
         </div>
       )}
 
