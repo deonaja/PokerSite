@@ -151,3 +151,23 @@ export interface LoansResponse {
   myBorrow: MyBorrowLoan | null // my pending/active loan as borrower
   myLend: MyLendLoan | null // my active loan as lender
 }
+
+// Web Push — a stored browser PushSubscription, one row per device.
+export interface PushSubscriptionRow {
+  id: string
+  player_id: string
+  endpoint: string
+  p256dh: string
+  auth: string
+  user_agent: string | null
+  created_at: string
+  last_used_at: string
+}
+
+// The shape the browser sends after pushManager.subscribe() (flattened keys).
+export interface PushSubscriptionInput {
+  endpoint: string
+  p256dh: string
+  auth: string
+  userAgent?: string
+}

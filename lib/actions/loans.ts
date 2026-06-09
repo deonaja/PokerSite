@@ -1,14 +1,27 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createDbClient } from '@/lib/db'
+import { createDbClient, sql } from '@/lib/db'
 import { getAuthenticatedPlayerId } from '@/lib/auth-server'
+import { sendPushToPlayer } from '@/lib/push'
 
 type Result = { success: true } | { error: string }
 
 function revalidateLoanPaths() {
   revalidatePath('/')
   revalidatePath('/session')
+}
+
+// Best-effort name lookup for notification text (never throws).
+async function playerName(id: string): Promise<string> {
+  try {
+    const rows = (await sql`SELECT name FROM players WHERE id = ${id}`) as unknown as {
+      name: string
+    }[]
+    return rows[0]?.name ?? 'Seseorang'
+  } catch {
+    return 'Seseorang'
+  }
 }
 
 /**
@@ -110,6 +123,21 @@ export async function requestLoan({
 
     await client.query('COMMIT')
     revalidateLoanPaths()
+
+    // Notify the lender there's a request waiting. Post-commit + self-contained
+    // try/catch so a notification failure can never reach the outer ROLLBACK path.
+    try {
+      const borrowerName = await playerName(borrowerId)
+      await sendPushToPlayer(lenderId, {
+        title: 'Permintaan pinjaman',
+        body: `${borrowerName} minta pinjam ${amount} chip`,
+        url: '/',
+        tag: 'loan-request',
+      })
+    } catch (e) {
+      console.error('requestLoan notify failed:', e)
+    }
+
     return { success: true }
   } catch (e: unknown) {
     await client.query('ROLLBACK')
@@ -202,6 +230,20 @@ export async function approveLoan({ loanId }: { loanId: string }): Promise<Resul
 
     await client.query('COMMIT')
     revalidateLoanPaths()
+
+    // Notify the borrower their loan was approved & disbursed (best-effort).
+    try {
+      const lenderName = await playerName(loan.lender_id)
+      await sendPushToPlayer(loan.borrower_id, {
+        title: 'Pinjaman disetujui',
+        body: `${lenderName} setuju minjemin ${loan.amount} chip`,
+        url: '/',
+        tag: 'loan-approved',
+      })
+    } catch (e) {
+      console.error('approveLoan notify failed:', e)
+    }
+
     return { success: true }
   } catch (e) {
     await client.query('ROLLBACK')
@@ -220,8 +262,8 @@ export async function declineLoan({ loanId }: { loanId: string }): Promise<Resul
   await client.connect()
   try {
     await client.query('BEGIN')
-    const { rows: [loan] } = await client.query<{ lender_id: string; status: string }>(
-      `SELECT lender_id, status FROM loans WHERE id = $1 FOR UPDATE`,
+    const { rows: [loan] } = await client.query<{ lender_id: string; borrower_id: string; status: string }>(
+      `SELECT lender_id, borrower_id, status FROM loans WHERE id = $1 FOR UPDATE`,
       [loanId]
     )
     if (!loan) { await client.query('ROLLBACK'); return { error: 'Pinjaman tidak ditemukan' } }
@@ -230,6 +272,19 @@ export async function declineLoan({ loanId }: { loanId: string }): Promise<Resul
     await client.query(`UPDATE loans SET status = 'declined' WHERE id = $1`, [loanId])
     await client.query('COMMIT')
     revalidateLoanPaths()
+
+    // Notify the borrower their request was declined (best-effort).
+    try {
+      await sendPushToPlayer(loan.borrower_id, {
+        title: 'Permintaan pinjaman ditolak',
+        body: 'Pemberi pinjaman menolak permintaanmu.',
+        url: '/',
+        tag: 'loan-declined',
+      })
+    } catch (e) {
+      console.error('declineLoan notify failed:', e)
+    }
+
     return { success: true }
   } catch (e) {
     await client.query('ROLLBACK')
@@ -333,6 +388,20 @@ export async function repayLoan({ loanId }: { loanId: string }): Promise<Result>
 
     await client.query('COMMIT')
     revalidateLoanPaths()
+
+    // Notify the lender they've been repaid (best-effort).
+    try {
+      const borrowerName = await playerName(loan.borrower_id)
+      await sendPushToPlayer(loan.lender_id, {
+        title: 'Pinjaman dilunasi',
+        body: `${borrowerName} melunasi ${loan.amount} chip`,
+        url: '/',
+        tag: 'loan-repaid',
+      })
+    } catch (e) {
+      console.error('repayLoan notify failed:', e)
+    }
+
     return { success: true }
   } catch (e) {
     await client.query('ROLLBACK')

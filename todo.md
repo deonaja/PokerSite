@@ -2,6 +2,49 @@
 
 Last updated: 2026-06-09 — **v0.10.0 SHIPPED to prod** (merge `d93d6aa`): PWA installable, riwayat sesi (/riwayat), dealer cooldown hint fix, economy unit tests. No migration; manifest+icon verified live on pokeraja.vercel.app.
 
+## 🔔 Web Push notification (2026-06-09, branch `dev`) — NEW, belum commit
+
+Push notification beneran (nongol di HP walau app tutup), owner-pilih Web Push.
+Bangun infra generic + wire ke LOAN sebagai event pertama. **Butuh migration (011)
++ dep baru (`web-push`) + VAPID keys.**
+
+- **Dep**: `web-push` + `@types/web-push`. VAPID via `pnpm gen:vapid` →
+  `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` + `VAPID_SUBJECT` di `.env.local`
+  (dev keys udah di-generate lokal; **prod set sendiri di Vercel**). Tanpa keys → push no-op (app tetap jalan).
+- **Migration `011_push_subscriptions.sql`** (applied ke DB dev): tabel
+  `push_subscriptions(player_id FK, endpoint UNIQUE, p256dh, auth, user_agent, …)`,
+  1 pemain banyak device, UPSERT by endpoint.
+- **Service worker** `public/sw.js` — PUSH-ONLY (ga nyentuh offline/caching, biar
+  ga ngelawan alasan SW dulu di-skip). Handle `push` + `notificationclick`.
+- **`lib/push.ts`** — `sendPushToPlayer(playerId, {title,body,url,tag})`. Best-effort:
+  no-op kalau VAPID belum diset, never-throw (push gagal ga ngegagalin aksi inti),
+  auto-prune subscription mati (404/410). Server-only (cuma di-import dari server action).
+- **`lib/actions/push.ts`** — `savePushSubscription` / `deletePushSubscription` /
+  `sendTestPush`, semua self-authorize (`getAuthenticatedPlayerId`).
+- **UI**: `components/NotificationToggle.tsx` (deteksi support + hint iOS "Add to Home
+  Screen" + tombol "Kirim notif tes"), halaman `/settings/notifications` + loading,
+  link "Notifikasi" (icon Bell) di `HeaderMenu`.
+- **Wire LOAN** (`lib/actions/loans.ts`, after COMMIT, best-effort): `requestLoan`→lender,
+  `approveLoan`→borrower, `declineLoan`→borrower, `repayLoan`→lender. (`cancelLoan` skip.)
+- **Verified**: `tsc --noEmit` clean; `pnpm build` hijau (semua route, termasuk
+  `/settings/notifications`); `/sw.js` ke-serve 200; halaman render benar via
+  chrome-devtools MCP (login JAGO, screenshot felt-green OK); feature-detection
+  `supported:true`/`secureContext:true`/VAPID kebaca. **⚠ Belum di-tes delivery push
+  end-to-end** — grant permission native + delivery ke device wajib MANUAL di HP asli
+  (intrinsik Web Push: per-device, native prompt, iOS perlu PWA installed).
+- **BELUM**: bump `lib/changelog.ts`, e2e test, commit `dev` + merge `main`. **Deploy
+  prod**: set 3 env VAPID di Vercel + **migrate DB prod (011) SEBELUM push** (post-commit
+  hook auto-push). Server action loan WAJIB Node runtime (web-push ga jalan di edge).
+- **Post-review hardening (2026-06-09):** (1) **Logout/"ganti identitas" sekarang
+  unsubscribe + hapus sub browser ini** (`HeaderMenu.handleLogout`) — fix bocor lintas-user
+  di device sharing (pemain lama berhenti dapet notif di device yang udah ganti identitas;
+  by endpoint → cuma device itu, bukan semua device-nya). (2) **4 blok push di `loans.ts`
+  dibungkus `try/catch` lokal** (post-COMMIT) biar kegagalan notif ga akan pernah trigger
+  ROLLBACK luar / mis-report loan sukses jadi error. tsc + build re-verified hijau.
+- **Catatan env**: `pnpm dev` (Turbopack) di mesin owner panic `0xc0000142`
+  (gagal spawn child proc utk CSS geist) — kena SEMUA route, bukan kode push. Workaround
+  verifikasi: pakai `pnpm build && pnpm start`. Mungkin perlu clear `.next` / cek resource.
+
 ## 🔒 Security follow-up — auth gate musim (2026-06-09, branch `dev`) — NEW, belum commit
 
 Review keamanan kedua (post Fase A–F). Dua server action musim kelewat dari aturan

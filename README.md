@@ -19,6 +19,7 @@ liat balance & sesi yang sama secara real-time tanpa websocket.
 - **End-session wizard** — input stack akhir per pemain → recap → konfirmasi → balance ter-update dalam 1 transaksi.
 - **Akhir musim & leaderboard** — snapshot hasil, ranking, statistik per pemain, achievement.
 - **Panel admin** — tambah pemain, edit balance (wajib alasan), reset PIN, force-end, export CSV, log append-only.
+- **Push notification (Web Push)** — aktifkan per perangkat di `/settings/notifications`; dapat notif di HP (walau app tertutup) saat ada permintaan pinjaman, disetujui, ditolak, atau dilunasi. Butuh VAPID keys (lihat deploy). Di iOS hanya jalan kalau app sudah "Add to Home Screen".
 
 ## 🛠️ Stack
 
@@ -38,6 +39,10 @@ pnpm dev                     # http://localhost:3000
 
 `DATABASE_URL` & `POSTGRES_URL` diisi connection string yang sama (Neon).
 Generate `ADMIN_KEY`: `openssl rand -hex 16`.
+
+**Push notification (opsional):** `pnpm gen:vapid` → paste `NEXT_PUBLIC_VAPID_PUBLIC_KEY`,
+`VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` ke `.env.local`. Tanpa keys ini, push otomatis
+nonaktif (app tetap jalan). Saat deploy, set tiga var yang sama di Vercel.
 
 ## 🧪 Test
 
