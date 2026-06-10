@@ -49,15 +49,18 @@ export async function deletePushSubscription({ endpoint }: { endpoint: string })
   }
 }
 
-/** Send a test push to the logged-in player's own devices. */
+/** Send a test push to the logged-in player's own devices, reporting honestly. */
 export async function sendTestPush(): Promise<Result> {
   const me = await getAuthenticatedPlayerId()
   if (!me) return { error: 'Belum login' }
-  await sendPushToPlayer(me, {
+  const res = await sendPushToPlayer(me, {
     title: 'PokerAja',
     body: 'Notif tes berhasil 🎉 — kamu bakal dapet notif kayak gini.',
     url: '/',
     tag: 'test',
   })
+  if (!res.configured) return { error: 'Push belum diatur di server (VAPID keys belum diset).' }
+  if (res.total === 0) return { error: 'Belum ada perangkat aktif. Aktifkan notifikasi dulu di perangkat ini.' }
+  if (res.sent === 0) return { error: 'Gagal kirim ke perangkat (langganan mungkin kedaluwarsa). Matikan lalu aktifkan lagi.' }
   return { success: true }
 }

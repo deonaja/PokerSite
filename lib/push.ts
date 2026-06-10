@@ -27,14 +27,22 @@ export interface PushPayload {
   tag?: string
 }
 
+export interface PushResult {
+  configured: boolean // VAPID keys present on the server
+  total: number // subscriptions found for the player
+  sent: number // pushes the push service accepted
+  failed: number // pushes that errored (incl. pruned-as-dead)
+}
+
 /**
  * Send a push to every device a player has subscribed. Best-effort:
- *  - returns silently if VAPID isn't configured (dev without keys),
+ *  - no-op if VAPID isn't configured (dev/prod without keys),
  *  - never throws (a failed push must NOT break the calling action),
  *  - prunes subscriptions the push service reports as gone (404/410).
+ * Returns counts so callers (e.g. the test button) can report honestly.
  */
-export async function sendPushToPlayer(playerId: string, payload: PushPayload): Promise<void> {
-  if (!ensureConfigured()) return
+export async function sendPushToPlayer(playerId: string, payload: PushPayload): Promise<PushResult> {
+  if (!ensureConfigured()) return { configured: false, total: 0, sent: 0, failed: 0 }
 
   let subs: PushSubscriptionRow[]
   try {
@@ -43,12 +51,14 @@ export async function sendPushToPlayer(playerId: string, payload: PushPayload): 
     `) as unknown as PushSubscriptionRow[]
   } catch (e) {
     console.error('sendPushToPlayer: load subs failed', e)
-    return
+    return { configured: true, total: 0, sent: 0, failed: 0 }
   }
-  if (subs.length === 0) return
+  if (subs.length === 0) return { configured: true, total: 0, sent: 0, failed: 0 }
 
   const json = JSON.stringify(payload)
   const dead: string[] = []
+  let sent = 0
+  let failed = 0
 
   await Promise.all(
     subs.map(async (s) => {
@@ -57,7 +67,9 @@ export async function sendPushToPlayer(playerId: string, payload: PushPayload): 
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
           json
         )
+        sent++
       } catch (e: unknown) {
+        failed++
         const status = (e as { statusCode?: number }).statusCode
         // 404 = endpoint unknown, 410 = subscription expired/unsubscribed.
         if (status === 404 || status === 410) dead.push(s.endpoint)
@@ -73,4 +85,6 @@ export async function sendPushToPlayer(playerId: string, payload: PushPayload): 
       console.error('sendPushToPlayer: prune failed', e)
     }
   }
+
+  return { configured: true, total: subs.length, sent, failed }
 }

@@ -21,7 +21,14 @@ self.addEventListener('push', (event) => {
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     data: { url: data.url || '/' },
-    tag: data.tag || undefined, // same tag collapses/replaces a prior notification
+  }
+  // A tag collapses/replaces a prior notification of the same tag. Without
+  // renotify, that replacement is SILENT (no banner/sound) — so a second push
+  // with the same tag looks like "nothing happened" if the first is still in
+  // the tray. renotify forces a fresh alert each time.
+  if (data.tag) {
+    options.tag = data.tag
+    options.renotify = true
   }
 
   event.waitUntil(self.registration.showNotification(title, options))
