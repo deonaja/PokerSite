@@ -1,6 +1,6 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-06-09 — **Web Push notif committed ke `dev`** (`a9266ef`, auto-pushed origin/dev). Belum merge `main`/deploy. Sebelumnya: v0.10.0 di prod (`d93d6aa`) + security fix `cf64b61` (auth gate musim) udah ke-merge.
+Last updated: 2026-06-10 — **Web Push notif committed ke `dev`** (`a9266ef` + fix renotify/feedback `4575670`, auto-pushed origin/dev; belum merge `main`/deploy). **Fitur "Ajak Main"/rally: desain FINAL, belum diimplement** (lihat section 📣 di bawah). Sebelumnya: v0.10.0 di prod (`d93d6aa`) + security fix `cf64b61` udah ke-merge.
 
 ## 🔔 Web Push notification (2026-06-09, branch `dev`) — COMMITTED `a9266ef`, belum merge/deploy
 
@@ -47,6 +47,63 @@ Bangun infra generic + wire ke LOAN sebagai event pertama. **Butuh migration (01
 - **Catatan env**: `pnpm dev` (Turbopack) di mesin owner panic `0xc0000142`
   (gagal spawn child proc utk CSS geist) — kena SEMUA route, bukan kode push. Workaround
   verifikasi: pakai `pnpm build && pnpm start`. Mungkin perlu clear `.next` / cek resource.
+
+## 📣 Fitur "Ajak Main" / rally — DESAIN FINAL (2026-06-10), BELUM diimplement
+
+Pakai infra Web Push (udah ada `sendPushToPlayer`) buat **ngumpulin grup main poker
+di rumah temen**. Owner-approved, semua keputusan di bawah udah final. Lanjut: tinggal
+bikin rencana implementasi (file/migration/checkpoint) lalu ngoding.
+
+### Prinsip inti (poin owner): ajakan = TUAN RUMAH dulu, baru grup
+Rally ga ada artinya tanpa tuan rumah yang available. Grup baru di-blast notif SETELAH
+venue pasti — hindari "5 orang semangat ikut, taunya rumah tutup".
+
+### Pisahin 2 konsep (KRUSIAL — availability ga boleh sticky)
+- **Kapabilitas `can_host`** (statis): "rumahku bisa dipake". Di-set **self-toggle di
+  settings + admin bisa set** (owner pilih dua-duanya). Ga pernah auto-reset.
+- **Availability** (sementara, per-malam): host dianggap available **cuma kalau ada
+  rally aktif yang dia buka/konfirmasi**. **BUKAN toggle nyangkut.** Tiap rally punya
+  `expires_at` (mis. besok ~jam 5 / pas sesi kelar — mana duluan), dihitung **lazy**
+  (`expires_at > now()` pas dibaca, ga butuh cron). Ganti hari → rally hangus sendiri →
+  host ga lagi keliatan available. Owner khawatir host dikira "available terus" → ini
+  jawabannya. Host juga bisa matiin manual ("Ga jadi").
+
+### Keputusan owner (2026-06-10)
+1. **Bisa beberapa rumah** (multi-host) → perlu picker venue.
+2. **Dua jalur dibangun** (A + B).
+3. **`can_host`**: self-toggle settings + admin set.
+4. **RSVP**: ikut dari awal (owner "bebas, yang terbaik").
+
+### Alur
+- **Jalur A — host buka sendiri:** host pencet "Available malam ini — main di tempat gua"
+  (+jam opsional) → venue langsung pasti → broadcast.
+- **Jalur B — orang lain colek:** anggota pencet "Colek tuan rumah" → SEMUA pemain
+  `can_host` dapet notif "ada yg mau main, available ga?" → host pencet "Available, ayo".
+  Kalau >1 host jawab available → **pengaju milih rumah siapa** (bukan first-confirm).
+- **1 rally aktif** dalam satu waktu (grup ga bingung 2 ajakan barengan).
+- **Setelah venue pasti:** blast push ke semua anggota ("Ngumpul di rumah Budi jam 8 🃏 —
+  ikut?") → RSVP **[Ikut]/[Nanti]** → hitungan live di dashboard (polling 2dtk existing) →
+  tinggal "Mulai sesi" (flow existing). Rally auto-hangus pas sesi kelar / besok pagi.
+- **Edge:** host berubah pikiran → "Ga jadi" → rally batal + grup dikabarin "batal, tuan
+  rumah ga jadi". Ga ada host available → rally ga kebuka (colek = nudge). Ganti hari → bersih.
+
+### Sketsa data
+- `players.can_host` BOOLEAN default false (self-toggle settings + admin). **Migration kecil.**
+- `rallies(id, season_id, host_id, opener_id, note, status, created_at, expires_at)`.
+  `status`: `pending_host` (Jalur B nunggu konfirmasi) / `open` (venue pasti, broadcast) /
+  `cancelled` / `expired` / `done`.
+- `rally_responses(rally_id, player_id, response['ikut'|'nanti'], responded_at)`.
+- Endpoint per-user `/api/rally` (no-cache, pola `/api/loans`) buat banner + hitungan RSVP.
+- Notif rally pakai tag sendiri (`rally-*`); inget `renotify:true` (udah default di sw.js).
+
+### Phasing
+- **Step 1:** schema + `can_host` toggle (settings+admin) + Jalur A + broadcast + RSVP +
+  auto-expire (lazy). Udah kepake penuh.
+- **Step 2:** Jalur B ("colek"→konfirmasi→pilih rumah) di atas schema yang sama.
+
+### Anti-spam
+Cooldown global (mis. ~10 mnt) + maks 1 rally aktif. Server action self-authorize (login +
+anggota musim aktif), pola sama kayak loan.
 
 ## 🔒 Security follow-up — auth gate musim (2026-06-09, branch `dev`) — NEW, belum commit
 
