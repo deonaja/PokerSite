@@ -76,3 +76,5 @@ Lihat [CONTRIBUTING.md](CONTRIBUTING.md). Spec lengkap ada di [`SPEC.md`](SPEC.m
 ## 📄 Lisensi
 
 [MIT](LICENSE) © deonaja
+
+<!-- test: direct push ke main (branch protection check) -->
