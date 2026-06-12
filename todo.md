@@ -1,6 +1,6 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-06-10 — **Web Push notif committed ke `dev`** (`a9266ef` + fix renotify/feedback `4575670`, auto-pushed origin/dev; belum merge `main`/deploy). **Fitur "Ajak Main"/rally: desain FINAL, belum diimplement** (lihat section 📣 di bawah). Sebelumnya: v0.10.0 di prod (`d93d6aa`) + security fix `cf64b61` udah ke-merge.
+Last updated: 2026-06-12 — **Repo dibuka untuk kontribusi eksternal**: branch protection `main` aktif (require PR before merging, admin bypass ON — owner masih bisa push langsung; diverifikasi via test push `c777e92`..`32395f2`, net diff nol). Catatan: jangan edit file UTF-8 (README/todo) pakai `Get-Content`/`Set-Content` PS 5.1 — ngerusak emoji/em-dash (kejadian `ec0eb83`, di-restore `32395f2`). TODO opsional: CONTRIBUTING.md + PR template. Sebelumnya (2026-06-10): **Web Push notif committed ke `dev`** (`a9266ef` + fix renotify/feedback `4575670`, auto-pushed origin/dev; belum merge `main`/deploy). **Fitur "Ajak Main"/rally: desain FINAL, belum diimplement** (lihat section 📣 di bawah). Sebelumnya: v0.10.0 di prod (`d93d6aa`) + security fix `cf64b61` udah ke-merge.
 
 ## 🔔 Web Push notification (2026-06-09, branch `dev`) — COMMITTED `a9266ef`, belum merge/deploy
 
