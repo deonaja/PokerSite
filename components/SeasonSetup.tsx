@@ -145,6 +145,10 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
         sb,
         maxPool,
         maxSessions,
+        // Per-phase session targets (migration 012b). targetP1 derived above
+        // from tempo fraction; phase2Sessions = maxSessions - targetP1.
+        p1TargetSessions: targetP1,
+        p2TargetSessions: phase2Sessions,
         rakeRate,
         presetName: preset,
       })

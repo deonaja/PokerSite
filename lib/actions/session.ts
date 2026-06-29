@@ -527,6 +527,11 @@ export async function startSession({
     }
 
     // Check phase transition: bootstrap → steady
+    // On flip, also record how many sessions P1 actually took (p1_sessions_actual)
+    // and bump max_sessions = p1_actual + p2_target so P2 runs its full target
+    // regardless of P1 overshoot. Legacy seasons (NULL p2_target_sessions) keep
+    // the old single-max_sessions semantics — no max_sessions change for them.
+    // NOTE: B1 (next checkpoint) will move this detection to endSession.
     let currentPhase = season?.current_phase ?? 'bootstrap'
     if (currentPhase === 'bootstrap' && season) {
       const { rows: [{ total_chips }] } = await client.query<{ total_chips: number }>(
@@ -536,9 +541,21 @@ export async function startSession({
         [season.id]
       )
       if (total_chips >= season.max_pool) {
-        await client.query(
-          `UPDATE seasons SET current_phase = 'steady' WHERE id = $1`,
+        const { rows: [{ sessions_played }] } = await client.query<{ sessions_played: number }>(
+          `SELECT COUNT(*)::int AS sessions_played
+           FROM sessions WHERE season_id = $1 AND status = 'ended'`,
           [season.id]
+        )
+        await client.query(
+          `UPDATE seasons
+           SET current_phase = 'steady',
+               p1_sessions_actual = $2,
+               max_sessions = CASE
+                 WHEN p2_target_sessions IS NULL THEN max_sessions
+                 ELSE $2 + p2_target_sessions
+               END
+           WHERE id = $1`,
+          [season.id, sessions_played]
         )
         currentPhase = 'steady'
       }
