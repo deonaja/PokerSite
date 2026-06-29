@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import type { ChartPoint } from '@/components/PerformanceChart'
+import type { SeasonChartData } from '@/components/PerformanceChart'
 
 /**
  * Client-only lazy wrapper around <PerformanceChart>. Lives in a separate file
@@ -17,8 +17,7 @@ const PerformanceChart = dynamic(() => import('@/components/PerformanceChart'), 
 })
 
 interface PerformanceChartLazyProps {
-  seasonData: ChartPoint[]
-  lifetimeData: ChartPoint[]
+  seasons: SeasonChartData[]
 }
 
 export default function PerformanceChartLazy(props: PerformanceChartLazyProps) {

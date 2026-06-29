@@ -18,17 +18,20 @@ export interface ChartPoint {
   balance: number
 }
 
+export interface SeasonChartData {
+  seasonId: string
+  seasonNumber: number
+  isActive: boolean
+  data: ChartPoint[]
+}
+
 interface PerformanceChartProps {
-  /** Active-season time series (one point per session, in chronological order). */
-  seasonData: ChartPoint[]
-  /** Lifetime time series across every ended session, all seasons. */
-  lifetimeData: ChartPoint[]
+  seasons: SeasonChartData[]
 }
 
 /**
  * Downsample to at most `limit` points by even spacing across the array,
- * always keeping the first and last point. Returns the original array if
- * it's already short enough.
+ * always keeping the first and last point.
  */
 function downsample(points: ChartPoint[], limit = 50): ChartPoint[] {
   if (points.length <= limit) return points
@@ -53,33 +56,56 @@ const chartConfig: ChartConfig = {
   },
 }
 
-type Mode = 'season' | 'lifetime'
+export default function PerformanceChart({ seasons }: PerformanceChartProps) {
+  // Default selection: the active season if the player is in one, else the
+  // most recent ended season. seasons[] is sorted oldest first, so pick last.
+  const defaultId = React.useMemo(() => {
+    const active = seasons.find((s) => s.isActive)
+    if (active) return active.seasonId
+    return seasons[seasons.length - 1]?.seasonId ?? ''
+  }, [seasons])
 
-export default function PerformanceChart({ seasonData, lifetimeData }: PerformanceChartProps) {
-  // Default to "Lifetime" if there's no season data — avoids landing on an empty chart.
-  const [mode, setMode] = React.useState<Mode>(seasonData.length > 0 ? 'season' : 'lifetime')
+  const [selectedId, setSelectedId] = React.useState<string>(defaultId)
+  const selected = seasons.find((s) => s.seasonId === selectedId) ?? seasons[0]
+  const data = React.useMemo(
+    () => (selected ? downsample(selected.data) : []),
+    [selected]
+  )
 
-  const active = mode === 'season' ? seasonData : lifetimeData
-  const data = React.useMemo(() => downsample(active), [active])
+  if (seasons.length === 0) {
+    return (
+      <Card className="p-3">
+        <div className="flex h-[200px] items-center justify-center">
+          <p className="text-xs text-[var(--text-tertiary)]">Belum ada musim — main dulu yuk.</p>
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <Card className="p-3">
-      <div className="mb-3 flex gap-1.5">
-        <ToggleButton active={mode === 'season'} onClick={() => setMode('season')}>
-          Season ini
-        </ToggleButton>
-        <ToggleButton active={mode === 'lifetime'} onClick={() => setMode('lifetime')}>
-          Lifetime
-        </ToggleButton>
+      {/* Season picker — horizontal scroll if many seasons. */}
+      <div className="mb-3 -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+        {seasons.map((s) => (
+          <SeasonPill
+            key={s.seasonId}
+            active={s.seasonId === selectedId}
+            onClick={() => setSelectedId(s.seasonId)}
+            label={`Musim ${s.seasonNumber}`}
+            isActive={s.isActive}
+          />
+        ))}
       </div>
 
       {data.length === 0 ? (
         <div className="flex h-[200px] items-center justify-center">
-          <p className="text-xs text-[var(--text-tertiary)]">Belum ada sesi — main dulu yuk.</p>
+          <p className="text-xs text-[var(--text-tertiary)]">
+            Belum ada sesi di musim ini.
+          </p>
         </div>
       ) : (
         <ChartContainer config={chartConfig} className="aspect-auto h-[200px] w-full">
-          <LineChart data={data} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
+          <LineChart data={data} margin={{ top: 8, right: 16, left: -4, bottom: 0 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
               dataKey="session"
@@ -88,6 +114,7 @@ export default function PerformanceChart({ seasonData, lifetimeData }: Performan
               tickMargin={6}
               minTickGap={20}
               fontSize={10}
+              padding={{ left: 12, right: 12 }}
             />
             <YAxis
               tickLine={false}
@@ -100,7 +127,9 @@ export default function PerformanceChart({ seasonData, lifetimeData }: Performan
               cursor={{ strokeDasharray: '3 3' }}
               content={
                 <ChartTooltipContent
-                  labelFormatter={(label) => `Sesi #${label}`}
+                  labelFormatter={(label) =>
+                    label === 0 ? 'Awal musim' : `Sesi #${label}`
+                  }
                   formatter={(value) => String(value)}
                 />
               }
@@ -121,14 +150,16 @@ export default function PerformanceChart({ seasonData, lifetimeData }: Performan
   )
 }
 
-function ToggleButton({
+function SeasonPill({
   active,
   onClick,
-  children,
+  label,
+  isActive,
 }: {
   active: boolean
   onClick: () => void
-  children: React.ReactNode
+  label: string
+  isActive: boolean
 }) {
   return (
     <Button
@@ -137,12 +168,22 @@ function ToggleButton({
       variant={active ? 'default' : 'secondary'}
       className={cn(
         // h-11 keeps tap target ≥ 44px on mobile per the project quality bar.
-        'h-11 flex-1 text-xs font-medium',
+        'h-11 shrink-0 whitespace-nowrap px-3 text-xs font-medium',
         active ? '' : 'border border-border',
       )}
       aria-pressed={active}
     >
-      {children}
+      {label}
+      {isActive && (
+        <span
+          className={cn(
+            'ml-1.5 inline-block rounded-full px-1.5 py-0.5 text-[0.625rem] font-medium',
+            active ? 'bg-white/20 text-white' : 'bg-[var(--accent-felt)]/20 text-[var(--accent-felt)]'
+          )}
+        >
+          aktif
+        </span>
+      )}
     </Button>
   )
 }
