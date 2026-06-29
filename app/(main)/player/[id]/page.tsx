@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { sql } from '@/lib/db'
 import BalanceDisplay from '@/components/BalanceDisplay'
+import PerformanceChartLazy from '@/components/PerformanceChartLazy'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ACHIEVEMENTS } from '@/lib/achievements'
@@ -39,7 +40,15 @@ interface ResultRow {
 }
 
 async function getData(id: string) {
-  const [playerRows, resultRows, achRows, playtimeRows, sessionDeltaRows] = await Promise.all([
+  const [
+    playerRows,
+    resultRows,
+    achRows,
+    playtimeRows,
+    sessionDeltaRows,
+    chartRows,
+    activeSeasonRows,
+  ] = await Promise.all([
     sql`SELECT id, name, balance FROM players WHERE id = ${id}` as unknown as Promise<PlayerRow[]>,
     sql`
       SELECT
@@ -88,11 +97,40 @@ async function getData(id: string) {
       GROUP BY s.id, s.season_id, s.ended_at
       ORDER BY s.ended_at ASC
     ` as unknown as Promise<{ session_id: string; season_id: string | null; ended_at: string; delta: number }[]>,
+    // Per-session post-cash-out balance for the PerformanceChart. session_end's
+    // balance_after captures exactly the player's balance the moment they walked
+    // away from that session (= prior balance + final_stack). Oldest first.
+    sql`
+      SELECT s.season_id, el.balance_after AS balance, s.ended_at
+      FROM edit_log el
+      JOIN sessions s ON s.id = el.session_id
+      WHERE el.player_id = ${id}
+        AND el.action = 'session_end'
+        AND s.status = 'ended'
+        AND s.ended_at IS NOT NULL
+      ORDER BY s.ended_at ASC, el.created_at ASC
+    ` as unknown as Promise<{ season_id: string | null; balance: number; ended_at: string }[]>,
+    sql`SELECT id FROM seasons WHERE status = 'active' LIMIT 1` as unknown as Promise<{ id: string }[]>,
   ])
 
   const player = playerRows[0] ?? null
   const earnedKeys = new Set(achRows.map((a) => a.achievement_key))
   const pt = playtimeRows[0] ?? { total_seconds: 0, session_count: 0 }
+  const activeSeasonId = activeSeasonRows[0]?.id ?? null
+
+  // Lifetime time series — one point per ended session, indexed 1..N.
+  const lifetimeData = chartRows.map((row, i) => ({
+    session: i + 1,
+    balance: Number(row.balance),
+  }))
+  // Active-season slice — same points but only sessions in the live season,
+  // re-indexed from 1 so the x-axis reads "session 1, 2, 3..." within the season.
+  const seasonData = activeSeasonId
+    ? chartRows
+        .filter((row) => row.season_id === activeSeasonId)
+        .map((row, i) => ({ session: i + 1, balance: Number(row.balance) }))
+    : []
+
   return {
     player,
     results: resultRows,
@@ -100,6 +138,8 @@ async function getData(id: string) {
     totalPlaySeconds: Number(pt.total_seconds),
     playedSessionCount: Number(pt.session_count),
     sessionDeltas: sessionDeltaRows,
+    seasonData,
+    lifetimeData,
   }
 }
 
@@ -140,7 +180,16 @@ function initialOf(name: string) {
 
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { player, results, earnedKeys, totalPlaySeconds, playedSessionCount, sessionDeltas } = await getData(id)
+  const {
+    player,
+    results,
+    earnedKeys,
+    totalPlaySeconds,
+    playedSessionCount,
+    sessionDeltas,
+    seasonData,
+    lifetimeData,
+  } = await getData(id)
   if (!player) notFound()
 
   const totalSeasons = results.length
@@ -208,6 +257,18 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                   />
                 </>
               )}
+            </div>
+          </>
+        )}
+
+        {/* Performance chart — balance over time, with Season ini / Lifetime toggle. */}
+        {lifetimeData.length > 0 && (
+          <>
+            <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">
+              PERFORMA
+            </p>
+            <div className="mb-6">
+              <PerformanceChartLazy seasonData={seasonData} lifetimeData={lifetimeData} />
             </div>
           </>
         )}
