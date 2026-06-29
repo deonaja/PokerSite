@@ -126,34 +126,45 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   }, [selectedIds])
 
   // What will the chosen dealer actually do this session?
+  // Post-flip 2026-06-29: playing free dealer = 1× chip on table; neutral free
+  // dealer = 2× split (1× chip + 1× saldo). Cooldown only matters in Phase 1.
   const dealer = players.find((p) => p.id === dealerId)
   let dealerHint = ''
   if (dealer && !effectiveDealerPlays) {
     // Neutral dealer: deals only, doesn't play.
     if (currentPhase === 'steady') {
-      dealerHint = `${dealer.name}: cuma bagi kartu (ga ikut main) — ambil rake sebagai bandar.`
+      // P2: no upfront salary, no cooldown — collects rake during play instead.
+      dealerHint = `${dealer.name}: bagi kartu doang (ga main), ambil rake (10% chip, dibulatin ke 5, cap 20).`
     } else if (dealer.cooldown_remaining === 0) {
-      // Phase 1, not cooling down → flat 1× buy-in salary on the table.
-      dealerHint = `${dealer.name}: cuma bagi kartu (ga ikut main) — gaji 1× buy-in (+${buyIn} chip di meja).`
+      // Phase 1, not cooling down → 2× split salary (post-flip).
+      dealerHint = `${dealer.name}: bagi kartu doang (ga main) — gaji 2× buy-in: +${buyIn} chip di meja + ${buyIn} ke saldo (cadangan).`
     } else {
       // Phase 1 but cooling down → NO salary (matches startSession's
       // dealerFreeEntry = !isPhase2 && !cooldown → buy_in_no_gaji_dealer).
-      dealerHint = `${dealer.name}: cuma bagi kartu (ga ikut main) — cooldown, gak dapat gaji.`
+      dealerHint = `${dealer.name}: bagi kartu doang (ga main) — cooldown, gak dapat gaji.`
     }
   } else if (dealer) {
     const canAfford = dealer.balance >= buyIn
     const p1NoCooldown = currentPhase === 'bootstrap' && dealer.cooldown_remaining === 0
-    if (p1NoCooldown) {
+    if (currentPhase === 'steady') {
+      // P2: dealer pays buy-in like everyone else and takes rake during play.
+      if (canAfford) {
+        dealerHint = `${dealer.name}: bayar buy-in normal + main biasa, ambil rake (10% chip, dibulatin ke 5, cap 20).`
+      } else {
+        // Broke in P2 → forced to deals-only (no ante, no salary), takes rake.
+        dealerHint = `${dealer.name}: saldo kurang — jadi bagi kartu doang, ambil rake (10% chip, dibulatin ke 5, cap 20).`
+      }
+    } else if (p1NoCooldown) {
       // Phase 1, not cooling down → plays FREE on a 1× buy-in salary stack
-      // (no buy-in deduction). Same whether or not they can afford it.
+      // (no buy-in deduction, no bankroll bonus). Same whether or not they
+      // can afford it.
       dealerHint = `${dealer.name}: main gratis pake gaji dealer (+${buyIn} chip di meja, gak bayar buy-in).`
     } else if (canAfford) {
-      if (currentPhase === 'steady') dealerHint = `${dealer.name}: main + ambil rake.`
-      else dealerHint = `${dealer.name}: bayar buy-in — cooldown, gak dapat gaji.`
+      // P1 + cooldown: pay buy-in, no salary.
+      dealerHint = `${dealer.name}: bayar buy-in — cooldown, gak dapat gaji.`
     } else {
-      // Broke
-      if (currentPhase === 'steady') dealerHint = `${dealer.name}: bagi kartu + ambil rake (gak ikut main).`
-      else dealerHint = `${dealer.name}: cuma bagi kartu — cooldown, gak dapat gaji.`
+      // P1 + cooldown + broke: deals only.
+      dealerHint = `${dealer.name}: cuma bagi kartu — cooldown, gak dapat gaji.`
     }
   }
 
@@ -237,7 +248,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                 <Avatar name={p.name} />
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">{p.name}</span>
                 <span className="shrink-0 font-mono text-[0.8125rem] text-[var(--text-tertiary)]">{p.balance}</span>
-                {p.cooldown_remaining > 0 && (
+                {p.cooldown_remaining > 0 && currentPhase === 'bootstrap' && (
                   <span className="shrink-0 text-[0.6875rem] text-warn">
                     cooldown {p.cooldown_remaining} sesi
                   </span>

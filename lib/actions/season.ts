@@ -16,6 +16,11 @@ export interface CreateSeasonInput {
   sb: number
   maxPool: number
   maxSessions: number
+  // Per-phase session targets, decoupled (migration 012b). max_sessions starts as
+  // p1_target + p2_target; at flip it gets updated to p1_actual + p2_target so
+  // P2 runs its full target even if P1 overshoots.
+  p1TargetSessions: number
+  p2TargetSessions: number
   rakeRate: number
   presetName: string | null
 }
@@ -23,7 +28,7 @@ export interface CreateSeasonInput {
 export async function createSeason(
   input: CreateSeasonInput
 ): Promise<{ error: string } | void> {
-  const { playerNames, buyIn, nyawa, bb, sb, maxPool, maxSessions, rakeRate, presetName } = input
+  const { playerNames, buyIn, nyawa, bb, sb, maxPool, maxSessions, p1TargetSessions, p2TargetSessions, rakeRate, presetName } = input
 
   const names = playerNames.map((n) => n.trim()).filter(Boolean)
   if (names.length < 2) return { error: 'Minimal 2 pemain' }
@@ -45,6 +50,9 @@ export async function createSeason(
   // otherwise the season would flip to Phase 2 on the very first session.
   if (maxPool < names.length * startingBalance) return { error: 'Max pool tidak valid' }
   if (!Number.isInteger(maxSessions) || maxSessions < 1) return { error: 'Max sesi tidak valid' }
+  if (!Number.isInteger(p1TargetSessions) || p1TargetSessions < 1) return { error: 'P1 target sesi tidak valid' }
+  if (!Number.isInteger(p2TargetSessions) || p2TargetSessions < 0) return { error: 'P2 target sesi tidak valid' }
+  if (p1TargetSessions + p2TargetSessions !== maxSessions) return { error: 'P1 + P2 harus = max sesi' }
   if (!Number.isInteger(rakeRate) || rakeRate < 0 || rakeRate > 50) return { error: 'Rake rate tidak valid' }
   const defaultPinHash = await hashPin('1234')
   const client = createDbClient()
@@ -100,10 +108,12 @@ export async function createSeason(
 
     const { rows: [season] } = await client.query<{ id: string }>(
       `INSERT INTO seasons
-         (number, status, preset_name, starting_balance, buy_in, bb, sb, max_pool, max_sessions, rake_rate, creator_player_id, invite_code)
-       VALUES ($1, 'active', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         (number, status, preset_name, starting_balance, buy_in, bb, sb, max_pool, max_sessions,
+          p1_target_sessions, p2_target_sessions, rake_rate, creator_player_id, invite_code)
+       VALUES ($1, 'active', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING id`,
-      [seasonNumber, presetName, startingBalance, buyIn, bb, sb, maxPool, maxSessions, rakeRate, creatorId, generateInviteCode()]
+      [seasonNumber, presetName, startingBalance, buyIn, bb, sb, maxPool, maxSessions,
+       p1TargetSessions, p2TargetSessions, rakeRate, creatorId, generateInviteCode()]
     )
 
     for (const playerId of playerIds) {

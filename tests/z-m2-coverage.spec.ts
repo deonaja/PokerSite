@@ -128,10 +128,10 @@ test.describe('M2 coverage: dealer/cooldown matrix', () => {
       balance: number
       last_dealer_session_id: string | null
     }[]
-    // Free-entry dealer pays no buy-in AND gets the bankroll half of the 2× salary
-    // (1× buy_in = 100) credited immediately → 500 + 100 = 600. (The other 1× is
-    // chips on the table, realised at session end.)
-    expect(Number(aliceBalance.balance)).toBe(600)
+    // Free-entry PLAYING dealer pays no buy-in (post-flip: no bankroll bonus —
+    // that now belongs to neutral). Balance stays 500; the 1× table chips are
+    // realised at session end. Cooldown anchor still set.
+    expect(Number(aliceBalance.balance)).toBe(500)
     expect(aliceBalance.last_dealer_session_id).toBe(sessionId)
 
     const [participant] = await db()`
@@ -149,7 +149,8 @@ test.describe('M2 coverage: dealer/cooldown matrix', () => {
     const actions = new Set(logs.map((l) => l.action))
     expect(actions.has('buy_in_dealer_free')).toBe(true)
     expect(actions.has('dealer_salary_chips')).toBe(true)
-    expect(actions.has('dealer_salary_balance')).toBe(true)
+    // Post-flip: playing dealer no longer gets the balance bonus
+    expect(actions.has('dealer_salary_balance')).toBe(false)
   })
 
   test('Phase 1 + cooldown + dealer can afford: pays buy-in, no salary, cooldown anchor unchanged', async ({ page }) => {
@@ -400,10 +401,10 @@ test.describe('M2 coverage: session-active + end-session details', () => {
     await page.getByRole('button', { name: /Lihat recap/ }).click()
 
     await expect(page.getByText('RECAP')).toBeVisible()
-    // Alice is the Phase 1 free-entry dealer: no buy-in deduction, but gets the
-    // bankroll half of the 2× salary (+100) → current balance 600. Plays on the
-    // 100 table salary chips, ends with 250 → 600 + 250 = 850 (vs original 500 = +350).
-    await expect(page.getByText(/500\s*→\s*850\s*\(\+350\)/)).toBeVisible()
+    // Alice is the Phase 1 free-entry PLAYING dealer: no buy-in deduction; post-flip
+    // no bankroll bonus either (that's neutral now). Plays on the 100 table salary
+    // chips, ends with 250 → 500 + 250 = 750 (vs original 500 = +250).
+    await expect(page.getByText(/500\s*→\s*750\s*\(\+250\)/)).toBeVisible()
     // Bob paid buy-in 100 + 1 rebuy 100 (balance 300), stack 150 → 450 (-50).
     await expect(page.getByText(/500\s*→\s*450\s*\(-50\)/)).toBeVisible()
 

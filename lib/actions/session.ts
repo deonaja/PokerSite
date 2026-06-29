@@ -339,7 +339,7 @@ export async function endSession({
   sessionId: string
   stacks: { playerId: string; finalStack: number }[]
   actorPlayerId: string
-}): Promise<{ success: true; seasonOver?: true; seasonId?: string } | { error: string }> {
+}): Promise<{ success: true; seasonOver?: true; seasonId?: string; phaseFlipped?: true } | { error: string }> {
   if (!stacks.length) return { error: 'Tidak ada data stack' }
   if (stacks.some((s) => !Number.isInteger(s.finalStack) || s.finalStack < 0)) {
     return { error: 'Stack harus angka >= 0' }
@@ -424,6 +424,52 @@ export async function endSession({
     )
     if (!ended.rowCount) { await client.query('ROLLBACK'); return { error: 'Sesi sudah berakhir' } }
 
+    // Phase detection (moved here from startSession 2026-06-29). After balances
+    // are settled and this session is marked 'ended', check if the bootstrap →
+    // steady threshold (SUM(balance) >= max_pool) has been crossed. If yes,
+    // bump current_phase, record p1_sessions_actual (= count of ended sessions,
+    // which now includes the one we just ended), and update max_sessions to
+    // (p1_actual + p2_target) so P2 runs its full target. Legacy seasons
+    // (NULL p2_target_sessions) keep their existing max_sessions.
+    let phaseFlipped = false
+    const { rows: [activeSeason] } = await client.query<{
+      id: string; max_pool: number; current_phase: string
+    }>(
+      `SELECT se.id, se.max_pool, se.current_phase
+       FROM seasons se
+       JOIN sessions s ON s.season_id = se.id AND s.id = $1
+       WHERE se.status = 'active'
+       LIMIT 1`,
+      [sessionId]
+    )
+    if (activeSeason && activeSeason.current_phase === 'bootstrap') {
+      const { rows: [{ total_chips }] } = await client.query<{ total_chips: number }>(
+        `SELECT COALESCE(SUM(p.balance), 0)::int AS total_chips
+         FROM players p
+         JOIN season_players mp ON mp.player_id = p.id AND mp.season_id = $1`,
+        [activeSeason.id]
+      )
+      if (total_chips >= activeSeason.max_pool) {
+        const { rows: [{ sessions_played }] } = await client.query<{ sessions_played: number }>(
+          `SELECT COUNT(*)::int AS sessions_played
+           FROM sessions WHERE season_id = $1 AND status = 'ended'`,
+          [activeSeason.id]
+        )
+        await client.query(
+          `UPDATE seasons
+           SET current_phase = 'steady',
+               p1_sessions_actual = $2,
+               max_sessions = CASE
+                 WHEN p2_target_sessions IS NULL THEN max_sessions
+                 ELSE $2 + p2_target_sessions
+               END
+           WHERE id = $1`,
+          [activeSeason.id, sessions_played]
+        )
+        phaseFlipped = true
+      }
+    }
+
     await client.query('COMMIT')
     revalidatePath('/')
     revalidatePath('/session')
@@ -431,6 +477,9 @@ export async function endSession({
 
     // Check if the season is now over (sessions played >= max_sessions).
     // This is a post-commit read — safe since the session is already ended.
+    // Note: max_sessions may have just been bumped above on phase flip, so
+    // a flip-on-the-last-P1-session and seasonOver are mutually exclusive
+    // for new-schema seasons (correct: P2 still needs to run).
     const { rows: [seasonCheck] } = await client.query<{ season_id: string }>(
       `SELECT se.id AS season_id
        FROM seasons se
@@ -441,9 +490,11 @@ export async function endSession({
       [sessionId]
     )
     if (seasonCheck) {
-      return { success: true, seasonOver: true, seasonId: seasonCheck.season_id }
+      return phaseFlipped
+        ? { success: true, seasonOver: true, seasonId: seasonCheck.season_id, phaseFlipped: true }
+        : { success: true, seasonOver: true, seasonId: seasonCheck.season_id }
     }
-    return { success: true }
+    return phaseFlipped ? { success: true, phaseFlipped: true } : { success: true }
   } catch (e) {
     await client.query('ROLLBACK')
     console.error('endSession error:', e)
@@ -455,14 +506,16 @@ export async function endSession({
 
 interface StartSessionInput {
   playerIds: string[]
-  // The dealer is one of the selected participants. Treatment is derived:
+  // The dealer is one of the selected participants. Treatment is derived
+  // (see lib/economy.ts — post-flip 2026-06-29):
   //   PLAYING dealer (dealerPlays = true, default):
-  //     - Phase 1 & not in cooldown → free entry + 2× buy_in split salary
-  //       (1× table chips + 1× bankroll), plays.
+  //     - Phase 1 & not in cooldown → free entry + flat 1× buy_in salary
+  //       (table chips only, no bankroll bonus), plays.
   //     - else if can afford buy-in → pays buy-in and plays.
   //     - else → deals only (no ante, no salary).
   //   NEUTRAL dealer (dealerPlays = false; needs 4+ players so 3 still play):
-  //     - Phase 1 & not in cooldown → flat 1× buy_in salary (table chips), no play.
+  //     - Phase 1 & not in cooldown → 2× buy_in split salary (1× table chips
+  //       + 1× bankroll bonus), no play.
   //     - else → deals only (no salary, 0 chips); in Phase 2 collects the rake.
   dealerId: string
   dealerPlays?: boolean
@@ -524,23 +577,10 @@ export async function startSession({
       return { error: 'Pemain balance kurang harus jadi dealer atau jangan dipilih' }
     }
 
-    // Check phase transition: bootstrap → steady
-    let currentPhase = season?.current_phase ?? 'bootstrap'
-    if (currentPhase === 'bootstrap' && season) {
-      const { rows: [{ total_chips }] } = await client.query<{ total_chips: number }>(
-        `SELECT COALESCE(SUM(p.balance), 0)::int AS total_chips
-         FROM players p
-         JOIN season_players mp ON mp.player_id = p.id AND mp.season_id = $1`,
-        [season.id]
-      )
-      if (total_chips >= season.max_pool) {
-        await client.query(
-          `UPDATE seasons SET current_phase = 'steady' WHERE id = $1`,
-          [season.id]
-        )
-        currentPhase = 'steady'
-      }
-    }
+    // Phase detection moved to endSession (B1 2026-06-29): the flip is announced
+    // when the LAST P1 session ENDS — not the next time someone starts a P2 session.
+    // Here we just read the current phase as a constant for treatment derivation.
+    const currentPhase = season?.current_phase ?? 'bootstrap'
     const isPhase2 = currentPhase === 'steady'
 
     // Cooldown only matters in Phase 1, and it no longer BLOCKS — it just denies
@@ -610,9 +650,10 @@ export async function startSession({
 
     // Phase 1 dealer salary as chips on the table (1× buy_in): printed, played
     // with, counted in the end-session chip reconciliation (`dealer_salary_chips`).
-    // A PLAYING free dealer additionally gets the BANKROLL half (another 1× buy_in
-    // credited to balance = the 2× split spare life); a NEUTRAL dealer does not.
-    // `dealer_salary_balance` is EXCLUDED from win/loss stats (salary, not winnings).
+    // Post-flip 2026-06-29: the BANKROLL half (another 1× buy_in credited to
+    // balance = the 2× split spare life) goes to a NEUTRAL free dealer; a
+    // PLAYING free dealer does not. `dealer_salary_balance` is EXCLUDED from
+    // win/loss stats (salary, not winnings).
     if (dealerGotSalaryChips) {
       const dealerPlayer = players.find((p) => p.id === dealerId)!
       // Table half: on the table, no balance change here.
