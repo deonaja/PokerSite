@@ -5,19 +5,10 @@ import BalanceDisplay from '@/components/BalanceDisplay'
 import PerformanceChartLazy from '@/components/PerformanceChartLazy'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ACHIEVEMENTS } from '@/lib/achievements'
+import { ACHIEVEMENTS, computeLifetimeCounts } from '@/lib/achievements'
+import { AchievementIcon, type AchievementCategoryId } from '@/components/AchievementIcon'
 import { formatDurationShort } from '@/lib/duration'
-import { Trophy, Medal, Award, Crown, Coins, TrendingUp, ArrowLeft, type LucideIcon } from 'lucide-react'
-
-// Achievement icons keyed by key (kept out of the logic module).
-const ACH_ICONS: Record<string, LucideIcon> = {
-  juara: Trophy,
-  podium: Medal,
-  veteran: Award,
-  raja_bandar: Crown,
-  sultan: Coins,
-  musim_untung: TrendingUp,
-}
+import { ArrowLeft } from 'lucide-react'
 
 interface PlayerRow {
   id: string
@@ -68,7 +59,7 @@ async function getData(id: string) {
       WHERE sr.player_id = ${id}
       ORDER BY se.number DESC
     ` as unknown as Promise<ResultRow[]>,
-    sql`SELECT achievement_key FROM player_achievements WHERE player_id = ${id}` as unknown as Promise<{ achievement_key: string }[]>,
+    sql`SELECT achievement_key, tier FROM player_achievements WHERE player_id = ${id}` as unknown as Promise<{ achievement_key: string; tier: number }[]>,
     // Total / count of finished sessions this player took part in, for play-time stats.
     sql`
       SELECT
@@ -114,7 +105,13 @@ async function getData(id: string) {
   ])
 
   const player = playerRows[0] ?? null
-  const earnedKeys = new Set(achRows.map((a) => a.achievement_key))
+  // Map of categoryId -> Set<tier> earned, used by the UI to color icons.
+  const earnedByCategory = new Map<string, Set<number>>()
+  for (const a of achRows) {
+    const set = earnedByCategory.get(a.achievement_key) ?? new Set<number>()
+    set.add(a.tier)
+    earnedByCategory.set(a.achievement_key, set)
+  }
   const pt = playtimeRows[0] ?? { total_seconds: 0, session_count: 0 }
   const activeSeasonId = activeSeasonRows[0]?.id ?? null
 
@@ -134,7 +131,7 @@ async function getData(id: string) {
   return {
     player,
     results: resultRows,
-    earnedKeys,
+    earnedByCategory,
     totalPlaySeconds: Number(pt.total_seconds),
     playedSessionCount: Number(pt.session_count),
     sessionDeltas: sessionDeltaRows,
@@ -183,7 +180,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const {
     player,
     results,
-    earnedKeys,
+    earnedByCategory,
     totalPlaySeconds,
     playedSessionCount,
     sessionDeltas,
@@ -198,6 +195,23 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const totalTimesDealer = results.reduce((s, r) => s + r.times_dealer, 0)
   const totalWon = results.reduce((s, r) => s + r.total_won, 0)
   const totalLost = results.reduce((s, r) => s + r.total_lost, 0)
+
+  // Lifetime counts driving the progressive achievement rows. dealer_count is
+  // overridden with totalTimesDealer (sum of season_results.times_dealer for
+  // this player) which matches what session_participants would give for ended
+  // seasons.
+  const lifetimeCounts = computeLifetimeCounts(
+    results.map((r) => ({
+      rank: r.rank,
+      final_balance: r.final_balance,
+      sessions_played: r.sessions_played,
+      times_dealer: r.times_dealer,
+      total_won: r.total_won,
+      total_lost: r.total_lost,
+      starting_balance: r.starting_balance,
+    })),
+    totalTimesDealer,
+  )
   const avgPlaySeconds = playedSessionCount > 0 ? Math.round(totalPlaySeconds / playedSessionCount) : 0
   const streaks = computeStreaks(sessionDeltas.map((d) => d.delta))
 
@@ -273,30 +287,45 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
           </>
         )}
 
-        {/* Achievements */}
+        {/* Progressive achievements — each row is one category with 3 tier icons. */}
         <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">PENCAPAIAN</p>
-        <div className="mb-6 grid grid-cols-2 gap-2">
-          {ACHIEVEMENTS.map((a) => {
-            const earned = earnedKeys.has(a.key)
-            const Icon = ACH_ICONS[a.key] ?? Award
+        <div className="mb-6 flex flex-col gap-3">
+          {ACHIEVEMENTS.map((cat) => {
+            const earnedTiers = earnedByCategory.get(cat.id) ?? new Set<number>()
+            const count = lifetimeCounts[cat.metric]
+            // Highest tier earned drives the "MAX" / "x/y" progress line.
+            const maxTier = Math.max(0, ...Array.from(earnedTiers))
+            const nextTier = cat.tiers.find((t) => t.tier > maxTier) ?? null
+            const allEarned = maxTier === 3
             return (
-              <div
-                key={a.key}
-                className={
-                  'flex items-center gap-2.5 rounded-lg border px-3 py-2.5 ' +
-                  (earned ? 'border-primary bg-accent' : 'border-border bg-card opacity-60')
-                }
-              >
-                <Icon
-                  aria-hidden
-                  className={'h-5 w-5 shrink-0 ' + (earned ? 'text-warn' : 'text-[var(--text-tertiary)]')}
-                />
-                <div className="min-w-0">
-                  <p className={'truncate text-xs font-medium ' + (earned ? 'text-foreground' : 'text-muted-foreground')}>
-                    {a.label}
-                  </p>
-                  <p className="text-[0.625rem] leading-tight text-[var(--text-tertiary)]">{a.description}</p>
+              <div key={cat.id} className="rounded-lg border border-border bg-card px-3 py-3">
+                <div className="grid grid-cols-3 gap-2">
+                  {cat.tiers.map((t) => {
+                    const earned = earnedTiers.has(t.tier)
+                    return (
+                      <div
+                        key={t.tier}
+                        className="flex flex-col items-center gap-1.5"
+                        title={`${t.name} — ${t.description}`}
+                      >
+                        <AchievementIcon
+                          categoryId={cat.id as AchievementCategoryId}
+                          tier={earned ? (t.tier as 1 | 2 | 3) : 0}
+                          size={48}
+                        />
+                        <p className={
+                          'text-center text-[0.6875rem] leading-tight ' +
+                          (earned ? 'text-foreground' : 'text-[var(--text-tertiary)]')
+                        }>
+                          {t.name}
+                        </p>
+                      </div>
+                    )
+                  })}
                 </div>
+                <p className="mt-2 text-center font-mono text-[0.6875rem] tabular-nums text-[var(--text-tertiary)]">
+                  {allEarned ? 'MAX' : nextTier ? `${count} / ${nextTier.threshold}` : `${count}`}
+                </p>
               </div>
             )
           })}
