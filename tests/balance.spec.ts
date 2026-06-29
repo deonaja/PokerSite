@@ -20,10 +20,11 @@ test.describe('Balance non-negative enforcement', () => {
     await sql`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`
   })
 
-  // M2: a low-balance dealer in Phase 1 (not in cooldown) gets the 2× buy_in
-  // salary, SPLIT: 1× as chips on the table (played with) + 1× credited to their
-  // bankroll (spare life). They do NOT pay buy-in (broke) and are NOT deals-only.
-  test('low-balance dealer in Phase 1 gets salary: table chips + bankroll half', async ({ page }) => {
+  // M2 (post-flip 2026-06-29): a low-balance PLAYING dealer in Phase 1 (not
+  // in cooldown) gets only 1× chips on the table — no bankroll bonus (the
+  // 2× split now goes to NEUTRAL dealer instead). Broke + playing = lifeline
+  // only via table chips. They do NOT pay buy-in and are NOT deals-only.
+  test('low-balance playing dealer in Phase 1 gets table chips only (no bankroll bonus)', async ({ page }) => {
     const sql = neon(process.env.DATABASE_URL!)
     await sql`UPDATE players SET balance = 50 WHERE id = ${bob.id}`
 
@@ -41,10 +42,11 @@ test.describe('Balance non-negative enforcement', () => {
     await page.waitForURL('**/session')
 
     // Bob plays as a normal dealer (not deals-only) with the printed salary chips.
-    // No buy-in deduction (he is broke), but the bankroll half of the 2× salary
-    // (1× buy_in = 100) is credited immediately → 50 + 100 = 150.
+    // No buy-in deduction (he is broke), and post-flip NO bankroll bonus for
+    // playing dealer (only neutral gets the 1× balance credit). Balance stays
+    // at 50 — survives the session via the 1× table chips only.
     const [bobRow] = await sql`SELECT balance FROM players WHERE id = ${bob.id}` as { balance: number }[]
-    expect(Number(bobRow.balance)).toBe(150)
+    expect(Number(bobRow.balance)).toBe(50)
 
     const [participant] = await sql`
       SELECT sp.is_dealer, sp.no_gaji_dealer
