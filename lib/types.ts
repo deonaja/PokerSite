@@ -160,6 +160,15 @@ export interface LoansResponse {
   myLend: MyLendLoan | null // my active loan as lender
 }
 
+// Admin rollback — a snapshot row capturing the world AS OF a whitelisted
+// edit_log entry. See lib/rollback.ts for whitelist + restore semantics.
+export interface EditLogSnapshot {
+  id: string
+  edit_log_id: string
+  snapshot_data: import('./rollback').SnapshotData
+  created_at: string
+}
+
 // Web Push — a stored browser PushSubscription, one row per device.
 export interface PushSubscriptionRow {
   id: string
