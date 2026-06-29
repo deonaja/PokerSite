@@ -20,6 +20,13 @@ type PresetName = typeof PRESETS[number]['name']
 
 // Tempo = preferensi panjang Phase 1 (bootstrap) sebagai fraksi total sesi.
 // max_pool = modal_awal_total + (target_P1_sesi × gaji_dealer), gaji_dealer = 2×buy_in.
+//
+// Catatan post-flip 2026-06-29: 2× buy_in di formula ini ngerefer ke NEUTRAL
+// free dealer (yang sekarang dapet 2× split — chip + bankroll). Kalau di
+// kenyataannya orang lebih sering pilih PLAYING dealer (yang post-flip cuma
+// dapet 1× chip, ga ada bankroll bonus), tiap sesi cuma inject 1× ke pool —
+// jadi P1 bisa ~2× lebih lama dari targetP1 di wizard. Per owner ini intentional
+// ("biar season kerasa panjang"); wizard step 4 surface ini sebagai estimate range.
 const TEMPOS = [
   { name: 'serius',    label: 'Langsung serius',   desc: 'Bootstrap singkat, ekonomi cepat serius', p1Frac: 0.25 },
   { name: 'seimbang',  label: 'Seimbang',          desc: 'Pemanasan & serius rata',                 p1Frac: 0.40 },
@@ -489,6 +496,10 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
               <Row label="Rake rate" value={`${rakeRate}%`} />
             </Section>
           </Card>
+
+          <p className="m-0 text-xs text-[var(--text-tertiary)]">
+            Estimate Bootstrap asumsi dealer pilih netral (2× gaji). Kalau lebih sering ikut main (1× gaji), P1 bisa ~2× lebih lama.
+          </p>
 
           <p className="m-0 text-xs text-[var(--text-tertiary)]">
             Semua pemain baru mendapat PIN default <span className="font-mono text-muted-foreground">1234</span>. Ganti dari dashboard setelah login.

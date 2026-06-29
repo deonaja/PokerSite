@@ -455,14 +455,16 @@ export async function endSession({
 
 interface StartSessionInput {
   playerIds: string[]
-  // The dealer is one of the selected participants. Treatment is derived:
+  // The dealer is one of the selected participants. Treatment is derived
+  // (see lib/economy.ts — post-flip 2026-06-29):
   //   PLAYING dealer (dealerPlays = true, default):
-  //     - Phase 1 & not in cooldown → free entry + 2× buy_in split salary
-  //       (1× table chips + 1× bankroll), plays.
+  //     - Phase 1 & not in cooldown → free entry + flat 1× buy_in salary
+  //       (table chips only, no bankroll bonus), plays.
   //     - else if can afford buy-in → pays buy-in and plays.
   //     - else → deals only (no ante, no salary).
   //   NEUTRAL dealer (dealerPlays = false; needs 4+ players so 3 still play):
-  //     - Phase 1 & not in cooldown → flat 1× buy_in salary (table chips), no play.
+  //     - Phase 1 & not in cooldown → 2× buy_in split salary (1× table chips
+  //       + 1× bankroll bonus), no play.
   //     - else → deals only (no salary, 0 chips); in Phase 2 collects the rake.
   dealerId: string
   dealerPlays?: boolean
@@ -610,9 +612,10 @@ export async function startSession({
 
     // Phase 1 dealer salary as chips on the table (1× buy_in): printed, played
     // with, counted in the end-session chip reconciliation (`dealer_salary_chips`).
-    // A PLAYING free dealer additionally gets the BANKROLL half (another 1× buy_in
-    // credited to balance = the 2× split spare life); a NEUTRAL dealer does not.
-    // `dealer_salary_balance` is EXCLUDED from win/loss stats (salary, not winnings).
+    // Post-flip 2026-06-29: the BANKROLL half (another 1× buy_in credited to
+    // balance = the 2× split spare life) goes to a NEUTRAL free dealer; a
+    // PLAYING free dealer does not. `dealer_salary_balance` is EXCLUDED from
+    // win/loss stats (salary, not winnings).
     if (dealerGotSalaryChips) {
       const dealerPlayer = players.find((p) => p.id === dealerId)!
       // Table half: on the table, no balance change here.
