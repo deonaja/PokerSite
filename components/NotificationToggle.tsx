@@ -20,7 +20,13 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 
 type State = 'loading' | 'unsupported' | 'off' | 'on'
 
-export default function NotificationToggle() {
+interface NotificationToggleProps {
+  // Show the "Kirim notif tes" button. Hidden by default — only admins see it
+  // (controlled by the server-rendered page that mounts this component).
+  showTestButton?: boolean
+}
+
+export default function NotificationToggle({ showTestButton = false }: NotificationToggleProps) {
   const [state, setState] = useState<State>('loading')
   const [denied, setDenied] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
@@ -162,9 +168,11 @@ export default function NotificationToggle() {
 
       {state === 'on' ? (
         <div className="flex flex-col gap-2">
-          <Button type="button" fullWidth onClick={test} disabled={isPending}>
-            {isPending ? 'Mengirim…' : 'Kirim notif tes'}
-          </Button>
+          {showTestButton && (
+            <Button type="button" fullWidth onClick={test} disabled={isPending}>
+              {isPending ? 'Mengirim…' : 'Kirim notif tes'}
+            </Button>
+          )}
           <Button type="button" variant="secondary" fullWidth onClick={disable} disabled={isPending}>
             Matikan notifikasi
           </Button>
