@@ -12,6 +12,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.12.0',
+    date: '2026-06-29',
+    changes: [
+      'Yang start sesi sekarang bisa langsung batalin sesi sendiri (tombol "Batalkan sesi" muncul di /session) — gausa buka admin lagi cuy.',
+      'Profile pemain: stat baru "Streak menang" + "Streak terpanjang" — biar tau lo lagi panas atau dingin.',
+      'Profile pemain: ada chart performa balance per sesi, toggle Musim ini / Lifetime. Liat naik-turun saldo lo tiap sesi.',
+      'Fix riwayat musim: tampilan buy-in udah bener (sebelumnya kebawa rumus lama dari sebelum Fase A).',
+    ],
+  },
+  {
     version: '0.11.0',
     date: '2026-06-29',
     changes: [
