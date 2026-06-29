@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import NotificationToggle from '@/components/NotificationToggle'
+import { isAdmin } from '@/lib/auth-server'
 
-export default function NotificationsSettingsPage() {
+export default async function NotificationsSettingsPage() {
+  const admin = await isAdmin()
   return (
     <div className="flex flex-col gap-6 px-4 pt-12 pb-8">
       <div className="flex items-center gap-3">
@@ -16,7 +18,7 @@ export default function NotificationsSettingsPage() {
         <h1 className="text-lg font-medium text-foreground">Notifikasi</h1>
       </div>
 
-      <NotificationToggle />
+      <NotificationToggle showTestButton={admin} />
 
       <p className="text-[0.8125rem] text-muted-foreground">
         Aktifkan per perangkat. Notif dikirim ke semua perangkat yang sudah kamu aktifkan.
