@@ -1,6 +1,14 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-06-29 — **🚀 Web Push SHIPPED ke prod (v0.11.0).** Merge `26d165a` (`dev→main`) auto-deploy Vercel. Migrasi `011_push_subscriptions` udah di-apply ke prod DB **sebelum** merge. VAPID env (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`) ke-set di Production scope. Changelog bumped `5fd7690`. Sisa: tes delivery di HP asli (perlu iOS Add-to-Home-Screen / Android grant permission). Sebelumnya (2026-06-12): branch protection `main` aktif (admin bypass ON — verified via test push `c777e92`..`32395f2`, net diff nol). Catatan: jangan edit file UTF-8 pakai PS 5.1 `Set-Content` — ngerusak emoji (kejadian `ec0eb83`). **Fitur "Ajak Main"/rally: desain FINAL, belum diimplement** (lihat section 📣 di bawah).
+Last updated: 2026-06-29 — **🚀 Big push session: v0.11.0 → v0.14.0 LIVE.** 3 wave dispatch via subagents + 2 security audit:
+- **v0.11.0** (`26d165a`): Web Push notif (HP push utk loan events, sw.js, /settings/notifications, VAPID env)
+- **v0.12.0** (`7c4d76c`): Wave 1 — B6 buy_in display fix · B4 session creator cancel non-admin (migration 012a) · NEW win streak stats · I2 performance chart (recharts lazy-load) · F1 secure cookies
+- **v0.13.0** (`14eaa34`): Wave 2 — B2 flip dealer matriks (neutral 2×, playing 1×) · B3 p1/p2 sessions decouple (migration 012b) · B1 phase trigger → endSession · in-app sheet only
+- **v0.14.0** (`7c0b721`): Wave 3 — I1 progressive achievements (6 cat × 3 tier, 18 SVG custom, migration 015) · B5 admin rollback MVP (migration 014, snapshot table, 3x ROLLBACK confirm)
+- **Security audits**: 2× clean (Wave 1 + Wave 3) — F1 fix applied, F3 confirmed intent, 2 LOW Wave 3 defensive notes acceptable
+- **All migrations applied to prod by owner before each merge** (011, 012a, 012b, 014, 015)
+
+Sebelumnya (2026-06-12): branch protection `main` aktif (admin bypass ON — verified via test push `c777e92`..`32395f2`, net diff nol). Catatan: jangan edit file UTF-8 pakai PS 5.1 `Set-Content` — ngerusak emoji (kejadian `ec0eb83`). **Fitur "Ajak Main"/rally: desain FINAL, belum diimplement** (lihat section 📣 di bawah).
 
 ## 🔔 Web Push notification — ✅ SHIPPED PROD 2026-06-29 (v0.11.0)
 
