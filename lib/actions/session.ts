@@ -250,23 +250,31 @@ export async function cancelSession({
 }: {
   sessionId: string
 }): Promise<{ success: true } | { error: string }> {
-  // Admin-only — surfaced in the admin panel. Cancels an aborted session and
-  // refunds every participant back to their pre-session balance (reverses all
-  // buy-ins / rebuys), then removes the session entirely — as if it never
-  // happened — so it doesn't pollute end-of-season stats and the active-session
-  // slot is freed. A per-player 'admin_session_cancel' audit entry is appended.
-  if (!(await isAdmin())) return { error: 'Unauthorized' }
+  // Allowed for admin OR the player who started the session. Refunds every
+  // participant back to their pre-session balance (reverses all buy-ins /
+  // rebuys), then removes the session entirely — as if it never happened — so
+  // it doesn't pollute end-of-season stats and the active-session slot is
+  // freed. A per-player 'admin_session_cancel' audit entry is appended.
   const actorPlayerId = await getAuthenticatedPlayerId()
+  if (!actorPlayerId) return { error: 'Belum login' }
+  const callerIsAdmin = await isAdmin()
   const client = createDbClient()
   await client.connect()
   try {
     await client.query('BEGIN')
 
-    const { rows: [session] } = await client.query<{ id: string }>(
-      `SELECT id FROM sessions WHERE id = $1 AND status = 'active' FOR UPDATE`,
+    const { rows: [session] } = await client.query<{ id: string; creator_player_id: string | null }>(
+      `SELECT id, creator_player_id FROM sessions WHERE id = $1 AND status = 'active' FOR UPDATE`,
       [sessionId]
     )
     if (!session) { await client.query('ROLLBACK'); return { error: 'Sesi tidak ditemukan atau sudah ended' } }
+
+    const callerIsCreator =
+      session.creator_player_id != null && session.creator_player_id === actorPlayerId
+    if (!callerIsAdmin && !callerIsCreator) {
+      await client.query('ROLLBACK')
+      return { error: 'Hanya admin atau pemulai sesi yang bisa membatalkan' }
+    }
 
     // Net amount this session deducted from each player's persistent balance.
     // A free-entry dealer nets 0; a rebuy_undo naturally cancels its rebuy.
@@ -558,8 +566,9 @@ export async function startSession({
     const dealerFreeEntry = !isPhase2 && !dealerInCooldown
 
     const { rows: [session] } = await client.query<{ id: string }>(
-      `INSERT INTO sessions (dealer_id, status, season_id) VALUES ($1, 'active', $2) RETURNING id`,
-      [dealerId, season?.id ?? null]
+      `INSERT INTO sessions (dealer_id, status, season_id, creator_player_id)
+       VALUES ($1, 'active', $2, $3) RETURNING id`,
+      [dealerId, season?.id ?? null, actorPlayerId]
     )
     const sessionId = session.id
 

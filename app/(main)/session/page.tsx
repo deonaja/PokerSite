@@ -4,9 +4,9 @@ import { getAuthenticatedPlayer } from '@/lib/auth-server'
 import SessionView from '@/components/SessionView'
 import type { Player, PollParticipant, PollResponse } from '@/lib/types'
 
-async function getSessionInitial(): Promise<{ sessionId: string; buyIn: number; startedAt: string; initial: PollResponse } | null> {
+async function getSessionInitial(): Promise<{ sessionId: string; buyIn: number; startedAt: string; creatorPlayerId: string | null; initial: PollResponse } | null> {
   const [sessions, players] = await Promise.all([
-    sql`SELECT id, started_at FROM sessions WHERE status = 'active' LIMIT 1`,
+    sql`SELECT id, started_at, creator_player_id FROM sessions WHERE status = 'active' LIMIT 1`,
     // Scope to the active season's MEMBERS (season_players), not every player row.
     sql`SELECT p.id, p.name, p.balance, p.created_at
         FROM players p
@@ -15,7 +15,7 @@ async function getSessionInitial(): Promise<{ sessionId: string; buyIn: number; 
         ORDER BY p.name ASC`,
   ])
 
-  const sessionRow = (sessions as unknown as { id: string; started_at: string }[])[0]
+  const sessionRow = (sessions as unknown as { id: string; started_at: string; creator_player_id: string | null }[])[0]
   if (!sessionRow) return null
 
   const [participants, seasonRows] = await Promise.all([
@@ -43,6 +43,7 @@ async function getSessionInitial(): Promise<{ sessionId: string; buyIn: number; 
     sessionId: sessionRow.id,
     buyIn,
     startedAt: sessionRow.started_at,
+    creatorPlayerId: sessionRow.creator_player_id,
     initial: {
       players: players as unknown as Player[],
       activeSession: {
@@ -64,6 +65,7 @@ export default async function SessionPage() {
       buyIn={data.buyIn}
       startedAt={data.startedAt}
       currentPlayerId={authPlayer?.id ?? null}
+      creatorPlayerId={data.creatorPlayerId}
     />
   )
 }
