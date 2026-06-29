@@ -16,11 +16,14 @@ self.addEventListener('push', (event) => {
   }
 
   const title = data.title || 'PokerAja'
+  const url = data.url || '/'
   const options = {
     body: data.body || '',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    data: { url: data.url || '/' },
+    // Vibrate on Android (ignored on iOS/desktop). Short pulse-gap-pulse.
+    vibrate: [200, 100, 200],
+    data: { url },
   }
   // A tag collapses/replaces a prior notification of the same tag. Without
   // renotify, that replacement is SILENT (no banner/sound) — so a second push
@@ -31,7 +34,26 @@ self.addEventListener('push', (event) => {
     options.renotify = true
   }
 
-  event.waitUntil(self.registration.showNotification(title, options))
+  // On Android Chrome, when the app is in the FOREGROUND the native banner
+  // doesn't appear — the OS assumes the user can already see the app. To make
+  // notifications visible in that case, broadcast the payload to every open
+  // client window so the app can render an in-app toast alongside (the native
+  // notification still drops into the tray). Backgrounded → only native fires.
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(title, options),
+      self.clients
+        .matchAll({ type: 'window', includeUncontrolled: true })
+        .then((clientList) => {
+          for (const client of clientList) {
+            client.postMessage({
+              type: 'push',
+              payload: { title, body: data.body || '', url, tag: data.tag },
+            })
+          }
+        }),
+    ])
+  )
 })
 
 // Focus an existing app tab (or open one) when the notification is clicked.
