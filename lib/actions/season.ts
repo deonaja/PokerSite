@@ -6,6 +6,7 @@ import { createDbClient } from '@/lib/db'
 import { getAuthenticatedPlayerId, isAdmin } from '@/lib/auth-server'
 import { hashPin, generateInviteCode } from '@/lib/auth'
 import { evaluateAchievements, type SeasonResultRow } from '@/lib/achievements'
+import { takeSnapshot } from '@/lib/rollback'
 
 export interface CreateSeasonInput {
   playerNames: string[]
@@ -116,18 +117,28 @@ export async function createSeason(
        p1TargetSessions, p2TargetSessions, rakeRate, creatorId, generateInviteCode()]
     )
 
+    let lastSeasonStartLogId: string | null = null
     for (const playerId of playerIds) {
-      await client.query(
+      const { rows: [logRow] } = await client.query<{ id: string }>(
         `INSERT INTO edit_log (player_id, actor_player_id, action, balance_before, balance_after, metadata)
-         VALUES ($1, $2, 'season_start', 0, $3, $4)`,
+         VALUES ($1, $2, 'season_start', 0, $3, $4)
+         RETURNING id`,
         [playerId, creatorId, startingBalance, JSON.stringify({ season_id: season.id, season_number: seasonNumber })]
       )
+      lastSeasonStartLogId = logRow.id
       // Membership: every chosen player joins the season's roster.
       await client.query(
         `INSERT INTO season_players (season_id, player_id) VALUES ($1, $2)
          ON CONFLICT DO NOTHING`,
         [season.id, playerId]
       )
+    }
+
+    // Snapshot keyed to the last per-player season_start row — captures the
+    // initial state of the freshly created season (balances at starting_balance,
+    // no sessions yet). Rollback restores TO this point.
+    if (lastSeasonStartLogId) {
+      await takeSnapshot(client, lastSeasonStartLogId)
     }
 
     await client.query('COMMIT')
