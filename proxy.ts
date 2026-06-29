@@ -18,6 +18,7 @@ export function proxy(req: NextRequest) {
       res.cookies.set('admin_key', keyParam, {
         httpOnly: true,
         sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
         path: '/admin',
         maxAge: 60 * 60 * 8,
       })
