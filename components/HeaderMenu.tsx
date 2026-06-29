@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { KeyRound, LogOut, ChevronDown, Sparkles, HelpCircle } from 'lucide-react'
+import { KeyRound, LogOut, ChevronDown, Sparkles, HelpCircle, Bell } from 'lucide-react'
 import Sheet from './Sheet'
 import { Badge } from './ui/badge'
 import { getLocalStorageItem } from '@/lib/safeStorage'
 import { LATEST_VERSION, CHANGELOG_SEEN_KEY } from '@/lib/changelog'
+import { deletePushSubscription } from '@/lib/actions/push'
 
 // Minimal header: avatar (initial) + greeting. Tapping it opens an account
 // bottom-sheet with the actions, so the bar itself stays uncluttered.
@@ -23,6 +24,29 @@ export default function HeaderMenu({ name }: { name: string }) {
     window.addEventListener('changelog-seen', clear)
     return () => window.removeEventListener('changelog-seen', clear)
   }, [])
+
+  // On "ganti identitas" / logout, drop THIS device's push subscription first so
+  // the next person on a shared device doesn't keep receiving the old player's
+  // notifications. Best-effort — never blocks logout. (Still logged in here, so
+  // deletePushSubscription authorizes.) form.submit() bypasses this handler.
+  async function handleLogout(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const form = e.currentTarget
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration()
+        const sub = await reg?.pushManager.getSubscription()
+        if (sub) {
+          const endpoint = sub.endpoint
+          await sub.unsubscribe().catch(() => {})
+          await deletePushSubscription({ endpoint }).catch(() => {})
+        }
+      }
+    } catch {
+      // ignore — logout must proceed regardless
+    }
+    form.submit()
+  }
 
   return (
     <header className="flex items-center border-b border-border px-4 py-2.5">
@@ -76,6 +100,14 @@ export default function HeaderMenu({ name }: { name: string }) {
             {hasNew && <Badge className="ml-auto">Baru</Badge>}
           </Link>
           <Link
+            href="/settings/notifications"
+            onClick={() => setOpen(false)}
+            className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm text-foreground transition-colors hover:bg-[var(--bg-elevated)]"
+          >
+            <Bell className="size-4 text-muted-foreground" />
+            Notifikasi
+          </Link>
+          <Link
             href="/settings/pin"
             onClick={() => setOpen(false)}
             className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm text-foreground transition-colors hover:bg-[var(--bg-elevated)]"
@@ -83,7 +115,7 @@ export default function HeaderMenu({ name }: { name: string }) {
             <KeyRound className="size-4 text-muted-foreground" />
             Ganti PIN
           </Link>
-          <form method="post" action="/api/identity/logout">
+          <form method="post" action="/api/identity/logout" onSubmit={handleLogout}>
             <button
               type="submit"
               className="flex min-h-11 w-full items-center gap-3 rounded-lg bg-transparent px-3 text-sm text-foreground transition-colors hover:bg-[var(--bg-elevated)]"

@@ -1,6 +1,109 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-06-09 — **v0.10.0 SHIPPED to prod** (merge `d93d6aa`): PWA installable, riwayat sesi (/riwayat), dealer cooldown hint fix, economy unit tests. No migration; manifest+icon verified live on pokeraja.vercel.app.
+Last updated: 2026-06-12 — **Repo dibuka untuk kontribusi eksternal**: branch protection `main` aktif (require PR before merging, admin bypass ON — owner masih bisa push langsung; diverifikasi via test push `c777e92`..`32395f2`, net diff nol). Catatan: jangan edit file UTF-8 (README/todo) pakai `Get-Content`/`Set-Content` PS 5.1 — ngerusak emoji/em-dash (kejadian `ec0eb83`, di-restore `32395f2`). TODO opsional: CONTRIBUTING.md + PR template. Sebelumnya (2026-06-10): **Web Push notif committed ke `dev`** (`a9266ef` + fix renotify/feedback `4575670`, auto-pushed origin/dev; belum merge `main`/deploy). **Fitur "Ajak Main"/rally: desain FINAL, belum diimplement** (lihat section 📣 di bawah). Sebelumnya: v0.10.0 di prod (`d93d6aa`) + security fix `cf64b61` udah ke-merge.
+
+## 🔔 Web Push notification (2026-06-09, branch `dev`) — COMMITTED `a9266ef`, belum merge/deploy
+
+Push notification beneran (nongol di HP walau app tutup), owner-pilih Web Push.
+Bangun infra generic + wire ke LOAN sebagai event pertama. **Butuh migration (011)
++ dep baru (`web-push`) + VAPID keys.**
+
+- **Dep**: `web-push` + `@types/web-push`. VAPID via `pnpm gen:vapid` →
+  `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` + `VAPID_SUBJECT` di `.env.local`
+  (dev keys udah di-generate lokal; **prod set sendiri di Vercel**). Tanpa keys → push no-op (app tetap jalan).
+- **Migration `011_push_subscriptions.sql`** (applied ke DB dev): tabel
+  `push_subscriptions(player_id FK, endpoint UNIQUE, p256dh, auth, user_agent, …)`,
+  1 pemain banyak device, UPSERT by endpoint.
+- **Service worker** `public/sw.js` — PUSH-ONLY (ga nyentuh offline/caching, biar
+  ga ngelawan alasan SW dulu di-skip). Handle `push` + `notificationclick`.
+- **`lib/push.ts`** — `sendPushToPlayer(playerId, {title,body,url,tag})`. Best-effort:
+  no-op kalau VAPID belum diset, never-throw (push gagal ga ngegagalin aksi inti),
+  auto-prune subscription mati (404/410). Server-only (cuma di-import dari server action).
+- **`lib/actions/push.ts`** — `savePushSubscription` / `deletePushSubscription` /
+  `sendTestPush`, semua self-authorize (`getAuthenticatedPlayerId`).
+- **UI**: `components/NotificationToggle.tsx` (deteksi support + hint iOS "Add to Home
+  Screen" + tombol "Kirim notif tes"), halaman `/settings/notifications` + loading,
+  link "Notifikasi" (icon Bell) di `HeaderMenu`.
+- **Wire LOAN** (`lib/actions/loans.ts`, after COMMIT, best-effort): `requestLoan`→lender,
+  `approveLoan`→borrower, `declineLoan`→borrower, `repayLoan`→lender. (`cancelLoan` skip.)
+- **Verified**: `tsc --noEmit` clean; `pnpm build` hijau (semua route, termasuk
+  `/settings/notifications`); `/sw.js` ke-serve 200; halaman render benar via
+  chrome-devtools MCP (login JAGO, screenshot felt-green OK); feature-detection
+  `supported:true`/`secureContext:true`/VAPID kebaca. **⚠ Belum di-tes delivery push
+  end-to-end** — grant permission native + delivery ke device wajib MANUAL di HP asli
+  (intrinsik Web Push: per-device, native prompt, iOS perlu PWA installed).
+- **DONE**: committed `dev` (`a9266ef`, 16 file, auto-pushed origin/dev). `AGENTS.md` sengaja ga ikut.
+- **BELUM (urut buat deploy prod):** (1) generate VAPID keys PROD + set 3 env di Vercel
+  (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`) — JANGAN pakai dev keys;
+  (2) **migrate DB prod `011` DULU** sebelum merge; (3) merge `dev → main` (auto-deploy);
+  (4) opsional bump `lib/changelog.ts` biar dot "Baru" nyala; (5) tes delivery di HP asli.
+  Belum ada e2e test push. Server action loan WAJIB Node runtime (web-push ga jalan di edge).
+- **Post-review hardening (2026-06-09):** (1) **Logout/"ganti identitas" sekarang
+  unsubscribe + hapus sub browser ini** (`HeaderMenu.handleLogout`) — fix bocor lintas-user
+  di device sharing (pemain lama berhenti dapet notif di device yang udah ganti identitas;
+  by endpoint → cuma device itu, bukan semua device-nya). (2) **4 blok push di `loans.ts`
+  dibungkus `try/catch` lokal** (post-COMMIT) biar kegagalan notif ga akan pernah trigger
+  ROLLBACK luar / mis-report loan sukses jadi error. tsc + build re-verified hijau.
+- **Catatan env**: `pnpm dev` (Turbopack) di mesin owner panic `0xc0000142`
+  (gagal spawn child proc utk CSS geist) — kena SEMUA route, bukan kode push. Workaround
+  verifikasi: pakai `pnpm build && pnpm start`. Mungkin perlu clear `.next` / cek resource.
+
+## 📣 Fitur "Ajak Main" / rally — DESAIN FINAL (2026-06-10), BELUM diimplement
+
+Pakai infra Web Push (udah ada `sendPushToPlayer`) buat **ngumpulin grup main poker
+di rumah temen**. Owner-approved, semua keputusan di bawah udah final. Lanjut: tinggal
+bikin rencana implementasi (file/migration/checkpoint) lalu ngoding.
+
+### Prinsip inti (poin owner): ajakan = TUAN RUMAH dulu, baru grup
+Rally ga ada artinya tanpa tuan rumah yang available. Grup baru di-blast notif SETELAH
+venue pasti — hindari "5 orang semangat ikut, taunya rumah tutup".
+
+### Pisahin 2 konsep (KRUSIAL — availability ga boleh sticky)
+- **Kapabilitas `can_host`** (statis): "rumahku bisa dipake". Di-set **self-toggle di
+  settings + admin bisa set** (owner pilih dua-duanya). Ga pernah auto-reset.
+- **Availability** (sementara, per-malam): host dianggap available **cuma kalau ada
+  rally aktif yang dia buka/konfirmasi**. **BUKAN toggle nyangkut.** Tiap rally punya
+  `expires_at` (mis. besok ~jam 5 / pas sesi kelar — mana duluan), dihitung **lazy**
+  (`expires_at > now()` pas dibaca, ga butuh cron). Ganti hari → rally hangus sendiri →
+  host ga lagi keliatan available. Owner khawatir host dikira "available terus" → ini
+  jawabannya. Host juga bisa matiin manual ("Ga jadi").
+
+### Keputusan owner (2026-06-10)
+1. **Bisa beberapa rumah** (multi-host) → perlu picker venue.
+2. **Dua jalur dibangun** (A + B).
+3. **`can_host`**: self-toggle settings + admin set.
+4. **RSVP**: ikut dari awal (owner "bebas, yang terbaik").
+
+### Alur
+- **Jalur A — host buka sendiri:** host pencet "Available malam ini — main di tempat gua"
+  (+jam opsional) → venue langsung pasti → broadcast.
+- **Jalur B — orang lain colek:** anggota pencet "Colek tuan rumah" → SEMUA pemain
+  `can_host` dapet notif "ada yg mau main, available ga?" → host pencet "Available, ayo".
+  Kalau >1 host jawab available → **pengaju milih rumah siapa** (bukan first-confirm).
+- **1 rally aktif** dalam satu waktu (grup ga bingung 2 ajakan barengan).
+- **Setelah venue pasti:** blast push ke semua anggota ("Ngumpul di rumah Budi jam 8 🃏 —
+  ikut?") → RSVP **[Ikut]/[Nanti]** → hitungan live di dashboard (polling 2dtk existing) →
+  tinggal "Mulai sesi" (flow existing). Rally auto-hangus pas sesi kelar / besok pagi.
+- **Edge:** host berubah pikiran → "Ga jadi" → rally batal + grup dikabarin "batal, tuan
+  rumah ga jadi". Ga ada host available → rally ga kebuka (colek = nudge). Ganti hari → bersih.
+
+### Sketsa data
+- `players.can_host` BOOLEAN default false (self-toggle settings + admin). **Migration kecil.**
+- `rallies(id, season_id, host_id, opener_id, note, status, created_at, expires_at)`.
+  `status`: `pending_host` (Jalur B nunggu konfirmasi) / `open` (venue pasti, broadcast) /
+  `cancelled` / `expired` / `done`.
+- `rally_responses(rally_id, player_id, response['ikut'|'nanti'], responded_at)`.
+- Endpoint per-user `/api/rally` (no-cache, pola `/api/loans`) buat banner + hitungan RSVP.
+- Notif rally pakai tag sendiri (`rally-*`); inget `renotify:true` (udah default di sw.js).
+
+### Phasing
+- **Step 1:** schema + `can_host` toggle (settings+admin) + Jalur A + broadcast + RSVP +
+  auto-expire (lazy). Udah kepake penuh.
+- **Step 2:** Jalur B ("colek"→konfirmasi→pilih rumah) di atas schema yang sama.
+
+### Anti-spam
+Cooldown global (mis. ~10 mnt) + maks 1 rally aktif. Server action self-authorize (login +
+anggota musim aktif), pola sama kayak loan.
 
 ## 🔒 Security follow-up — auth gate musim (2026-06-09, branch `dev`) — NEW, belum commit
 

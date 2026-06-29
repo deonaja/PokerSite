@@ -12,7 +12,8 @@
     "test:unit": "tsx --test lib/**/*.test.ts",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
-    "smoke": "node scripts/smoke-prod.mjs"
+    "smoke": "node scripts/smoke-prod.mjs",
+    "gen:vapid": "node scripts/gen-vapid.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -27,13 +28,15 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "tailwind-merge": "^3.6.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.5.0",
     "dotenv": "^17.4.2",
     "eslint": "^9.39.1",
