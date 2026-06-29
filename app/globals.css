@@ -40,6 +40,15 @@
   --input: var(--border-strong);
   --ring: var(--accent-felt);
   --radius: 0.5rem;
+
+  /* Chart palette — keep felt-green as the primary line.
+     Series 2+ are reserved for future multi-series charts; pick muted
+     surfaces, not flashy hues, so charts stay underground-felt. */
+  --chart-1: var(--accent-felt);
+  --chart-2: var(--accent-warn);
+  --chart-3: var(--accent-success);
+  --chart-4: var(--accent-danger);
+  --chart-5: var(--text-secondary);
 }
 
 *,

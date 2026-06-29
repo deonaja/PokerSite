@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Star, ArrowLeft, UserPlus } from 'lucide-react'
-import { rebuy, undoRebuy, joinSession } from '@/lib/actions/session'
+import { rebuy, undoRebuy, joinSession, cancelSession } from '@/lib/actions/session'
 import { usePoll } from '@/lib/usePoll'
 import { useElapsedSeconds } from '@/lib/useElapsed'
 import { formatClock } from '@/lib/duration'
@@ -20,20 +20,24 @@ interface Props {
   buyIn?: number
   startedAt?: string | null
   currentPlayerId?: string | null
+  creatorPlayerId?: string | null
 }
 
 const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
-export default function SessionView({ sessionId, initial, buyIn = 100, startedAt = null, currentPlayerId = null }: Props) {
+export default function SessionView({ sessionId, initial, buyIn = 100, startedAt = null, currentPlayerId = null, creatorPlayerId = null }: Props) {
   const router = useRouter()
   const { players, activeSession } = usePoll(initial)
   const participants: PollParticipant[] = activeSession?.participants ?? []
   const elapsed = useElapsedSeconds(startedAt)
 
+  const isCreator = creatorPlayerId != null && currentPlayerId != null && creatorPlayerId === currentPlayerId
+
   const [isPending, startTransition] = useTransition()
   const [rebuying, setRebuying] = useState<PollParticipant | null>(null)
   const [joinOpen, setJoinOpen] = useState(false)
   const [joinSelectedId, setJoinSelectedId] = useState<string | null>(null)
+  const [cancelOpen, setCancelOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
 
@@ -84,6 +88,16 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
     })
   }
 
+  function confirmCancel() {
+    if (isPending) return
+    startTransition(async () => {
+      const result = await cancelSession({ sessionId })
+      setCancelOpen(false)
+      if ('error' in result) setError(result.error)
+      else router.replace('/')
+    })
+  }
+
   return (
     <>
       {/* Sticky header */}
@@ -97,6 +111,11 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
             {elapsed != null && (
               <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label="Durasi sesi">
                 {formatClock(elapsed)}
+              </span>
+            )}
+            {isCreator && (
+              <span className="text-[0.6875rem] text-[var(--text-tertiary)]">
+                Kamu yang mulai sesi
               </span>
             )}
           </div>
@@ -207,6 +226,19 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
           <UserPlus aria-hidden className="h-4 w-4" />
           Tambah pemain
         </Button>
+
+        {/* Cancel session — only the player who started the session can do this
+            from here (admin still has the same action in /admin). */}
+        {isCreator && (
+          <Button
+            variant="danger"
+            disabled={!isHydrated || isPending}
+            onClick={() => setCancelOpen(true)}
+            className="mt-1 inline-flex min-h-11 items-center justify-center text-[0.8125rem]"
+          >
+            Batalkan sesi
+          </Button>
+        )}
       </div>
 
       {/* Late-join sheet */}
@@ -260,6 +292,25 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
             </div>
           </>
         )}
+      </Sheet>
+
+      {/* Cancel-session confirmation sheet */}
+      <Sheet
+        isOpen={cancelOpen}
+        onClose={() => !isPending && isHydrated && setCancelOpen(false)}
+        title="Batalkan sesi?"
+      >
+        <p className="mb-5 text-sm text-muted-foreground">
+          Yakin batalkan sesi? Buy-in akan dikembalikan ke pemain dan sesi dihapus.
+        </p>
+        <div className="flex gap-3">
+          <Button variant="secondary" fullWidth disabled={!isHydrated || isPending} onClick={() => setCancelOpen(false)}>
+            Tidak
+          </Button>
+          <Button variant="danger" fullWidth disabled={!isHydrated || isPending} onClick={confirmCancel}>
+            {isPending ? 'Loading...' : 'Yakin batalkan'}
+          </Button>
+        </div>
       </Sheet>
 
       {/* Rebuy confirmation sheet */}

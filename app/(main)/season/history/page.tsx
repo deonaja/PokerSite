@@ -8,6 +8,7 @@ interface SeasonRow {
   number: number
   preset_name: string | null
   starting_balance: number
+  buy_in: number
   max_sessions: number
   sessions_played: number
   started_at: string
@@ -34,6 +35,7 @@ async function getData() {
         se.number,
         se.preset_name,
         se.starting_balance,
+        se.buy_in,
         se.max_sessions,
         COUNT(s.id) FILTER (WHERE s.status = 'ended')::int AS sessions_played,
         se.started_at,

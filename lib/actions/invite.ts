@@ -172,7 +172,7 @@ export async function registerPlayer({
     await client.query('COMMIT')
 
     const jar = await cookies()
-    jar.set('auth_session', token, { path: '/', sameSite: 'lax', httpOnly: true, maxAge: 60 * 60 * 24 * 7 })
+    jar.set('auth_session', token, { path: '/', sameSite: 'lax', httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 60 * 60 * 24 * 7 })
     revalidatePath('/')
     revalidatePath('/identity')
     return { success: true, playerId: newPlayer.id, name: trimmedName }
