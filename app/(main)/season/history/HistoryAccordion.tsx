@@ -20,6 +20,7 @@ interface Season {
   number: number
   preset_name: string | null
   starting_balance: number
+  buy_in: number
   max_sessions: number
   sessions_played: number
   started_at: string
@@ -132,7 +133,7 @@ function SeasonCard({ season }: { season: Season }) {
           {/* Season summary */}
           <div className="mt-2.5 flex gap-4 pt-1.5">
             <span className="text-[0.6875rem] text-[var(--text-tertiary)]">
-              Start: {season.starting_balance} · Buy-in: {season.starting_balance / 2}
+              Start: {season.starting_balance} · Buy-in: {season.buy_in}
             </span>
           </div>
         </div>
