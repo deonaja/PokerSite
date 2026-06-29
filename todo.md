@@ -1,8 +1,8 @@
 # Poker Chip Tracker — Progress & TODO
 
-Last updated: 2026-06-12 — **Repo dibuka untuk kontribusi eksternal**: branch protection `main` aktif (require PR before merging, admin bypass ON — owner masih bisa push langsung; diverifikasi via test push `c777e92`..`32395f2`, net diff nol). Catatan: jangan edit file UTF-8 (README/todo) pakai `Get-Content`/`Set-Content` PS 5.1 — ngerusak emoji/em-dash (kejadian `ec0eb83`, di-restore `32395f2`). TODO opsional: CONTRIBUTING.md + PR template. Sebelumnya (2026-06-10): **Web Push notif committed ke `dev`** (`a9266ef` + fix renotify/feedback `4575670`, auto-pushed origin/dev; belum merge `main`/deploy). **Fitur "Ajak Main"/rally: desain FINAL, belum diimplement** (lihat section 📣 di bawah). Sebelumnya: v0.10.0 di prod (`d93d6aa`) + security fix `cf64b61` udah ke-merge.
+Last updated: 2026-06-29 — **🚀 Web Push SHIPPED ke prod (v0.11.0).** Merge `26d165a` (`dev→main`) auto-deploy Vercel. Migrasi `011_push_subscriptions` udah di-apply ke prod DB **sebelum** merge. VAPID env (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`) ke-set di Production scope. Changelog bumped `5fd7690`. Sisa: tes delivery di HP asli (perlu iOS Add-to-Home-Screen / Android grant permission). Sebelumnya (2026-06-12): branch protection `main` aktif (admin bypass ON — verified via test push `c777e92`..`32395f2`, net diff nol). Catatan: jangan edit file UTF-8 pakai PS 5.1 `Set-Content` — ngerusak emoji (kejadian `ec0eb83`). **Fitur "Ajak Main"/rally: desain FINAL, belum diimplement** (lihat section 📣 di bawah).
 
-## 🔔 Web Push notification (2026-06-09, branch `dev`) — COMMITTED `a9266ef`, belum merge/deploy
+## 🔔 Web Push notification — ✅ SHIPPED PROD 2026-06-29 (v0.11.0)
 
 Push notification beneran (nongol di HP walau app tutup), owner-pilih Web Push.
 Bangun infra generic + wire ke LOAN sebagai event pertama. **Butuh migration (011)
