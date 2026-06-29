@@ -12,6 +12,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.11.0',
+    date: '2026-06-29',
+    changes: [
+      'Notifikasi HP udah jalan cuy! Buka menu akun → "Notifikasi" → Aktifkan. Sekarang dapet notif pas ada yang minjem ke kamu, pinjaman kamu disetujui/ditolak, atau dilunasin — walau app-nya lagi ditutup.',
+      'iPhone: install dulu ke layar utama (lewat menu Bagikan), baru bisa aktifin notif. Android/desktop tinggal aktifin langsung.',
+      'Ganti identitas/logout sekarang otomatis matiin notif di device itu — jadi orang berikutnya yang pake HP lo gak bakal kebanjiran notif lo.',
+    ],
+  },
+  {
     version: '0.10.0',
     date: '2026-06-09',
     changes: [
