@@ -12,6 +12,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.13.0',
+    date: '2026-06-29',
+    changes: [
+      'Dealer netral (cuma bagi kartu) sekarang dapet gaji lebih gede: 1× chip di meja + 1× ke saldo (cadangan) = 2× total. Yang ikut main cuma dapet 1× chip doang. Logikanya: yang kerja yang dibayar — biar ada yang mau jadi dealer netral cuy.',
+      'Phase 2 sekarang dijamin jalan full sesuai target — kalau Phase 1 molor lebih dari estimasi, Phase 2 nggak dipotong (sebelumnya total sesi fixed jadi P2 sering kepotong).',
+      'Notif pindah Phase 2 sekarang langsung muncul pas sesi terakhir P1 selesai (sebelumnya muncul pas mau mulai sesi P2 pertama).',
+      'Fix tampilan setup di Phase 2: badge cooldown udah ga muncul (cooldown cuma di P1), deskripsi dealer ganti ke info rake.',
+    ],
+  },
+  {
     version: '0.12.0',
     date: '2026-06-29',
     changes: [
