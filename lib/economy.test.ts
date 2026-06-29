@@ -34,13 +34,14 @@ test('non-dealer deduction is capped at balance (never negative)', () => {
   assert.equal(derive({ isDealer: false, balance: 0 }).deduction, 0)
 })
 
-test('Phase 1 playing free dealer: 0 ante + 2× split salary (table + bankroll)', () => {
+test('Phase 1 playing free dealer: 0 ante + flat 1× salary (table chips only, no bankroll)', () => {
+  // Post-flip 2026-06-29: playing dealer no longer gets the bankroll half.
   assert.deepEqual(derive({ isDealer: true, dealerPlays: true, dealerFreeEntry: true }), {
     deduction: 0,
     action: 'buy_in_dealer_free',
     noGaji: false,
     salaryChips: true,
-    salaryBankroll: true,
+    salaryBankroll: false,
   })
 })
 
@@ -48,7 +49,7 @@ test('Phase 1 playing free dealer stays free even when broke', () => {
   const t = derive({ isDealer: true, dealerPlays: true, dealerFreeEntry: true, balance: 0 })
   assert.equal(t.deduction, 0)
   assert.equal(t.salaryChips, true)
-  assert.equal(t.salaryBankroll, true)
+  assert.equal(t.salaryBankroll, false)
 })
 
 test('Phase 2 / cooldown playing dealer who can afford pays the buy-in', () => {
@@ -71,13 +72,14 @@ test('Phase 2 / cooldown playing dealer who is broke deals only (no ante, no sal
   })
 })
 
-test('Phase 1 neutral dealer: flat 1× salary as table chips, no bankroll half, no play', () => {
+test('Phase 1 neutral dealer: 2× split salary (table + bankroll), no play', () => {
+  // Post-flip 2026-06-29: neutral dealer now gets the 2× split.
   assert.deepEqual(derive({ isDealer: true, dealerPlays: false, dealerFreeEntry: true }), {
     deduction: 0,
     action: 'buy_in_dealer_free',
     noGaji: true,
     salaryChips: true,
-    salaryBankroll: false,
+    salaryBankroll: true,
   })
 })
 
@@ -91,13 +93,17 @@ test('Phase 2 neutral dealer: deals only, no salary (collects rake in play)', ()
   })
 })
 
-test('neutral dealer never sits in (always noGaji) and never gets the bankroll half', () => {
+test('neutral dealer always sits out (noGaji) and never pays ante; playing dealer never gets bankroll bonus', () => {
+  // Post-flip 2026-06-29: the bankroll bonus belongs to the NEUTRAL free dealer.
+  // PLAYING dealers never get it (regardless of free entry / balance).
   for (const dealerFreeEntry of [true, false]) {
     for (const balance of [0, 50, 500]) {
-      const t = derive({ isDealer: true, dealerPlays: false, dealerFreeEntry, balance })
-      assert.equal(t.noGaji, true, `neutral noGaji (free=${dealerFreeEntry}, bal=${balance})`)
-      assert.equal(t.salaryBankroll, false, `neutral no bankroll (free=${dealerFreeEntry}, bal=${balance})`)
-      assert.equal(t.deduction, 0, `neutral never pays ante (free=${dealerFreeEntry}, bal=${balance})`)
+      const neutral = derive({ isDealer: true, dealerPlays: false, dealerFreeEntry, balance })
+      assert.equal(neutral.noGaji, true, `neutral noGaji (free=${dealerFreeEntry}, bal=${balance})`)
+      assert.equal(neutral.deduction, 0, `neutral never pays ante (free=${dealerFreeEntry}, bal=${balance})`)
+
+      const playing = derive({ isDealer: true, dealerPlays: true, dealerFreeEntry, balance })
+      assert.equal(playing.salaryBankroll, false, `playing no bankroll (free=${dealerFreeEntry}, bal=${balance})`)
     }
   }
 })

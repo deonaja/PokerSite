@@ -62,6 +62,13 @@ export interface Season {
   invite_code_uses: number
   started_at: string
   ended_at: string | null
+  // Migration 012b: per-phase session targets. Captured at wizard create.
+  // Legacy seasons (pre-012b) have NULL; consumers must fall back to max_sessions.
+  p1_target_sessions: number | null
+  p2_target_sessions: number | null
+  // Sessions actually played when the bootstrap → steady flip happened.
+  // NULL until the flip (or forever, for legacy seasons that never had targets).
+  p1_sessions_actual: number | null
 }
 
 export type LoanStatus =

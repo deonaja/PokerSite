@@ -60,18 +60,37 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
   const rest = ranked.slice(3)
 
   // Progress toward the next phase.
-  //  - Phase 2 (steady): real session count → max_sessions (exact).
+  //  - Phase 2 (steady): real session count → max_sessions (exact). For new seasons
+  //    (migration 012b) the P2 progress uses p1_sessions_actual as the offset so
+  //    P2 = M / p2_target is shown directly. Legacy seasons fall back to the
+  //    raw sessions_played / max_sessions display.
   //  - Phase 1 (bootstrap): transition is pool-based (SUM(balance) ≥ max_pool),
   //    so show the pool bar DIRECTLY (pool / max_pool) instead of estimating
   //    sessions — honest and immune to the cooldown/no-injection undershoot.
   let phaseProgress: { pct: number; label: string } | null = null
   if (season) {
     if (season.current_phase === 'steady') {
-      const left = Math.max(0, season.max_sessions - sessionsPlayed)
-      const pct = season.max_sessions > 0
-        ? Math.min(100, Math.round((sessionsPlayed / season.max_sessions) * 100))
-        : 0
-      phaseProgress = { pct, label: left > 0 ? `${left} sesi lagi ke akhir musim` : 'Musim siap diakhiri' }
+      const p1Actual = season.p1_sessions_actual
+      const p2Target = season.p2_target_sessions
+      if (p1Actual != null && p2Target != null) {
+        // New-schema path: explicit P2 progress.
+        const p2Done = Math.max(0, sessionsPlayed - p1Actual)
+        const left = Math.max(0, p2Target - p2Done)
+        const pct = p2Target > 0 ? Math.min(100, Math.round((p2Done / p2Target) * 100)) : 0
+        phaseProgress = {
+          pct,
+          label: left > 0
+            ? `Sesi ${p2Done} / ${p2Target} (P2) · ${left} lagi ke akhir musim`
+            : 'Musim siap diakhiri',
+        }
+      } else {
+        // Legacy fallback: pre-012b seasons.
+        const left = Math.max(0, season.max_sessions - sessionsPlayed)
+        const pct = season.max_sessions > 0
+          ? Math.min(100, Math.round((sessionsPlayed / season.max_sessions) * 100))
+          : 0
+        phaseProgress = { pct, label: left > 0 ? `${left} sesi lagi ke akhir musim` : 'Musim siap diakhiri' }
+      }
     } else {
       const pool = players.reduce((s, p) => s + p.balance, 0)
       const pct = season.max_pool > 0
