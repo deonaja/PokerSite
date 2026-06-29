@@ -15,6 +15,7 @@ export interface Session {
   id: string
   dealer_id: string
   status: 'active' | 'ended'
+  creator_player_id: string | null
   started_at: string
   ended_at: string | null
 }
