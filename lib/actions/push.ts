@@ -1,7 +1,7 @@
 'use server'
 
 import { sql } from '@/lib/db'
-import { getAuthenticatedPlayerId } from '@/lib/auth-server'
+import { getAuthenticatedPlayerId, isAdmin } from '@/lib/auth-server'
 import { sendPushToPlayer } from '@/lib/push'
 import type { PushSubscriptionInput } from '@/lib/types'
 
@@ -49,10 +49,15 @@ export async function deletePushSubscription({ endpoint }: { endpoint: string })
   }
 }
 
-/** Send a test push to the logged-in player's own devices, reporting honestly. */
+/**
+ * Send a test push to the logged-in player's own devices, reporting honestly.
+ * Admin-only — server actions are independently invocable (their IDs ship in
+ * the public client bundle), so UI gating alone is not enough.
+ */
 export async function sendTestPush(): Promise<Result> {
   const me = await getAuthenticatedPlayerId()
   if (!me) return { error: 'Belum login' }
+  if (!(await isAdmin())) return { error: 'Akses ditolak' }
   const res = await sendPushToPlayer(me, {
     title: 'PokerAja',
     body: 'Notif tes berhasil 🎉 — kamu bakal dapet notif kayak gini.',
