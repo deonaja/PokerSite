@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
 import { getAuthenticatedPlayerId, isAdmin } from '@/lib/auth-server'
 import { deriveParticipantTreatment } from '@/lib/economy'
+import { takeSnapshot } from '@/lib/rollback'
 
 export async function rebuy({
   sessionId,
@@ -392,6 +393,7 @@ export async function endSession({
 
     // Approach C: dealer's stack already includes any rake they collected during play.
     // No special handling — everyone gets `balance += final_stack`.
+    let lastEndLogId: string | null = null
     for (const { playerId, finalStack } of stacks) {
       const player = players.find((p) => p.id === playerId)
       if (!player) { await client.query('ROLLBACK'); return { error: 'Pemain tidak ditemukan' } }
@@ -403,10 +405,11 @@ export async function endSession({
       )
       if (!participantUpdate.rowCount) { await client.query('ROLLBACK'); return { error: 'Gagal simpan stack akhir' } }
 
-      await client.query(
+      const { rows: [endLog] } = await client.query<{ id: string }>(
         `INSERT INTO edit_log
            (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
-         VALUES ($1, $2, $3, 'session_end', $4, $5, $6)`,
+         VALUES ($1, $2, $3, 'session_end', $4, $5, $6)
+         RETURNING id`,
         [
           sessionId,
           playerId,
@@ -416,6 +419,7 @@ export async function endSession({
           JSON.stringify({ final_stack: finalStack }),
         ]
       )
+      lastEndLogId = endLog.id
     }
 
     const ended = await client.query(
@@ -468,6 +472,12 @@ export async function endSession({
         )
         phaseFlipped = true
       }
+    }
+
+    // Snapshot AFTER the phase-flip update so the captured season fields reflect
+    // the post-flip state. Attach to the last per-player session_end log row.
+    if (lastEndLogId) {
+      await takeSnapshot(client, lastEndLogId)
     }
 
     await client.query('COMMIT')
@@ -682,6 +692,20 @@ export async function startSession({
         [sessionId, dealerId]
       )
     }
+
+    // Append a session_start audit row and snapshot the world as of right after
+    // start. This is what rollback restores TO. Kept null-player on purpose — it
+    // is a session-level event, not a per-player one (per-player buy_in rows
+    // already exist above).
+    const { rows: [startLog] } = await client.query<{ id: string }>(
+      `INSERT INTO edit_log (session_id, actor_player_id, action, metadata)
+       VALUES ($1, $2, 'session_start', $3)
+       RETURNING id`,
+      [sessionId, actorPlayerId, JSON.stringify({
+        dealer_id: dealerId, player_ids: playerIds, dealer_plays: dealerPlays,
+      })]
+    )
+    await takeSnapshot(client, startLog.id)
 
     await client.query('COMMIT')
     revalidatePath('/')
