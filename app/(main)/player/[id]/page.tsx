@@ -39,6 +39,7 @@ async function getData(id: string) {
     sessionDeltaRows,
     chartRows,
     activeSeasonRows,
+    activeSeasonSessionRows,
   ] = await Promise.all([
     sql`SELECT id, name, balance FROM players WHERE id = ${id}` as unknown as Promise<PlayerRow[]>,
     sql`
@@ -101,7 +102,28 @@ async function getData(id: string) {
         AND s.ended_at IS NOT NULL
       ORDER BY s.ended_at ASC, el.created_at ASC
     ` as unknown as Promise<{ season_id: string | null; balance: number; ended_at: string }[]>,
-    sql`SELECT id FROM seasons WHERE status = 'active' LIMIT 1` as unknown as Promise<{ id: string }[]>,
+    sql`SELECT id, starting_balance FROM seasons WHERE status = 'active' LIMIT 1` as unknown as Promise<{ id: string; starting_balance: number }[]>,
+    // ALL ended sessions in the active season, with this player's session_end
+    // balance_after if they participated. Sessions the player skipped come
+    // through as balance_after = null and the JS layer carries forward the
+    // previous balance (stagnant line in the chart, not a gap).
+    sql`
+      SELECT
+        s.id,
+        s.ended_at,
+        (
+          SELECT el.balance_after FROM edit_log el
+          WHERE el.session_id = s.id
+            AND el.player_id = ${id}
+            AND el.action = 'session_end'
+          LIMIT 1
+        ) AS balance_after
+      FROM sessions s
+      WHERE s.status = 'ended'
+        AND s.ended_at IS NOT NULL
+        AND s.season_id = (SELECT id FROM seasons WHERE status = 'active' LIMIT 1)
+      ORDER BY s.ended_at ASC
+    ` as unknown as Promise<{ id: string; ended_at: string; balance_after: number | null }[]>,
   ])
 
   const player = playerRows[0] ?? null
@@ -113,20 +135,34 @@ async function getData(id: string) {
     earnedByCategory.set(a.achievement_key, set)
   }
   const pt = playtimeRows[0] ?? { total_seconds: 0, session_count: 0 }
-  const activeSeasonId = activeSeasonRows[0]?.id ?? null
+  const activeSeason = activeSeasonRows[0] ?? null
+  const activeSeasonId = activeSeason?.id ?? null
 
-  // Lifetime time series — one point per ended session, indexed 1..N.
+  // Lifetime time series — one point per ended session the player participated
+  // in, indexed 1..N. Skipped sessions across other seasons NOT included
+  // (starting_balance resets per season, so a "lifetime stagnant" line would
+  // look misleading).
   const lifetimeData = chartRows.map((row, i) => ({
     session: i + 1,
     balance: Number(row.balance),
   }))
-  // Active-season slice — same points but only sessions in the live season,
-  // re-indexed from 1 so the x-axis reads "session 1, 2, 3..." within the season.
-  const seasonData = activeSeasonId
-    ? chartRows
-        .filter((row) => row.season_id === activeSeasonId)
-        .map((row, i) => ({ session: i + 1, balance: Number(row.balance) }))
-    : []
+  // Active-season chart — starts at session 0 with the season's starting_balance
+  // (pre-first-session), then ONE POINT PER ENDED SESSION IN THE SEASON whether
+  // the player participated or not. Sessions the player skipped carry forward
+  // the previous balance (stagnant line, not a gap). Owner: "kalau ga ikut sesi 3
+  // maka grafik 2 ke 3 itu stagnan".
+  const seasonData: { session: number; balance: number }[] = []
+  if (activeSeason) {
+    const startingBalance = Number(activeSeason.starting_balance)
+    let runningBalance = startingBalance
+    seasonData.push({ session: 0, balance: runningBalance })
+    for (const row of activeSeasonSessionRows) {
+      if (row.balance_after !== null) {
+        runningBalance = Number(row.balance_after)
+      }
+      seasonData.push({ session: seasonData.length, balance: runningBalance })
+    }
+  }
 
   return {
     player,
