@@ -39,7 +39,7 @@ interface ResultRow {
 }
 
 async function getData(id: string) {
-  const [playerRows, resultRows, achRows, playtimeRows] = await Promise.all([
+  const [playerRows, resultRows, achRows, playtimeRows, sessionDeltaRows] = await Promise.all([
     sql`SELECT id, name, balance FROM players WHERE id = ${id}` as unknown as Promise<PlayerRow[]>,
     sql`
       SELECT
@@ -69,6 +69,25 @@ async function getData(id: string) {
       JOIN session_participants sp ON sp.session_id = s.id
       WHERE sp.player_id = ${id} AND s.status = 'ended' AND s.ended_at IS NOT NULL
     ` as unknown as Promise<{ total_seconds: number; session_count: number }[]>,
+    // Per-session net delta for this player across all ended sessions, oldest first.
+    // Delta is derived from edit_log: SUM(balance_after - balance_before) over every
+    // log entry for that (session_id, player_id). That naturally captures buy_in (−),
+    // rebuy (−), rebuy_undo (+), dealer_salary_balance (+), session_end (+final_stack),
+    // and dealer_salary_chips (0; chips appear inside final_stack).
+    sql`
+      SELECT
+        s.id AS session_id,
+        s.season_id,
+        s.ended_at,
+        COALESCE(SUM(el.balance_after - el.balance_before), 0)::int AS delta
+      FROM sessions s
+      JOIN session_participants sp ON sp.session_id = s.id AND sp.player_id = ${id}
+      LEFT JOIN edit_log el ON el.session_id = s.id AND el.player_id = ${id}
+        AND el.balance_before IS NOT NULL AND el.balance_after IS NOT NULL
+      WHERE s.status = 'ended' AND s.ended_at IS NOT NULL
+      GROUP BY s.id, s.season_id, s.ended_at
+      ORDER BY s.ended_at ASC
+    ` as unknown as Promise<{ session_id: string; season_id: string | null; ended_at: string; delta: number }[]>,
   ])
 
   const player = playerRows[0] ?? null
@@ -80,7 +99,35 @@ async function getData(id: string) {
     earnedKeys,
     totalPlaySeconds: Number(pt.total_seconds),
     playedSessionCount: Number(pt.session_count),
+    sessionDeltas: sessionDeltaRows,
   }
+}
+
+/**
+ * Win-streak math: a "win" is a session where the player's net delta > 0.
+ * Ties (delta = 0) and losses both break the streak — conservative on owner's call.
+ *
+ * - currentStreak: count consecutive wins from the LATEST session backwards.
+ *   Resets to 0 the moment we hit a non-win.
+ * - longestStreak: max consecutive wins anywhere in the player's history.
+ */
+function computeStreaks(deltas: number[]): { current: number; longest: number } {
+  let current = 0
+  for (let i = deltas.length - 1; i >= 0; i--) {
+    if (deltas[i] > 0) current++
+    else break
+  }
+  let longest = 0
+  let run = 0
+  for (const d of deltas) {
+    if (d > 0) {
+      run++
+      if (run > longest) longest = run
+    } else {
+      run = 0
+    }
+  }
+  return { current, longest }
 }
 
 function formatDate(iso: string) {
@@ -93,7 +140,7 @@ function initialOf(name: string) {
 
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { player, results, earnedKeys, totalPlaySeconds, playedSessionCount } = await getData(id)
+  const { player, results, earnedKeys, totalPlaySeconds, playedSessionCount, sessionDeltas } = await getData(id)
   if (!player) notFound()
 
   const totalSeasons = results.length
@@ -103,6 +150,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const totalWon = results.reduce((s, r) => s + r.total_won, 0)
   const totalLost = results.reduce((s, r) => s + r.total_lost, 0)
   const avgPlaySeconds = playedSessionCount > 0 ? Math.round(totalPlaySeconds / playedSessionCount) : 0
+  const streaks = computeStreaks(sessionDeltas.map((d) => d.delta))
 
   return (
     <div className="pb-8">
@@ -148,6 +196,16 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 <>
                   <StatBox label="Total waktu main" value={formatDurationShort(totalPlaySeconds)} />
                   <StatBox label="Rata-rata/sesi" value={formatDurationShort(avgPlaySeconds)} />
+                  <StatBox
+                    label="Streak menang"
+                    value={streaks.current > 0 ? `${streaks.current} sesi` : '—'}
+                    mono
+                  />
+                  <StatBox
+                    label="Streak terpanjang"
+                    value={streaks.longest > 0 ? `${streaks.longest} sesi` : '—'}
+                    mono
+                  />
                 </>
               )}
             </div>
