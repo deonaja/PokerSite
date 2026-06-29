@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
 import { getAuthenticatedPlayerId, isAdmin } from '@/lib/auth-server'
 import { hashPin, isValidPin, verifyPin } from '@/lib/auth'
+import { takeSnapshot } from '@/lib/rollback'
 
 export async function changePin({
   oldPin,
@@ -131,11 +132,13 @@ export async function editBalance({
     if (!player) { await client.query('ROLLBACK'); return { error: 'Pemain tidak ditemukan' } }
 
     await client.query(`UPDATE players SET balance = $1 WHERE id = $2`, [newBalance, playerId])
-    await client.query(
+    const { rows: [logRow] } = await client.query<{ id: string }>(
       `INSERT INTO edit_log (player_id, actor_player_id, action, balance_before, balance_after, metadata)
-       VALUES ($1, $2, 'admin_balance_edit', $3, $4, $5)`,
+       VALUES ($1, $2, 'admin_balance_edit', $3, $4, $5)
+       RETURNING id`,
       [playerId, actorPlayerId, player.balance, newBalance, JSON.stringify({ reason: reason.trim() })]
     )
+    await takeSnapshot(client, logRow.id)
 
     await client.query('COMMIT')
     revalidatePath('/')

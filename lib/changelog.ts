@@ -12,6 +12,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.14.0',
+    date: '2026-06-29',
+    changes: [
+      'Achievement upgrade GEDE: tiap kategori sekarang ada 3 tingkat (bintang 1/2/3) — Bandar, Juara, Podium, Veteran, Sultan, Untung. Total 18 tingkat lifetime dengan ikon custom (bukan emoji default).',
+      'Buka /player/[id] buat liat progress lo per kategori. Yang udah ke-unlock full color, yang belum abu-abu sama ada hint "X/Y" buat tingkat selanjutnya.',
+      'Admin: fitur ROLLBACK is here cuy. Bisa balikin state DB ke titik mana pun di log (cuma session start/end, season start, admin edit balance) — tipe "ROLLBACK" 3x buat konfirmasi. Yang udah lewat season end ga bisa di-rollback (immutable).',
+    ],
+  },
+  {
     version: '0.13.0',
     date: '2026-06-29',
     changes: [

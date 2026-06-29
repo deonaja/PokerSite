@@ -5,7 +5,13 @@ import { revalidatePath } from 'next/cache'
 import { createDbClient } from '@/lib/db'
 import { getAuthenticatedPlayerId, isAdmin } from '@/lib/auth-server'
 import { hashPin, generateInviteCode } from '@/lib/auth'
-import { evaluateAchievements, type SeasonResultRow } from '@/lib/achievements'
+import {
+  ACHIEVEMENTS,
+  computeLifetimeCounts,
+  getEarnedTiers,
+  type SeasonResultRow,
+} from '@/lib/achievements'
+import { takeSnapshot } from '@/lib/rollback'
 
 export interface CreateSeasonInput {
   playerNames: string[]
@@ -116,18 +122,28 @@ export async function createSeason(
        p1TargetSessions, p2TargetSessions, rakeRate, creatorId, generateInviteCode()]
     )
 
+    let lastSeasonStartLogId: string | null = null
     for (const playerId of playerIds) {
-      await client.query(
+      const { rows: [logRow] } = await client.query<{ id: string }>(
         `INSERT INTO edit_log (player_id, actor_player_id, action, balance_before, balance_after, metadata)
-         VALUES ($1, $2, 'season_start', 0, $3, $4)`,
+         VALUES ($1, $2, 'season_start', 0, $3, $4)
+         RETURNING id`,
         [playerId, creatorId, startingBalance, JSON.stringify({ season_id: season.id, season_number: seasonNumber })]
       )
+      lastSeasonStartLogId = logRow.id
       // Membership: every chosen player joins the season's roster.
       await client.query(
         `INSERT INTO season_players (season_id, player_id) VALUES ($1, $2)
          ON CONFLICT DO NOTHING`,
         [season.id, playerId]
       )
+    }
+
+    // Snapshot keyed to the last per-player season_start row — captures the
+    // initial state of the freshly created season (balances at starting_balance,
+    // no sessions yet). Rollback restores TO this point.
+    if (lastSeasonStartLogId) {
+      await takeSnapshot(client, lastSeasonStartLogId)
     }
 
     await client.query('COMMIT')
@@ -303,9 +319,14 @@ export async function endSeason(seasonId: string): Promise<{ success: true } | {
       )
     }
 
-    // Award achievements from each player's full season-results history
-    // (incl. the rows just written for this season). Idempotent via the
-    // (player_id, achievement_key) unique constraint.
+    // Award tiered achievements from each player's full lifetime stats
+    // (incl. the season_results row just written for this season). Idempotent
+    // via the (player_id, achievement_key, tier) unique constraint — earlier
+    // tiers crossed in past seasons stay; newly crossed tiers get inserted.
+    //
+    // NB: ACHIEVEMENTS.metric values (dealer_count, rank_1_count, ...) are
+    // referenced via getEarnedTiers; only the categories listed there are
+    // emitted, so ignored ACHIEVEMENTS rows can never sneak in.
     const { rows: allResults } = await client.query<SeasonResultRow & { player_id: string }>(
       `SELECT sr.player_id, sr.rank, sr.final_balance, sr.sessions_played,
               sr.times_dealer, sr.total_won, sr.total_lost, se.starting_balance
@@ -318,13 +339,18 @@ export async function endSeason(seasonId: string): Promise<{ success: true } | {
       list.push(r)
       resultsByPlayer.set(r.player_id, list)
     }
+    // Reference ACHIEVEMENTS to silence the "unused import" lint while keeping
+    // the dependency obvious (getEarnedTiers reads from it internally).
+    void ACHIEVEMENTS
     for (const [playerId, rows] of resultsByPlayer) {
-      for (const key of evaluateAchievements(rows)) {
+      const counts = computeLifetimeCounts(rows)
+      const earnedTiers = getEarnedTiers(counts)
+      for (const { categoryId, tier } of earnedTiers) {
         await client.query(
-          `INSERT INTO player_achievements (player_id, achievement_key, season_id)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (player_id, achievement_key) DO NOTHING`,
-          [playerId, key, seasonId]
+          `INSERT INTO player_achievements (player_id, achievement_key, tier, season_id)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (player_id, achievement_key, tier) DO NOTHING`,
+          [playerId, categoryId, tier, seasonId]
         )
       }
     }

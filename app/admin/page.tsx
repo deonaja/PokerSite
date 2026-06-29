@@ -7,10 +7,12 @@ import ForceEndSection from './ForceEndSection'
 import ResetPinForm from './ResetPinForm'
 import DebugSection from './DebugSection'
 import InviteCodeSection from './InviteCodeSection'
+import RollbackButton from '@/components/admin/RollbackButton'
 import { MAX_INVITE_CODE_USES } from '@/lib/auth'
 import { Download, ArrowLeft, ArrowRight } from 'lucide-react'
 
 const PAGE_SIZE = 20
+const ROLLBACK_PAGE_SIZE = 10
 
 const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
@@ -38,6 +40,8 @@ const ACTION_COLORS: Record<string, string> = {
   loan_repay: '#4a9ab5',
   loan_settle: '#4a9ab5',
   loan_writeoff: 'var(--accent-danger)',
+  session_start: '#0ea5e9',
+  admin_rollback: '#ef4444',
 }
 
 const ACTION_TYPES = [
@@ -45,17 +49,19 @@ const ACTION_TYPES = [
   'buy_in', 'buy_in_dealer_free', 'buy_in_dealer_phase2', 'buy_in_no_gaji_dealer',
   'dealer_salary_chips', 'dealer_salary_balance',
   'rebuy', 'rebuy_undo',
-  'session_end',
+  'session_start', 'session_end',
   'season_start', 'season_join', 'season_end',
   'pin_change',
   'admin_balance_edit', 'admin_pin_reset', 'admin_player_add', 'admin_session_force_end',
   'admin_session_cancel',
+  'admin_rollback',
   'loan_out', 'loan_in', 'loan_repay', 'loan_settle', 'loan_writeoff',
 ]
 
 interface SearchParams {
   logPage?: string
   logAction?: string
+  rbPage?: string
 }
 
 export default async function AdminPage({
@@ -70,8 +76,10 @@ export default async function AdminPage({
   const rawAction = params.logAction ?? 'all'
   const logAction = ACTION_TYPES.includes(rawAction) && rawAction !== 'all' ? rawAction : null
   const offset = (rawPage - 1) * PAGE_SIZE
+  const rawRbPage = Math.max(1, parseInt(params.rbPage ?? '1', 10))
+  const rbOffset = (rawRbPage - 1) * ROLLBACK_PAGE_SIZE
 
-  const [players, sessions, season, logs, logCount] = await Promise.all([
+  const [players, sessions, season, logs, logCount, snapshots, snapshotCount] = await Promise.all([
     sql`SELECT id, name, balance FROM players ORDER BY name ASC`,
     sql`SELECT id FROM sessions WHERE status = 'active' LIMIT 1`,
     sql`SELECT starting_balance, invite_code, invite_code_uses FROM seasons WHERE status = 'active' LIMIT 1`,
@@ -96,6 +104,17 @@ export default async function AdminPage({
     logAction
       ? sql`SELECT COUNT(*)::int AS cnt FROM edit_log WHERE action = ${logAction}`
       : sql`SELECT COUNT(*)::int AS cnt FROM edit_log`,
+    sql`
+      SELECT s.id AS snapshot_id, s.created_at,
+             e.id AS edit_log_id, e.action, e.session_id, e.metadata,
+             p.name AS player_name
+      FROM edit_log_snapshots s
+      JOIN edit_log e ON e.id = s.edit_log_id
+      LEFT JOIN players p ON p.id = e.player_id
+      ORDER BY s.created_at DESC
+      LIMIT ${ROLLBACK_PAGE_SIZE} OFFSET ${rbOffset}
+    `,
+    sql`SELECT COUNT(*)::int AS cnt FROM edit_log_snapshots`,
   ])
 
   const playerList = players as unknown as Player[]
@@ -105,6 +124,19 @@ export default async function AdminPage({
   const totalLogs = (logCount as unknown as { cnt: number }[])[0]?.cnt ?? 0
   const totalPages = Math.max(1, Math.ceil(totalLogs / PAGE_SIZE))
   const logPage = Math.min(rawPage, totalPages)
+
+  const snapshotRows = snapshots as unknown as Array<{
+    snapshot_id: string
+    created_at: string
+    edit_log_id: string
+    action: string
+    session_id: string | null
+    metadata: Record<string, unknown> | null
+    player_name: string | null
+  }>
+  const totalSnapshots = (snapshotCount as unknown as { cnt: number }[])[0]?.cnt ?? 0
+  const rbTotalPages = Math.max(1, Math.ceil(totalSnapshots / ROLLBACK_PAGE_SIZE))
+  const rbPage = Math.min(rawRbPage, rbTotalPages)
 
   const baseUrl = '/admin'
 
@@ -175,6 +207,56 @@ export default async function AdminPage({
               <Download className="h-3.5 w-3.5" /> {x.label}
             </a>
           ))}
+        </div>
+      </section>
+
+      {/* Rollback */}
+      <section className="flex flex-col gap-2.5">
+        <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">ROLLBACK</p>
+        <p className="text-[0.6875rem] text-[var(--text-tertiary)]">
+          Snapshot per aksi penting (start/end sesi, mulai musim, edit balance). Klik <span className="font-mono">⋮</span> untuk kembali ke titik itu.
+        </p>
+        <div className="overflow-hidden rounded-lg border border-border">
+          {snapshotRows.length === 0 ? (
+            <p className="p-4 text-sm text-[var(--text-tertiary)]">Belum ada snapshot.</p>
+          ) : (
+            snapshotRows.map((r, i) => {
+              const labelPlayer = r.player_name ?? '—'
+              const label = `${r.action} — ${labelPlayer}`
+              return (
+                <div
+                  key={r.snapshot_id}
+                  className={'flex items-start gap-2 bg-card px-3 py-2.5 ' + (i < snapshotRows.length - 1 ? 'border-b border-border' : '')}
+                >
+                  <div className="min-w-0 flex-1">
+                    <span
+                      className="inline-block rounded-sm px-1.5 py-px text-[0.6875rem] font-semibold text-foreground"
+                      style={{ background: ACTION_COLORS[r.action] ?? 'var(--bg-elevated)' }}
+                    >
+                      {r.action}
+                    </span>
+                    <div className="mt-1 text-[0.8125rem] text-foreground truncate">{labelPlayer}</div>
+                    <div className="mt-0.5 text-[0.625rem] text-[var(--text-tertiary)]">
+                      {new Date(r.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
+                    </div>
+                  </div>
+                  <RollbackButton snapshotId={r.snapshot_id} label={label} timestamp={r.created_at} />
+                </div>
+              )
+            })
+          )}
+        </div>
+        {/* Rollback pagination */}
+        <div className="flex items-center justify-between text-[0.8125rem]">
+          <span className="text-[var(--text-tertiary)]">Hal {rbPage}/{rbTotalPages}</span>
+          <div className="flex gap-2">
+            {rbPage > 1 && (
+              <a href={`${baseUrl}?rbPage=${rbPage - 1}`} className="inline-flex items-center gap-1 rounded-sm border border-border px-2 py-1 text-muted-foreground no-underline"><ArrowLeft className="h-3.5 w-3.5" />Prev</a>
+            )}
+            {rbPage < rbTotalPages && (
+              <a href={`${baseUrl}?rbPage=${rbPage + 1}`} className="inline-flex items-center gap-1 rounded-sm border border-border px-2 py-1 text-muted-foreground no-underline">Next<ArrowRight className="h-3.5 w-3.5" /></a>
+            )}
+          </div>
         </div>
       </section>
 

@@ -160,6 +160,27 @@ export interface LoansResponse {
   myLend: MyLendLoan | null // my active loan as lender
 }
 
+// Tiered achievement row. `achievement_key` is the category id (e.g. 'bandar'),
+// `tier` is the milestone within that category (1/2/3). A player may hold
+// multiple rows per category — one per tier crossed.
+export interface PlayerAchievement {
+  id: string
+  player_id: string
+  achievement_key: string
+  tier: 1 | 2 | 3
+  season_id: string | null
+  earned_at: string
+}
+
+// Admin rollback — a snapshot row capturing the world AS OF a whitelisted
+// edit_log entry. See lib/rollback.ts for whitelist + restore semantics.
+export interface EditLogSnapshot {
+  id: string
+  edit_log_id: string
+  snapshot_data: import('./rollback').SnapshotData
+  created_at: string
+}
+
 // Web Push — a stored browser PushSubscription, one row per device.
 export interface PushSubscriptionRow {
   id: string
