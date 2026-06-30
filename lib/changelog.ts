@@ -12,6 +12,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.15.0',
+    date: '2026-06-30',
+    changes: [
+      'Akhir musim sekarang ada podium top 3 — 3rd, 2nd, 1st muncul satu-satu, juara dapet kilau emas dikit (sekali doang, ga lebay). Sisanya tetep list biasa di bawah.',
+      'Fix bug: kalau abis end sesi terakhir lo close app sebelum konfirmasi end season, sekarang otomatis ke-redirect balik ke layar end season. Ga bisa start sesi lagi karena musimnya emang udah habis — selesaiin dulu, baru bisa lanjut musim baru.',
+      'Bonus: chart performa /player/[id] kemarin di-update ke per-musim picker (bukan lifetime toggle) + titik sesi 0 ga lagi ke-potong di pinggir kiri.',
+    ],
+  },
+  {
     version: '0.14.0',
     date: '2026-06-29',
     changes: [
