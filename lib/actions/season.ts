@@ -116,7 +116,7 @@ export async function createSeason(
       `INSERT INTO seasons
          (number, status, preset_name, starting_balance, buy_in, bb, sb, max_pool, max_sessions,
           p1_target_sessions, p2_target_sessions, rake_rate, creator_player_id, invite_code)
-       VALUES ($1, 'active', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+       VALUES ($1, 'active', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING id`,
       [seasonNumber, presetName, startingBalance, buyIn, bb, sb, maxPool, maxSessions,
        p1TargetSessions, p2TargetSessions, rakeRate, creatorId, generateInviteCode()]
