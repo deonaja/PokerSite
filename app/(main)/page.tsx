@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
 import { getAuthenticatedPlayer } from '@/lib/auth-server'
 import type { Player, Season, PollParticipant, PollResponse } from '@/lib/types'
@@ -50,6 +51,14 @@ export default async function DashboardPage() {
     getDashboardData(),
     getAuthenticatedPlayer(),
   ])
+  // Bug fix: if the season's session cap has been hit AND it's still active
+  // (= user bailed out of /season/end without confirming), force them back to
+  // finalize. Without this, the dashboard happily shows a "start new session"
+  // CTA — but startSession is now server-side-gated too, so it'd just error.
+  // Redirect makes the state visible instead of silently broken.
+  if (season && season.status === 'active' && sessionsPlayed >= season.max_sessions) {
+    redirect(`/season/end?id=${season.id}`)
+  }
   return (
     <DashboardClient
       initial={initial}

@@ -573,11 +573,28 @@ export async function startSession({
     }
 
     const { rows: [season] } = await client.query<{
-      id: string; buy_in: number; max_pool: number; current_phase: string; rake_rate: number
+      id: string; buy_in: number; max_pool: number; max_sessions: number; current_phase: string; rake_rate: number
     }>(
-      `SELECT id, buy_in, max_pool, current_phase, rake_rate FROM seasons WHERE status = 'active' LIMIT 1`
+      `SELECT id, buy_in, max_pool, max_sessions, current_phase, rake_rate FROM seasons WHERE status = 'active' LIMIT 1`
     )
     const buyIn = season?.buy_in ?? 100
+
+    // Guard: if the active season's session cap has been reached, refuse to
+    // start another session. The user must finalize via /season/end first.
+    // This blocks the "close-app-during-confirm" loophole — without it, a user
+    // who killed the app between session_end and confirming the season end
+    // could come back and start session N+1 even though sessions_played
+    // already hit max_sessions.
+    if (season) {
+      const { rows: [{ played }] } = await client.query<{ played: number }>(
+        `SELECT COUNT(*)::int AS played FROM sessions WHERE season_id = $1 AND status = 'ended'`,
+        [season.id]
+      )
+      if (played >= season.max_sessions) {
+        await client.query('ROLLBACK')
+        return { error: 'Season ini sudah habis sesinya. Selesaikan musim dulu di /season/end.' }
+      }
+    }
 
     // Non-dealer players must be able to afford the buy-in. A low-balance player
     // can only join as the dealer (where the salary chips let them play).

@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
 import { Card } from '@/components/ui/card'
 import SeasonEndConfirm from './SeasonEndConfirm'
+import SeasonEndLeaderboard from './SeasonEndLeaderboard'
 
 interface SeasonRow {
   id: string
@@ -74,47 +75,12 @@ export default async function SeasonEndPage({
         </p>
       </div>
 
-      <div className="px-4 pt-5">
-        <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">
-          LEADERBOARD
-        </p>
+      <SeasonEndLeaderboard
+        players={players}
+        startingBalance={season.starting_balance}
+      />
 
-        <div className="mb-5 flex flex-col gap-2">
-          {players.map((p, i) => {
-            const delta = p.balance - season.starting_balance
-            const rank = i + 1
-            return (
-              <Card
-                key={p.id}
-                className={'flex items-center gap-3 px-4 py-3' + (rank === 1 ? ' border-warn' : '')}
-              >
-                <span
-                  className={
-                    'w-6 flex-shrink-0 font-mono text-[0.8125rem] ' +
-                    (rank === 1 ? 'text-warn' : 'text-[var(--text-tertiary)]')
-                  }
-                >
-                  #{rank}
-                </span>
-                <span className="flex-1 text-[0.9375rem] font-medium text-foreground">{p.name}</span>
-                <div className="text-right">
-                  <span className="block font-mono text-[0.9375rem] text-foreground">
-                    {p.balance}
-                  </span>
-                  <span
-                    className={
-                      'block font-mono text-xs ' +
-                      (delta >= 0 ? 'text-success' : 'text-destructive')
-                    }
-                  >
-                    {delta >= 0 ? '+' : ''}{delta}
-                  </span>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-
+      <div className="px-4">
         <Card className="mb-6 border-destructive px-4 py-3.5">
           <p className="m-0 mb-1 text-[0.8125rem] font-medium text-warn">
             Setelah konfirmasi:
