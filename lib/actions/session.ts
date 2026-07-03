@@ -653,9 +653,9 @@ export async function startSession({
           balance: player.balance,
           buyIn,
         })
-      if (isDealer && salaryChips) {
+      if (isDealer && (salaryChips || salaryBankroll)) {
         dealerGotSalary = true
-        dealerGotSalaryChips = true
+        if (salaryChips) dealerGotSalaryChips = true
         if (salaryBankroll) dealerSalaryBankrollHalf = true
       }
 
@@ -690,16 +690,21 @@ export async function startSession({
          VALUES ($1, $2, $3, 'dealer_salary_chips', $4, $4, $5)`,
         [sessionId, dealerId, actorPlayerId, dealerPlayer.balance, JSON.stringify({ chips: buyIn })]
       )
-      // Bankroll half: PLAYING free dealer only (2× split). Credit immediately.
-      if (dealerSalaryBankrollHalf) {
-        await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [buyIn, dealerId])
-        await client.query(
-          `INSERT INTO edit_log
-             (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
-           VALUES ($1, $2, $3, 'dealer_salary_balance', $4, $5, $6)`,
-          [sessionId, dealerId, actorPlayerId, dealerPlayer.balance, dealerPlayer.balance + buyIn, JSON.stringify({ chips: buyIn })]
-        )
-      }
+    }
+
+    // Bankroll salary: credited immediately.
+    // For neutral free dealer: gets 2× buy_in directly in bankroll.
+    // For playing free dealer: gets 0 bankroll bonus.
+    if (dealerSalaryBankrollHalf) {
+      const dealerPlayer = players.find((p) => p.id === dealerId)!
+      const amount = dealerPlays ? buyIn : (2 * buyIn)
+      await client.query(`UPDATE players SET balance = balance + $1 WHERE id = $2`, [amount, dealerId])
+      await client.query(
+        `INSERT INTO edit_log
+           (session_id, player_id, actor_player_id, action, balance_before, balance_after, metadata)
+         VALUES ($1, $2, $3, 'dealer_salary_balance', $4, $5, $6)`,
+        [sessionId, dealerId, actorPlayerId, dealerPlayer.balance, dealerPlayer.balance + amount, JSON.stringify({ chips: amount })]
+      )
     }
 
     // Cooldown anchor is set only when the dealer actually received the salary.

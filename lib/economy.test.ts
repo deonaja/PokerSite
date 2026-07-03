@@ -72,13 +72,12 @@ test('Phase 2 / cooldown playing dealer who is broke deals only (no ante, no sal
   })
 })
 
-test('Phase 1 neutral dealer: 2× split salary (table + bankroll), no play', () => {
-  // Post-flip 2026-06-29: neutral dealer now gets the 2× split.
+test('Phase 1 neutral dealer: 2× buy_in credited directly to bankroll, no play', () => {
   assert.deepEqual(derive({ isDealer: true, dealerPlays: false, dealerFreeEntry: true }), {
     deduction: 0,
     action: 'buy_in_dealer_free',
     noGaji: true,
-    salaryChips: true,
+    salaryChips: false,
     salaryBankroll: true,
   })
 })
@@ -108,16 +107,12 @@ test('neutral dealer always sits out (noGaji) and never pays ante; playing deale
   }
 })
 
-test('invariant: bankroll salary only ever comes with table-chip salary', () => {
+test('invariant: playing dealers never get bankroll salary', () => {
   const combos = [true, false]
-  for (const dealerPlays of combos) {
-    for (const dealerFreeEntry of combos) {
-      for (const balance of [0, 50, 100, 500]) {
-        const t = derive({ isDealer: true, dealerPlays, dealerFreeEntry, balance })
-        if (t.salaryBankroll) {
-          assert.equal(t.salaryChips, true, 'bankroll implies chips')
-        }
-      }
+  for (const dealerFreeEntry of combos) {
+    for (const balance of [0, 50, 100, 500]) {
+      const t = derive({ isDealer: true, dealerPlays: true, dealerFreeEntry, balance })
+      assert.equal(t.salaryBankroll, false, 'playing dealer gets no bankroll salary')
     }
   }
 })

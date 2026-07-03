@@ -125,9 +125,10 @@ test.describe('Admin - logs', () => {
   })
 
   test('pagination links render when logs exceed page size', async ({ page }) => {
-    const nextLink = page.getByRole('link', { name: /Next/ })
-    const prevLink = page.getByRole('link', { name: /Prev/ })
-    const pageInfo = page.getByText(/Hal \d+\/\d+/)
+    const logsSection = page.locator('section').filter({ has: page.locator('p', { hasText: /^LOG$/ }) })
+    const nextLink = logsSection.getByRole('link', { name: /Next/ })
+    const prevLink = logsSection.getByRole('link', { name: /Prev/ })
+    const pageInfo = logsSection.getByText(/Hal \d+\/\d+/)
     await expect(pageInfo).toBeVisible()
     const hasNext = await nextLink.isVisible()
     const hasPrev = await prevLink.isVisible()

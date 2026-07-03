@@ -60,10 +60,10 @@ export function deriveParticipantTreatment(opts: {
   // NEUTRAL dealer: deals only, never sits in — always flagged no_gaji.
   if (!dealerPlays) {
     if (dealerFreeEntry) {
-      // Phase 1 neutral → 2× split (1× table chips + 1× bankroll bonus).
+      // Phase 1 neutral → 2× buy_in credited straight to bankroll (0 table chips since they don't play).
       // Post-flip 2026-06-29: neutral "works" (deals) for no play upside, so
       // gets the bigger payout.
-      return { deduction: 0, action: 'buy_in_dealer_free', noGaji: true, salaryChips: true, salaryBankroll: true }
+      return { deduction: 0, action: 'buy_in_dealer_free', noGaji: true, salaryChips: false, salaryBankroll: true }
     }
     // Phase 2 (or cooldown) neutral → no salary, 0 chips; collects rake in play.
     return { deduction: 0, action: 'buy_in_no_gaji_dealer', noGaji: true, salaryChips: false, salaryBankroll: false }
