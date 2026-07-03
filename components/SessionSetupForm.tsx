@@ -137,7 +137,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
       dealerHint = `${dealer.name}: bagi kartu doang (ga main), ambil rake (10% chip, dibulatin ke 5, cap 20).`
     } else if (dealer.cooldown_remaining === 0) {
       // Phase 1, not cooling down → 2× split salary (post-flip).
-      dealerHint = `${dealer.name}: bagi kartu doang (ga main) — gaji 2× buy-in: +${buyIn} chip di meja + ${buyIn} ke saldo (cadangan).`
+      dealerHint = `${dealer.name}: bagi kartu doang (ga main) — gaji 2× buy-in: +${2 * buyIn} langsung ke saldo (cadangan).`
     } else {
       // Phase 1 but cooling down → NO salary (matches startSession's
       // dealerFreeEntry = !isPhase2 && !cooldown → buy_in_no_gaji_dealer).

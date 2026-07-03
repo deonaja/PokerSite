@@ -71,7 +71,7 @@ test.describe('M2: phase transition bootstrap → steady', () => {
     await sql`UPDATE players SET balance = 500, last_dealer_session_id = NULL WHERE name LIKE '[T%'`
   })
 
-  test('starting a session flips phase to steady and dealer pays buy-in', async ({ page }) => {
+  test('ending a session flips phase to steady, next session dealer pays buy-in', async ({ page }) => {
     await setIdentity(page, alice)
     await page.goto('/session/setup')
     await clickLabelFor(page, alice.name)
@@ -80,16 +80,41 @@ test.describe('M2: phase transition bootstrap → steady', () => {
     await page.getByRole('button', { name: 'Mulai' }).click()
     await page.waitForURL('**/session')
 
+    // End Session 1 (input stacks to trigger phase flip)
+    await page.goto('/session/end')
+    await page.locator('input[type="number"]').fill('50')
+    await page.getByRole('button', { name: 'Next', exact: true }).click()
+    await page.locator('input[type="number"]').fill('50')
+    await page.getByRole('button', { name: /Lihat recap/ }).click()
+    await page.getByRole('button', { name: 'Confirm' }).click()
+    await page.waitForURL('/')
+
     const sql = db()
     const [season] = await sql`SELECT current_phase FROM seasons WHERE id = ${seasonId}` as { current_phase: string }[]
     expect(season.current_phase).toBe('steady')
 
-    // In steady phase the dealer (Alice) also pays buy-in: 500 - 100 = 400
+    // Reset Alice's balance to 500 and clear cooldown for clean testing of session 2.
+    await sql`UPDATE players SET balance = 500, last_dealer_session_id = NULL WHERE id = ${alice.id}`
+
+    // Session 2: Alice is dealer in steady phase.
+    await page.goto('/session/setup')
+    await clickLabelFor(page, alice.name)
+    await clickLabelFor(page, bob.name)
+    await page.locator('label', { hasText: alice.name }).locator('input[name="dealer"]').check()
+    await page.getByRole('button', { name: 'Mulai' }).click()
+    await page.waitForURL('**/session')
+
+    // In steady phase the dealer (Alice) pays buy-in: 500 - 100 = 400
     const [aliceRow] = await sql`SELECT balance FROM players WHERE id = ${alice.id}` as { balance: number }[]
     expect(Number(aliceRow.balance)).toBe(400)
   })
 
   test('dashboard shows the STEADY badge', async ({ page }) => {
+    // End any active sessions and ensure phase is steady
+    const sql = db()
+    await sql`UPDATE sessions SET status = 'ended', ended_at = now() WHERE status = 'active'`
+    await sql`UPDATE seasons SET current_phase = 'steady' WHERE id = ${seasonId}`
+
     await setIdentity(page, alice)
     await page.goto('/')
     await expect(page.getByText('STEADY')).toBeVisible()
