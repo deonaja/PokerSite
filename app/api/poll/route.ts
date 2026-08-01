@@ -10,7 +10,10 @@ export async function GET() {
         JOIN season_players mp ON mp.player_id = p.id
         JOIN seasons s ON s.id = mp.season_id AND s.status = 'active'
         ORDER BY p.name ASC`,
-    sql`SELECT id FROM sessions WHERE status = 'active' LIMIT 1`,
+    // The database is shared with the poker-online app. Sessions with
+    // mode='online' belong to that app and must never surface here as a
+    // face-to-face session. See migration online_001_session_mode.sql.
+    sql`SELECT id FROM sessions WHERE status = 'active' AND mode = 'offline' LIMIT 1`,
   ])
 
   const activeSessionRow = (sessions as unknown as { id: string }[])[0]

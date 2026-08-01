@@ -565,7 +565,7 @@ export async function startSession({
     }
 
     const { rows: active } = await client.query(
-      `SELECT id FROM sessions WHERE status = 'active' LIMIT 1`
+      `SELECT id FROM sessions WHERE status = 'active' AND mode = 'offline' LIMIT 1`
     )
     if (active.length > 0) {
       await client.query('ROLLBACK')

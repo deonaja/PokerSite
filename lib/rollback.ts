@@ -107,7 +107,7 @@ export async function takeSnapshot(client: DbClient, editLogId: string): Promise
     dealer_id: string
     creator_player_id: string | null
   }>(`SELECT id, season_id, status, started_at, ended_at, dealer_id, creator_player_id
-      FROM sessions WHERE status = 'active' LIMIT 1`)
+      FROM sessions WHERE status = 'active' AND mode = 'offline' LIMIT 1`)
 
   const activeSession = sessionRows[0] ?? null
 

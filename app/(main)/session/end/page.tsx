@@ -66,14 +66,14 @@ async function getSessionData() {
       FROM sessions s
       JOIN session_participants sp ON sp.session_id = s.id
       JOIN players p ON p.id = sp.player_id
-      WHERE s.status = 'active'
+      WHERE s.status = 'active' AND s.mode = 'offline'
       ORDER BY sp.is_dealer DESC, p.name ASC
     ` as unknown as Promise<ParticipantRow[]>,
     sql`
       SELECT se.current_phase, se.rake_rate
       FROM sessions s
       LEFT JOIN seasons se ON se.id = s.season_id
-      WHERE s.status = 'active'
+      WHERE s.status = 'active' AND s.mode = 'offline'
       LIMIT 1
     ` as unknown as Promise<SeasonRow[]>,
   ])

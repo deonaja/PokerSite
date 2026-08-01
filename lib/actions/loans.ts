@@ -58,7 +58,7 @@ export async function requestLoan({
 
     // No loans while a session is live.
     const { rows: [active] } = await client.query<{ id: string }>(
-      `SELECT id FROM sessions WHERE status = 'active' LIMIT 1`
+      `SELECT id FROM sessions WHERE status = 'active' AND mode = 'offline' LIMIT 1`
     )
     if (active) { await client.query('ROLLBACK'); return { error: 'Tidak bisa pinjam saat sesi berjalan' } }
 
@@ -165,7 +165,7 @@ export async function approveLoan({ loanId }: { loanId: string }): Promise<Resul
     await client.query('BEGIN')
 
     const { rows: [active] } = await client.query<{ id: string }>(
-      `SELECT id FROM sessions WHERE status = 'active' LIMIT 1`
+      `SELECT id FROM sessions WHERE status = 'active' AND mode = 'offline' LIMIT 1`
     )
     if (active) { await client.query('ROLLBACK'); return { error: 'Tidak bisa saat sesi berjalan' } }
 
@@ -337,7 +337,7 @@ export async function repayLoan({ loanId }: { loanId: string }): Promise<Result>
     await client.query('BEGIN')
 
     const { rows: [active] } = await client.query<{ id: string }>(
-      `SELECT id FROM sessions WHERE status = 'active' LIMIT 1`
+      `SELECT id FROM sessions WHERE status = 'active' AND mode = 'offline' LIMIT 1`
     )
     if (active) { await client.query('ROLLBACK'); return { error: 'Tidak bisa saat sesi berjalan' } }
 
