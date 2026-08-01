@@ -6,7 +6,7 @@ import type { Player, PollParticipant, PollResponse } from '@/lib/types'
 
 async function getSessionInitial(): Promise<{ sessionId: string; buyIn: number; startedAt: string; creatorPlayerId: string | null; initial: PollResponse } | null> {
   const [sessions, players] = await Promise.all([
-    sql`SELECT id, started_at, creator_player_id FROM sessions WHERE status = 'active' LIMIT 1`,
+    sql`SELECT id, started_at, creator_player_id FROM sessions WHERE status = 'active' AND mode = 'offline' LIMIT 1`,
     // Scope to the active season's MEMBERS (season_players), not every player row.
     sql`SELECT p.id, p.name, p.balance, p.created_at
         FROM players p

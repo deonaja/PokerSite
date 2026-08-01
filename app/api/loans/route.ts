@@ -25,7 +25,7 @@ export async function GET() {
   const [meRows, memberRows, sessionRows, openRows] = await Promise.all([
     sql`SELECT balance FROM players WHERE id = ${me}`,
     sql`SELECT 1 FROM season_players WHERE season_id = ${season.id} AND player_id = ${me} LIMIT 1`,
-    sql`SELECT id FROM sessions WHERE status = 'active' LIMIT 1`,
+    sql`SELECT id FROM sessions WHERE status = 'active' AND mode = 'offline' LIMIT 1`,
     sql`
       SELECT l.id, l.status, l.amount, l.lender_id, l.borrower_id,
              lb.name AS lender_name, bo.name AS borrower_name

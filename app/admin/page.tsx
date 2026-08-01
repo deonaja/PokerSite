@@ -81,7 +81,7 @@ export default async function AdminPage({
 
   const [players, sessions, season, logs, logCount, snapshots, snapshotCount] = await Promise.all([
     sql`SELECT id, name, balance FROM players ORDER BY name ASC`,
-    sql`SELECT id FROM sessions WHERE status = 'active' LIMIT 1`,
+    sql`SELECT id FROM sessions WHERE status = 'active' AND mode = 'offline' LIMIT 1`,
     sql`SELECT starting_balance, invite_code, invite_code_uses FROM seasons WHERE status = 'active' LIMIT 1`,
     logAction
       ? sql`
