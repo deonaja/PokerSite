@@ -182,16 +182,18 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
   if (isRecap) {
     return (
       <div className="pb-24">
-        <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
+        <div className="flex items-center gap-2 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-2.5">
           {backButton}
-          <span className="text-sm font-medium text-foreground">Konfirmasi</span>
+          <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+            <span className="text-[var(--tt-magenta)]">P211</span> Konfirmasi
+          </span>
         </div>
 
-        <div className="px-4 pt-5">
+        <div className="px-3 pt-5">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">RECAP</p>
+            <p className="text-base uppercase tracking-[0.1em] text-[var(--text-secondary)]">Recap</p>
             {elapsed != null && (
-              <p className="font-mono text-xs tabular-nums text-muted-foreground">
+              <p className="text-base tabular-nums text-[var(--text-secondary)]">
                 Durasi {formatDurationShort(elapsed)}
               </p>
             )}
@@ -206,10 +208,10 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
               return (
                 <Card key={p.player_id} className="px-4 py-3">
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center border border-[var(--tt-rule-strong)] bg-[var(--bg-elevated)] text-base uppercase text-[var(--text-secondary)]">
                       {initialOf(p.player_name)}
                     </span>
-                    <span className="min-w-0 truncate text-sm font-medium text-foreground">{p.player_name}</span>
+                    <span className="min-w-0 truncate text-lg uppercase tracking-wide text-[var(--tt-white)]">{p.player_name}</span>
                     {p.is_dealer && <Badge className="px-1.5 py-0.5"><Star aria-label="dealer" className="h-3 w-3 fill-current" /></Badge>}
                     {p.no_gaji_dealer && (
                       <span className="text-[0.625rem] text-[var(--text-tertiary)]">bagi kartu</span>
@@ -263,7 +265,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
             fullWidth
             disabled={isPending}
             onClick={handleConfirm}
-            className="h-12 font-semibold uppercase tracking-wide"
+            className="h-12 bg-[var(--tt-yellow)] text-black hover:bg-[color-mix(in_srgb,var(--tt-yellow)_86%,#000)]"
           >
             {isPending ? 'Menyimpan...' : 'Confirm'}
           </Button>
@@ -276,25 +278,38 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
 
   return (
     <div className="pb-24">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-2.5">
+        <div className="flex items-center gap-2">
           {backButton}
-          <span className="text-sm font-medium text-foreground">End sesi</span>
+          <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+            <span className="text-[var(--tt-magenta)]">P210</span> End Sesi
+          </span>
         </div>
-        <span className="font-mono text-sm text-[var(--text-tertiary)]">
-          {step + 1} / {totalSteps}
+        <span className="text-lg tabular-nums text-[var(--tt-cyan)]">
+          {step + 1}/{totalSteps}
         </span>
       </div>
 
-      <div className="flex flex-col items-center gap-1.5 px-6 pt-8">
-        <span className="mb-1 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xl font-medium text-foreground">
+      {/* Numbered step strip — the current step lit gold, done cyan, upcoming dim */}
+      <div className="flex gap-1 px-3 pt-3" aria-hidden>
+        {participants.map((_, i) => (
+          <span
+            key={i}
+            className="h-2 flex-1"
+            style={{ background: i < step ? 'var(--tt-cyan)' : i === step ? 'var(--tt-yellow)' : 'var(--tt-rule)' }}
+          />
+        ))}
+      </div>
+
+      <div className="flex flex-col items-center gap-1.5 px-6 pt-7">
+        <span className="mb-1 flex h-16 w-16 items-center justify-center border border-[var(--tt-cyan)] bg-[var(--tt-cyan-dim)] text-2xl uppercase text-[var(--tt-cyan)]">
           {initialOf(current.player_name)}
         </span>
-        <p className="m-0 text-xl font-medium text-foreground">{current.player_name}</p>
+        <p className="m-0 text-2xl uppercase tracking-wide text-[var(--tt-white)]">{current.player_name}</p>
         {current.is_dealer && (
-          <Badge className="inline-flex items-center gap-1 px-2 py-0.5 text-xs tracking-wider">
+          <Badge className="inline-flex items-center gap-1 px-2 py-0.5 text-sm uppercase tracking-wider">
             <Star aria-hidden className="h-3 w-3 fill-current" />
-            DEALER{current.no_gaji_dealer ? ' (BAGI KARTU)' : ''}
+            DEALER{current.no_gaji_dealer ? ' · BAGI KARTU' : ''}
           </Badge>
         )}
       </div>
@@ -346,7 +361,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
       )}
 
       <div className="px-6 pt-5">
-        <p className="mb-2 text-[0.8125rem] text-muted-foreground">Stack akhir:</p>
+        <p className="mb-2 text-base uppercase tracking-[0.1em] text-[var(--text-secondary)]">Stack akhir</p>
         <input
           key={current.player_id}
           ref={inputRef}
@@ -361,11 +376,11 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
           onKeyDown={(e) => e.key === 'Enter' && handleNext()}
           placeholder="0"
           className={
-            'w-full rounded-lg border bg-[var(--bg-elevated)] px-4 py-3.5 text-center font-mono text-[2rem] text-foreground outline-none [appearance:textfield] ' +
-            (inputError ? 'border-destructive' : 'border-input')
+            'w-full border bg-[var(--bg-elevated)] px-4 py-4 text-center text-5xl tabular-nums text-[var(--tt-cyan)] outline-none [appearance:textfield] placeholder:text-[var(--text-tertiary)] focus:border-[var(--tt-cyan)] ' +
+            (inputError ? 'border-[var(--tt-red)]' : 'border-[var(--tt-rule-strong)]')
           }
         />
-        {inputError && <p className="mt-1.5 text-[0.8125rem] text-destructive">{inputError}</p>}
+        {inputError && <p className="mt-1.5 text-base uppercase tracking-wide text-[var(--tt-red)]">{inputError}</p>}
       </div>
 
       <div className={STICKY_BOTTOM}>

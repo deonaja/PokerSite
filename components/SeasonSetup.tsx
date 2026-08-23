@@ -157,19 +157,19 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
   }
 
   const inputClass =
-    'w-full rounded-lg border border-input bg-[var(--bg-elevated)] px-4 py-3 text-sm text-foreground outline-none'
+    'w-full border border-[var(--tt-rule-strong)] bg-[var(--bg-elevated)] px-4 py-3 text-lg text-[var(--tt-cyan)] tabular-nums outline-none focus:border-[var(--tt-cyan)]'
 
   const labelClass =
-    'mb-2 text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground'
+    'mb-2 text-base uppercase tracking-[0.1em] text-[var(--text-secondary)]'
 
   return (
     <div className="flex flex-col px-4 pt-12 pb-8 gap-6">
       {/* Header */}
       <div>
-        <p className="mb-1 text-xs text-[var(--text-tertiary)]">
-          Season {seasonNumber}
+        <p className="mb-1 text-base uppercase tracking-wide text-[var(--text-tertiary)]">
+          <span className="text-[var(--tt-magenta)]">P400</span> Season {seasonNumber} · Baru
         </p>
-        <h1 className="m-0 text-lg font-medium text-foreground">
+        <h1 className="m-0 text-2xl uppercase tracking-[0.04em] text-[var(--tt-yellow)]">
           {step === 1 && 'Siapa yang main?'}
           {step === 2 && 'Buy-in & nyawa'}
           {step === 3 && 'Durasi & tempo'}
