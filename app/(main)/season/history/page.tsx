@@ -83,14 +83,16 @@ export default async function SeasonHistoryPage() {
 
   return (
     <div className="pb-8">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
+      <div className="flex items-center gap-2 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-3">
         <Link
           href="/"
           className="flex min-h-11 min-w-11 items-center text-muted-foreground no-underline"
         >
           <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
-        <span className="text-sm font-medium text-foreground">Riwayat Musim</span>
+        <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+          <span className="text-[var(--tt-magenta)]">P400</span> Riwayat Musim
+        </span>
       </div>
 
       {seasons.length === 0 ? (

@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { sql } from '@/lib/db'
-import BalanceDisplay from '@/components/BalanceDisplay'
 import PerformanceChartLazy from '@/components/PerformanceChartLazy'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -271,24 +270,27 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="pb-8">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
+      {/* Header — teletext status bar */}
+      <div className="flex items-center gap-3 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-3">
         <Link
           href="/"
-          className="flex min-h-11 min-w-11 items-center text-muted-foreground no-underline"
+          className="flex min-h-11 min-w-11 items-center text-[var(--tt-cyan)] no-underline"
         >
           <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
         <span
           aria-hidden
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xl font-medium text-foreground"
+          className="flex h-12 w-12 shrink-0 items-center justify-center border border-[var(--tt-cyan)] bg-[var(--tt-cyan-dim)] text-xl uppercase text-[var(--tt-cyan)]"
         >
           {initialOf(player.name)}
         </span>
-        <div className="flex-1">
-          <p className="text-[0.9375rem] font-medium text-foreground">{player.name}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xl uppercase tracking-wide text-[var(--tt-white)]">{player.name}</p>
+          <p className="text-sm uppercase tracking-wide text-[var(--text-tertiary)]"><span className="text-[var(--tt-magenta)]">P500</span> Pemain</p>
         </div>
-        <BalanceDisplay balance={player.balance} />
+        <span className={'text-2xl tabular-nums ' + (player.balance < 0 ? 'text-[var(--tt-red)]' : 'text-[var(--tt-cyan)]')}>
+          {player.balance}
+        </span>
       </div>
 
       <div className="px-4 pt-5">

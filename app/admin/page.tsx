@@ -144,7 +144,9 @@ export default async function AdminPage({
 
   return (
     <div className="mx-auto flex min-h-[100dvh] max-w-[480px] flex-col gap-6 bg-background p-4">
-      <h1 className="text-base font-medium text-foreground">Admin</h1>
+      <h1 className="text-xl uppercase tracking-[0.08em] text-[var(--tt-yellow)]">
+        <span className="text-[var(--tt-magenta)]">P900</span> Admin
+      </h1>
 
       {/* Players */}
       <section className="flex flex-col gap-2.5">

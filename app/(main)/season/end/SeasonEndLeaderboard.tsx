@@ -35,9 +35,9 @@ export default function SeasonEndLeaderboard({ players, startingBalance }: Props
   const rest = players.slice(3)
 
   return (
-    <div className="px-4 pt-5">
-      <p className="mb-4 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">
-        LEADERBOARD
+    <div className="px-3 pt-5">
+      <p className="mb-4 text-base uppercase tracking-[0.1em] text-[var(--text-secondary)]">
+        <span className="text-[var(--tt-magenta)]">P410</span> Leaderboard
       </p>
 
       {players.length >= 3 ? (
@@ -136,19 +136,21 @@ function PodiumPillar({
   const delta = player.balance - startingBalance
   const deltaPositive = delta >= 0
 
-  // Felt-green base for all three, gold edge for 1st, muted edges for 2/3.
+  // Teletext panels: yellow edge/number for 1st, cyan/magenta for 2nd/3rd.
   // No emoji — accent ring + ordinal number does the work.
   const ringClass =
     accent === 'gold'
-      ? 'ring-2 ring-warn'
+      ? 'ring-2 ring-[var(--tt-yellow)]'
       : accent === 'silver'
-        ? 'ring-1 ring-border'
-        : 'ring-1 ring-border'
+        ? 'ring-1 ring-[var(--tt-cyan)]'
+        : 'ring-1 ring-[var(--tt-magenta)]'
 
   const numberColor =
     accent === 'gold'
-      ? 'text-warn'
-      : 'text-[var(--text-tertiary)]'
+      ? 'text-[var(--tt-yellow)]'
+      : accent === 'silver'
+        ? 'text-[var(--tt-cyan)]'
+        : 'text-[var(--tt-magenta)]'
 
   // Winner pillar: soft one-shot glow after it lands. The pulse only runs
   // through the named animation (no infinite repeat).
@@ -172,7 +174,7 @@ function PodiumPillar({
         >
           {initial(player.name)}
         </div>
-        <p className="line-clamp-1 max-w-full text-center text-[0.8125rem] font-medium text-foreground">
+        <p className="line-clamp-1 max-w-full text-center text-base uppercase tracking-wide text-foreground">
           {player.name}
         </p>
       </div>
@@ -189,13 +191,13 @@ function PodiumPillar({
         <span className={'font-mono text-2xl font-medium ' + numberColor}>
           {place}
         </span>
-        <span className="font-mono text-[0.8125rem] tabular-nums text-foreground">
+        <span className="text-lg tabular-nums text-[var(--tt-cyan)]">
           {player.balance}
         </span>
         <span
           className={
-            'font-mono text-[0.6875rem] tabular-nums ' +
-            (deltaPositive ? 'text-success' : 'text-destructive')
+            'text-base tabular-nums ' +
+            (deltaPositive ? 'text-[var(--tt-green)]' : 'text-[var(--tt-red)]')
           }
         >
           {deltaPositive ? '+' : ''}
@@ -227,29 +229,29 @@ function PlayerRow({
     >
       <span
         className={
-          'w-6 flex-shrink-0 font-mono text-[0.8125rem] ' +
-          (rank === 1 ? 'text-warn' : 'text-[var(--text-tertiary)]')
+          'w-7 flex-shrink-0 text-lg tabular-nums ' +
+          (rank <= 3 ? 'text-[var(--tt-magenta)]' : 'text-[var(--text-tertiary)]')
         }
       >
         #{rank}
       </span>
       <div
-        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[var(--bg-elevated)] text-[0.8125rem] font-medium text-foreground"
+        className="flex h-8 w-8 flex-shrink-0 items-center justify-center border border-[var(--tt-rule-strong)] bg-[var(--bg-elevated)] text-base uppercase text-[var(--text-secondary)]"
         aria-hidden
       >
         {initial(player.name)}
       </div>
-      <span className="flex-1 text-[0.9375rem] font-medium text-foreground">
+      <span className="flex-1 truncate text-lg uppercase tracking-wide text-foreground">
         {player.name}
       </span>
       <div className="text-right">
-        <span className="block font-mono text-[0.9375rem] tabular-nums text-foreground">
+        <span className="block text-lg tabular-nums text-[var(--tt-cyan)]">
           {player.balance}
         </span>
         <span
           className={
-            'block font-mono text-xs tabular-nums ' +
-            (delta >= 0 ? 'text-success' : 'text-destructive')
+            'block text-sm tabular-nums ' +
+            (delta >= 0 ? 'text-[var(--tt-green)]' : 'text-[var(--tt-red)]')
           }
         >
           {delta >= 0 ? '+' : ''}

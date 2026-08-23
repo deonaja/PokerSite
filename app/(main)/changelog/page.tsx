@@ -15,14 +15,16 @@ export default function ChangelogPage() {
       <MarkChangelogSeen />
 
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
+      <div className="flex items-center gap-2 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-3">
         <Link
           href="/"
           className="flex min-h-11 min-w-11 items-center text-muted-foreground no-underline"
         >
           <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
-        <span className="text-sm font-medium text-foreground">Apa yang baru</span>
+        <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+          <span className="text-[var(--tt-magenta)]">P700</span> Apa Yang Baru
+        </span>
       </div>
 
       <div className="px-4 pt-5">
