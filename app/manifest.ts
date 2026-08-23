@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 
 // PWA manifest — makes the app installable ("Add to Home Screen") and run
 // full-screen/standalone, which is the primary way it's used (phones at the
-// table). Colors mirror the felt-green palette in app/globals.css.
+// table). Colors mirror the teletext palette in app/globals.css (flat black).
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Poker Chip Tracker',
@@ -13,8 +13,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#0a0a0a',
-    theme_color: '#0a0a0a',
+    background_color: '#000000',
+    theme_color: '#000000',
     categories: ['games', 'finance', 'utilities'],
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

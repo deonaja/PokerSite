@@ -49,44 +49,47 @@ export default function HeaderMenu({ name }: { name: string }) {
   }
 
   return (
-    <header className="flex items-center border-b border-border px-4 py-2.5">
+    <header className="flex items-center gap-2.5 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-2">
+      <span className="shrink-0 select-none text-lg uppercase tracking-[0.12em] text-[var(--tt-yellow)]">
+        PokerAja
+      </span>
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Akun"
-        className="flex min-w-0 items-center gap-2.5"
+        className="ml-auto flex min-w-0 items-center gap-2 border border-[var(--tt-rule-strong)] px-2 py-1 transition-colors hover:bg-[var(--bg-elevated)]"
       >
         <span className="relative shrink-0">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-primary bg-accent font-mono text-sm font-medium text-foreground">
+          <span className="flex h-7 w-7 items-center justify-center border border-[var(--tt-cyan)] bg-[var(--tt-cyan-dim)] text-base uppercase text-[var(--tt-cyan)]">
             {initial}
           </span>
           {hasNew && (
             <span
               aria-hidden
-              className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-[#2fb074] ring-2 ring-[#9fe8c4] ring-offset-1 ring-offset-background"
+              className="absolute -right-1 -top-1 h-2.5 w-2.5 bg-[var(--tt-green)]"
             />
           )}
         </span>
-        <span className="truncate text-sm text-foreground">
-          Hi, <span className="font-medium">{name}</span>
+        <span className="truncate text-base uppercase tracking-wide text-[var(--tt-white)]">
+          {name}
         </span>
-        <ChevronDown className="size-4 shrink-0 text-[var(--text-tertiary)]" />
+        <ChevronDown className="size-4 shrink-0 text-[var(--tt-cyan)]" />
       </button>
 
       <Link
         href="/panduan"
         aria-label="Panduan"
-        className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-[var(--bg-elevated)]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center border border-[var(--tt-rule-strong)] text-[var(--tt-cyan)] transition-colors hover:bg-[var(--bg-elevated)]"
       >
         <HelpCircle className="size-5" />
       </Link>
 
       <Sheet isOpen={open} onClose={() => setOpen(false)} title="Akun">
         <div className="mb-4 flex items-center gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-primary bg-accent font-mono text-lg font-medium text-foreground">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center border border-[var(--tt-cyan)] bg-[var(--tt-cyan-dim)] text-xl uppercase text-[var(--tt-cyan)]">
             {initial}
           </span>
-          <span className="truncate text-base font-medium text-foreground">{name}</span>
+          <span className="truncate text-lg uppercase tracking-wide text-foreground">{name}</span>
         </div>
 
         <div className="flex flex-col gap-1">

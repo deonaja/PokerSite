@@ -1,5 +1,15 @@
 # Poker Chip Tracker — Progress & TODO
 
+Last updated: 2026-08-24 — **🎨 REDESIGN: felt-green → TELETEXT (Impeccable skill).** In progress on branch `dev`, NOT committed yet.
+- **Owner released felt-green** (was binding) and chose a **broadcast Teletext** world (Impeccable seed `2c95db6f`, bolder round reroll 1) after a mobile mitigation-mockup review. PRODUCT.md written + updated to record it. DESIGN.md pending (authored at finish).
+- **Foundation done**: `globals.css` re-worlded to broadcast-8 (var NAMES kept → whole app inherits; radius 0; teletext selection/caret/scrollbar/focus); `layout.tsx` VT323 self-hosted via next/font + direction-contract HTML comment (greppable by seed); `tailwind.config.ts` sans/mono→VT323, `read`→Geist, all border-radius→0; `ui/button` teletext block; `BalanceDisplay` cyan/red live figures; `manifest.ts` black.
+- **Committed per-screen**: `DashboardClient` (page tabs, PAPAN SALDO, block-mosaic progress + chip-stacks, magenta ranks, cyan balances, red SESI BERJALAN band, yellow CTA — podium replaced by teletext results table); `HeaderMenu` (POKERAJA status bar); `IdentityPicker` (P000, cyan selection); `SessionView` (P200 header, cyan saldo, prominent Rebuy). Verified via real-app screenshots (`.impeccable/review/identity-mobile.png`, `panduan-mobile.png`).
+- **Inherited (token+square only, not yet composed)**: session/setup, session/end, season/new (SeasonSetup), admin, player/[id], riwayat, season history+end, settings, changelog, lihat, loading states. Baseline coherent (see panduan screenshot).
+- **BUG FIXED (deadlock)**: could not create a season when players exist + no active season + logged out — `/identity` used to bounce to `/season/new` (no login possible) while `createSeason` required login (balance-reset guard). Fixed both sides: `/identity` shows picker when players exist; `/season/new` redirects unauth callers to `/identity` first. **Security gate on createSeason NOT weakened.** Typecheck green.
+- **NEXT**: finish committed treatment on remaining screens → batched screenshot inspection → `detect.mjs` → finish reviewer → DESIGN.md documenter → commit. Dev server was on :3000 (PID 12080). Old prod likely just Neon auto-suspend (wakes on access).
+
+---
+
 Last updated: 2026-06-29 — **🚀 Big push session: v0.11.0 → v0.14.0 LIVE.** 3 wave dispatch via subagents + 2 security audit:
 - **v0.11.0** (`26d165a`): Web Push notif (HP push utk loan events, sw.js, /settings/notifications, VAPID env)
 - **v0.12.0** (`7c4d76c`): Wave 1 — B6 buy_in display fix · B4 session creator cancel non-admin (migration 012a) · NEW win streak stats · I2 performance chart (recharts lazy-load) · F1 secure cookies

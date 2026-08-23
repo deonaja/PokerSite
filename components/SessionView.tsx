@@ -100,29 +100,27 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
 
   return (
     <>
-      {/* Sticky header */}
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <Link href="/" className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground">
+      {/* Sticky teletext header */}
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-2">
+        <div className="flex items-center gap-1.5">
+          <Link href="/" className="flex min-h-11 min-w-11 items-center justify-center text-[var(--tt-cyan)]">
             <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
           </Link>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-foreground">Sesi aktif</span>
-            {elapsed != null && (
-              <span className="font-mono text-xs tabular-nums text-muted-foreground" aria-label="Durasi sesi">
-                {formatClock(elapsed)}
-              </span>
-            )}
-            {isCreator && (
-              <span className="text-[0.6875rem] text-[var(--text-tertiary)]">
-                Kamu yang mulai sesi
-              </span>
-            )}
+          <div className="flex flex-col leading-tight">
+            <span className="flex items-center gap-1.5 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+              <span className="text-[var(--tt-magenta)]">P200</span> Sesi Aktif
+            </span>
+            <span className="flex items-center gap-2 text-sm uppercase tracking-wide text-[var(--text-secondary)]">
+              {elapsed != null && (
+                <span className="tabular-nums text-[var(--tt-cyan)]" aria-label="Durasi sesi">{formatClock(elapsed)}</span>
+              )}
+              {isCreator && <span>· Kamu yang mulai</span>}
+            </span>
           </div>
         </div>
         <Link
           href="/session/end"
-          className="flex min-h-9 items-center justify-center rounded-md bg-destructive px-3.5 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
+          className="flex min-h-10 items-center justify-center border-2 border-[var(--tt-red)] bg-[color-mix(in_srgb,var(--tt-red)_20%,#000)] px-4 text-base uppercase tracking-[0.1em] text-[var(--tt-red)] transition-colors hover:bg-[color-mix(in_srgb,var(--tt-red)_32%,#000)]"
         >
           End
         </Link>
@@ -130,11 +128,11 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
 
       {/* Error banner */}
       {error && (
-        <div className="flex items-center justify-between bg-destructive px-4 py-3 text-sm text-destructive-foreground">
+        <div className="flex items-center justify-between border-b-2 border-[var(--tt-red)] bg-[color-mix(in_srgb,var(--tt-red)_18%,#000)] px-4 py-3 text-base uppercase tracking-wide text-[var(--tt-red)]">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
-            className="cursor-pointer border-none bg-transparent px-1 text-base text-inherit"
+            className="cursor-pointer border-none bg-transparent px-1 text-xl text-inherit"
           >
             ×
           </button>
@@ -186,18 +184,23 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
               ) : (
                 <>
                   {/* Saldo + rebuy count */}
-                  <div className="mt-2 mb-2.5 flex gap-3.5 font-mono text-[0.8125rem] text-muted-foreground">
-                    <span className={lowBalance ? 'text-warn' : 'text-muted-foreground'}>Saldo: {p.balance}</span>
-                    <span>Rebuy: {p.rebuy_count}</span>
+                  <div className="mt-2 mb-2.5 flex items-baseline gap-4 text-base uppercase tracking-wide">
+                    <span className="text-[var(--text-secondary)]">
+                      Saldo{' '}
+                      <span className={'tabular-nums ' + (lowBalance ? 'text-[var(--tt-yellow)]' : 'text-[var(--tt-cyan)]')}>{p.balance}</span>
+                    </span>
+                    <span className="text-[var(--text-secondary)]">
+                      Rebuy <span className="tabular-nums text-[var(--tt-white)]">{p.rebuy_count}</span>
+                    </span>
                   </div>
 
                   {/* Actions */}
                   <div className="flex gap-2">
                     <Button
-                      variant="secondary"
+                      variant="primary"
                       disabled={!isHydrated || isPending || noBalance}
                       onClick={() => setRebuying(p)}
-                      className="min-h-[38px] flex-1 text-[0.8125rem]"
+                      className="min-h-11 flex-1 text-base"
                     >
                       {noBalance ? 'Saldo habis' : 'Rebuy'}
                     </Button>
@@ -205,7 +208,7 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
                       variant="secondary"
                       disabled={!isHydrated || isPending || p.rebuy_count === 0}
                       onClick={() => handleUndo(p)}
-                      className="min-h-[38px] flex-1 text-[0.8125rem]"
+                      className="min-h-11 flex-1 text-base"
                     >
                       Undo
                     </Button>
