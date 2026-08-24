@@ -86,9 +86,13 @@ themed cyan (`globals.css`). Dark-mode only; there is no light theme.
   deterministically from the name (broadcast-8 palette), so each player reads as a
   distinct chip. Used everywhere a player appears (header, identity, session, end,
   leaderboard, riwayat, player page).
-- **Achievements** (`AchievementIcon`): teletext block-mosaic glyphs (7×7), one per
-  category (bandar/juara/podium/veteran/sultan/untung); tier drives colour, not
-  shape — locked dark → silver → cyan → gold-with-glow.
+- **Achievements** (`AchievementIcon` + `AchievementsGrid`): detailed teletext
+  block-mosaic glyphs (12×12), one per category (bandar/juara/podium/veteran/
+  sultan/untung); tier drives colour, not shape — locked dark → silver → cyan →
+  gold-with-glow. The profile shows a compact 3-tier grid per category; tapping a
+  category opens a bottom-sheet with each tier's name, short requirement, and
+  status (pixel check / progress count / pixel lock) — descriptions live in the
+  popup, not inline, since touch has no hover.
 - **Icons**: the pixel `PixelIcon` set is the primary icon language (section
   headers, dealer star, warnings, chevrons). Lucide remains for a few simple
   functional glyphs (back arrow, close, account-sheet, preset icons) as a clean
