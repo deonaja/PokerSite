@@ -16,7 +16,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-08-24',
     changes: [
       'TAMPILAN BARU TOTAL cuy — sekarang gaya "teletext": layar item, angka gede warna cyan, font pixel, semua siku. Vibe underground, bukan casino norak.',
-      'Avatar baru: tiap orang dapet keping poker pixel warna sendiri — gampang bedain siapa-siapa.',
+      'Avatar baru: tiap orang dapet keping poker pixel warna sendiri — gampang bedain siapa-siapa. Bisa ganti warna chip lo sendiri: buka menu akun → tap chip lo → pilih warna rekomendasi atau custom (hex/geser sendiri).',
       'Tab atas ganti: SESI diganti PROFIL (langsung ke statistik lo). Mulai sesi tetep lewat tombol gede di bawah.',
       'Achievement dirombak: ikon lebih detail, dan sekarang tinggal TAP kategorinya buat liat syarat tiap tingkat + progress lo (dulu cuma bisa di-hover, percuma di HP).',
       'Fix: dulu ada kondisi ga bisa bikin musim baru kalau belum login padahal udah ada pemain — sekarang otomatis diarahin login dulu, ga mentok lagi.',
