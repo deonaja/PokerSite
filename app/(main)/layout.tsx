@@ -16,7 +16,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <HeaderMenu name={authPlayer.name} />
+      <HeaderMenu name={authPlayer.name} avatarColor={authPlayer.avatar_color} />
       <WelcomeGuide />
       <PushToast />
 

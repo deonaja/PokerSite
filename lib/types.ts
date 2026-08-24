@@ -3,6 +3,7 @@ export interface Player {
   name: string
   balance: number
   created_at: string
+  avatar_color?: string | null
 }
 
 // Player row for the /identity picker, annotated with active-season membership so
@@ -107,6 +108,7 @@ export interface PollParticipant {
   // Player's live balance (post buy-in / rebuys) — surfaced so the active
   // session view can show it and gate the rebuy button.
   balance: number
+  avatar_color?: string | null
 }
 
 export interface PollResponse {

@@ -215,7 +215,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   onChange={() => togglePlayer(p.id)}
                   className="h-5 w-5 shrink-0 accent-[var(--tt-cyan)]"
                 />
-                <Avatar name={p.name} size={32} />
+                <Avatar name={p.name} color={p.avatar_color} size={32} />
                 <span className="min-w-0 flex-1 truncate text-lg uppercase tracking-wide text-[var(--tt-white)]">{p.name}</span>
                 <span className={'text-lg tabular-nums ' + (lowBalance ? 'text-[var(--tt-yellow)]' : 'text-[var(--tt-cyan)]')}>
                   {p.balance}
@@ -242,7 +242,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   onChange={() => { setDealerId(p.id); setDealerManuallySet(true) }}
                   className="h-5 w-5 shrink-0 accent-[var(--tt-cyan)]"
                 />
-                <Avatar name={p.name} size={32} />
+                <Avatar name={p.name} color={p.avatar_color} size={32} />
                 <span className="min-w-0 flex-1 truncate text-lg uppercase tracking-wide text-[var(--tt-white)]">{p.name}</span>
                 <span className="shrink-0 text-lg tabular-nums text-[var(--tt-cyan)]">{p.balance}</span>
                 {p.cooldown_remaining > 0 && currentPhase === 'bootstrap' && (

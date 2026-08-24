@@ -12,7 +12,7 @@ async function getSetupData(): Promise<{ players: PlayerWithMeta[]; buyIn: numbe
   const [playerRows, seasonRows] = await Promise.all([
     sql`
       SELECT
-        p.id, p.name, p.balance, p.created_at, p.last_dealer_session_id,
+        p.id, p.name, p.balance, p.created_at, p.avatar_color, p.last_dealer_session_id,
         CASE
           WHEN p.last_dealer_session_id IS NULL THEN 0
           ELSE GREATEST(0, 2 - (

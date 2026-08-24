@@ -14,7 +14,7 @@ import IdentityPicker from '@/components/IdentityPicker'
 // hide anyone, or non-members could never log in to rejoin.
 async function getPlayers(seasonId: string): Promise<PickerPlayer[]> {
   const rows = await sql`
-    SELECT p.id, p.name, p.balance, p.created_at,
+    SELECT p.id, p.name, p.balance, p.created_at, p.avatar_color,
            (mp.player_id IS NOT NULL) AS is_member
     FROM players p
     LEFT JOIN season_players mp
@@ -29,7 +29,7 @@ async function getPlayers(seasonId: string): Promise<PickerPlayer[]> {
 // active season, so is_member is false for all.
 async function getAllPlayers(): Promise<PickerPlayer[]> {
   const rows = await sql`
-    SELECT id, name, balance, created_at, false AS is_member
+    SELECT id, name, balance, created_at, avatar_color, false AS is_member
     FROM players
     ORDER BY name ASC
   `

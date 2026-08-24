@@ -156,7 +156,7 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
             >
               {/* Avatar + name + role */}
               <div className="flex items-center gap-2.5">
-                <Avatar name={p.player_name} size={36} className={isMe ? 'ring-2 ring-[var(--tt-cyan)]' : ''} />
+                <Avatar name={p.player_name} color={p.avatar_color} size={36} className={isMe ? 'ring-2 ring-[var(--tt-cyan)]' : ''} />
                 <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium text-foreground">
                   {p.player_name}
                 </span>
@@ -261,7 +261,7 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
                       (active ? 'border-primary bg-accent' : 'border-border bg-card')
                     }
                   >
-                    <Avatar name={p.name} size={32} />
+                    <Avatar name={p.name} color={p.avatar_color} size={32} />
                     <span className="min-w-0 flex-1 truncate text-foreground">{p.name}</span>
                     <span className="font-mono text-[0.8125rem] tabular-nums text-muted-foreground">Saldo: {p.balance}</span>
                   </button>

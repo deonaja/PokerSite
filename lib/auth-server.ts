@@ -5,6 +5,7 @@ import { hashSessionToken } from '@/lib/auth'
 export interface AuthenticatedPlayer {
   id: string
   name: string
+  avatar_color: string | null
 }
 
 export async function getAuthenticatedPlayer(): Promise<AuthenticatedPlayer | null> {
@@ -18,7 +19,7 @@ export async function getAuthenticatedPlayer(): Promise<AuthenticatedPlayer | nu
   try {
     const tokenHash = hashSessionToken(token)
     const { rows: [row] } = await client.query<AuthenticatedPlayer>(
-      `SELECT p.id, p.name
+      `SELECT p.id, p.name, p.avatar_color
        FROM auth_sessions s
        JOIN players p ON p.id = s.player_id
        WHERE s.token_hash = $1

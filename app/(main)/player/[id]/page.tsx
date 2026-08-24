@@ -15,6 +15,7 @@ interface PlayerRow {
   id: string
   name: string
   balance: number
+  avatar_color: string | null
 }
 
 interface ResultRow {
@@ -42,7 +43,7 @@ async function getData(id: string) {
     playerSeasonsRows,
     playerSeasonSessionRows,
   ] = await Promise.all([
-    sql`SELECT id, name, balance FROM players WHERE id = ${id}` as unknown as Promise<PlayerRow[]>,
+    sql`SELECT id, name, balance, avatar_color FROM players WHERE id = ${id}` as unknown as Promise<PlayerRow[]>,
     sql`
       SELECT
         sr.season_id,
@@ -282,7 +283,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         >
           <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
-        <Avatar name={player.name} size={48} />
+        <Avatar name={player.name} color={player.avatar_color} size={48} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-xl uppercase tracking-wide text-[var(--tt-white)]">{player.name}</p>
           <p className="flex items-center gap-1.5 text-sm uppercase tracking-wide text-[var(--text-tertiary)]"><PixelIcon name="person" size={12} className="text-[var(--tt-cyan)]" /> Pemain</p>
