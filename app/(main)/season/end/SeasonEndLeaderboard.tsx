@@ -6,6 +6,7 @@ interface Player {
   id: string
   name: string
   balance: number
+  avatar_color: string | null
 }
 
 interface Props {
@@ -161,7 +162,7 @@ function PodiumPillar({
     >
       {/* Avatar + name above the pillar */}
       <div className="mb-2 flex flex-col items-center gap-1.5">
-        <Avatar name={player.name} size={48} className={ringClass} />
+        <Avatar name={player.name} color={player.avatar_color} size={48} className={ringClass} />
         <p className="line-clamp-1 max-w-full text-center text-base uppercase tracking-wide text-foreground">
           {player.name}
         </p>
@@ -223,7 +224,7 @@ function PlayerRow({
       >
         #{rank}
       </span>
-      <Avatar name={player.name} size={32} />
+      <Avatar name={player.name} color={player.avatar_color} size={32} />
       <span className="flex-1 truncate text-lg uppercase tracking-wide text-foreground">
         {player.name}
       </span>

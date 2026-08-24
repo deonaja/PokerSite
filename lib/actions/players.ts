@@ -6,6 +6,37 @@ import { getAuthenticatedPlayerId, isAdmin } from '@/lib/auth-server'
 import { hashPin, isValidPin, verifyPin } from '@/lib/auth'
 import { takeSnapshot } from '@/lib/rollback'
 
+// A player sets (or resets) their own avatar chip colour. Self-authorized:
+// server actions are publicly invocable, so this must confirm the caller owns
+// the row it mutates. color = null resets to the name-derived default.
+const HEX_RE = /^#[0-9a-fA-F]{6}$/
+
+export async function setAvatarColor({
+  color,
+}: {
+  color: string | null
+}): Promise<{ success: true } | { error: string }> {
+  const playerId = await getAuthenticatedPlayerId()
+  if (!playerId) return { error: 'Belum login' }
+
+  let value: string | null = null
+  if (color != null && color !== '') {
+    const normalized = color.trim().toLowerCase()
+    if (!HEX_RE.test(normalized)) return { error: 'Warna harus format hex (mis. #00d0d0)' }
+    value = normalized
+  }
+
+  const client = createDbClient()
+  await client.connect()
+  try {
+    await client.query(`UPDATE players SET avatar_color = $1 WHERE id = $2`, [value, playerId])
+  } finally {
+    await client.end()
+  }
+  revalidatePath('/')
+  return { success: true }
+}
+
 export async function changePin({
   oldPin,
   newPin,

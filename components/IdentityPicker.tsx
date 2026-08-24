@@ -169,7 +169,7 @@ function PlayerGroup({
                 : 'border-[var(--tt-rule)] bg-[#0a0a0a] hover:bg-[var(--bg-elevated)]')
             }
           >
-            <Avatar name={p.name} size={36} className={active ? '' : 'opacity-70'} />
+            <Avatar name={p.name} color={p.avatar_color} size={36} className={active ? '' : 'opacity-70'} />
             <span className={'truncate text-lg uppercase tracking-wide ' + (active ? 'text-[var(--tt-white)]' : 'text-[var(--text-secondary)]')}>
               {p.name}
             </span>

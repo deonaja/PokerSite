@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { KeyRound, LogOut, Sparkles, HelpCircle, Bell } from 'lucide-react'
 import Sheet from './Sheet'
 import Avatar from './Avatar'
+import AvatarColorPicker from './AvatarColorPicker'
 import PixelIcon from './PixelIcon'
 import { Badge } from './ui/badge'
 import { getLocalStorageItem } from '@/lib/safeStorage'
@@ -13,8 +14,9 @@ import { deletePushSubscription } from '@/lib/actions/push'
 
 // Minimal header: avatar (initial) + greeting. Tapping it opens an account
 // bottom-sheet with the actions, so the bar itself stays uncluttered.
-export default function HeaderMenu({ name }: { name: string }) {
+export default function HeaderMenu({ name, avatarColor }: { name: string; avatarColor: string | null }) {
   const [open, setOpen] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
   // Defaults to false so SSR/first client render match (no hydration mismatch);
   // the effect flips it on once we can read localStorage.
   const [hasNew, setHasNew] = useState(false)
@@ -61,7 +63,7 @@ export default function HeaderMenu({ name }: { name: string }) {
         className="ml-auto flex min-w-0 items-center gap-2 border border-[var(--tt-rule-strong)] px-2 py-1 transition-colors hover:bg-[var(--bg-elevated)]"
       >
         <span className="relative shrink-0">
-          <Avatar name={name} size={30} />
+          <Avatar name={name} size={30} color={avatarColor} />
           {hasNew && (
             <span
               aria-hidden
@@ -84,10 +86,17 @@ export default function HeaderMenu({ name }: { name: string }) {
       </Link>
 
       <Sheet isOpen={open} onClose={() => setOpen(false)} title="Akun">
-        <div className="mb-4 flex items-center gap-3">
-          <Avatar name={name} size={48} />
-          <span className="truncate text-lg uppercase tracking-wide text-foreground">{name}</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setPickerOpen(true) }}
+          className="mb-4 flex w-full items-center gap-3 border border-[var(--tt-rule)] bg-[#0a0a0a] px-3 py-2.5 text-left transition-colors hover:bg-[var(--bg-elevated)]"
+        >
+          <Avatar name={name} size={48} color={avatarColor} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-lg uppercase tracking-wide text-foreground">{name}</span>
+            <span className="block text-sm uppercase tracking-wide text-[var(--tt-cyan)]">Ganti warna chip ›</span>
+          </span>
+        </button>
 
         <div className="flex flex-col gap-1">
           <Link
@@ -126,6 +135,13 @@ export default function HeaderMenu({ name }: { name: string }) {
           </form>
         </div>
       </Sheet>
+
+      <AvatarColorPicker
+        isOpen={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        name={name}
+        color={avatarColor}
+      />
     </header>
   )
 }

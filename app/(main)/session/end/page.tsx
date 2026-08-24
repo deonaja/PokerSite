@@ -6,6 +6,7 @@ interface ParticipantRow {
   session_id: string
   player_id: string
   player_name: string
+  avatar_color: string | null
   is_dealer: boolean
   no_gaji_dealer: boolean
   rebuy_count: number
@@ -36,6 +37,7 @@ async function getSessionData() {
         sp.no_gaji_dealer,
         sp.rebuy_count,
         p.name        AS player_name,
+        p.avatar_color AS avatar_color,
         p.balance     AS current_balance,
         (
           COALESCE((
@@ -93,6 +95,7 @@ async function getSessionData() {
     participants: rows.map((r) => ({
       player_id: r.player_id,
       player_name: r.player_name,
+      avatar_color: r.avatar_color,
       is_dealer: r.is_dealer,
       no_gaji_dealer: r.no_gaji_dealer,
       rebuy_count: r.rebuy_count,

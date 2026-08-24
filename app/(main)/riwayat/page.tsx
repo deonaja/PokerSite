@@ -20,6 +20,7 @@ interface ResultRow {
   session_id: string
   player_id: string
   player_name: string
+  avatar_color: string | null
   is_dealer: boolean
   delta: number
   rebuys: number
@@ -40,7 +41,7 @@ async function getData() {
     // first.before), so SUM(after − before) is correct and ordering-independent
     // (a rebuy and its undo cancel out). Mirrors the end-wizard recap delta.
     sql`
-      SELECT el.session_id, el.player_id, p.name AS player_name,
+      SELECT el.session_id, el.player_id, p.name AS player_name, p.avatar_color,
              COALESCE(sp.is_dealer, false) AS is_dealer,
              SUM(el.balance_after - el.balance_before)::int AS delta,
              COUNT(*) FILTER (WHERE el.action = 'rebuy' AND NOT el.voided)::int AS rebuys
@@ -51,7 +52,7 @@ async function getData() {
       LEFT JOIN session_participants sp
         ON sp.session_id = el.session_id AND sp.player_id = el.player_id
       WHERE s.status = 'ended'
-      GROUP BY el.session_id, el.player_id, p.name, sp.is_dealer
+      GROUP BY el.session_id, el.player_id, p.name, p.avatar_color, sp.is_dealer
     ` as unknown as Promise<ResultRow[]>,
   ])
 
@@ -141,7 +142,7 @@ export default async function RiwayatSesiPage() {
                         key={p.player_id}
                         className={`flex items-center gap-2.5 px-3.5 py-2 ${isMe ? 'bg-[var(--accent-felt-dim)]' : ''}`}
                       >
-                        <Avatar name={p.player_name} size={28} />
+                        <Avatar name={p.player_name} color={p.avatar_color} size={28} />
                         <span className="flex-1 truncate text-sm text-foreground">
                           {p.player_name}
                           {p.is_dealer && <PixelIcon name="star" size={11} className="ml-1 inline-block align-middle text-[var(--tt-cyan)]" />}

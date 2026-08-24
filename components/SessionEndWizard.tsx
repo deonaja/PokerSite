@@ -17,6 +17,7 @@ import { formatDurationShort } from '@/lib/duration'
 interface Participant {
   player_id: string
   player_name: string
+  avatar_color: string | null
   is_dealer: boolean
   // true = deals only, doesn't play (broke fallback OR a chosen neutral dealer).
   // Only a non-playing dealer collects the rake.
@@ -208,7 +209,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
               return (
                 <Card key={p.player_id} className="px-4 py-3">
                   <div className="mb-1 flex items-center gap-2">
-                    <Avatar name={p.player_name} size={32} />
+                    <Avatar name={p.player_name} color={p.avatar_color} size={32} />
                     <span className="min-w-0 truncate text-lg uppercase tracking-wide text-[var(--tt-white)]">{p.player_name}</span>
                     {p.is_dealer && <Badge className="px-1.5 py-0.5"><PixelIcon name="star" size={11} /></Badge>}
                     {p.no_gaji_dealer && (
@@ -300,7 +301,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
       </div>
 
       <div className="flex flex-col items-center gap-1.5 px-6 pt-7">
-        <Avatar name={current.player_name} size={64} className="mb-1" />
+        <Avatar name={current.player_name} color={current.avatar_color} size={64} className="mb-1" />
         <p className="m-0 text-2xl uppercase tracking-wide text-[var(--tt-white)]">{current.player_name}</p>
         {current.is_dealer && (
           <Badge className="inline-flex items-center gap-1 px-2 py-0.5 text-sm uppercase tracking-wider">

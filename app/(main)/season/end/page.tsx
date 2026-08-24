@@ -18,6 +18,7 @@ interface PlayerRow {
   id: string
   name: string
   balance: number
+  avatar_color: string | null
 }
 
 async function getData(seasonId: string) {
@@ -37,7 +38,7 @@ async function getData(seasonId: string) {
       GROUP BY se.id
     ` as unknown as Promise<SeasonRow[]>,
     sql`
-      SELECT p.id, p.name, p.balance
+      SELECT p.id, p.name, p.balance, p.avatar_color
       FROM players p
       JOIN season_players mp ON mp.player_id = p.id AND mp.season_id = ${seasonId}
       ORDER BY p.balance DESC, p.name ASC
