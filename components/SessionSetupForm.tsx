@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Player } from '@/lib/types'
 import Button from './Button'
+import PixelIcon from './PixelIcon'
 import { startSession } from '@/lib/actions/session'
 import { getLocalStorageItem } from '@/lib/safeStorage'
 
@@ -207,12 +208,12 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   return (
     <div className="px-3 pt-4">
       {/* Teletext page id */}
-      <p className="mb-4 text-base uppercase tracking-wide text-[var(--text-tertiary)]">
-        <span className="text-[var(--tt-magenta)]">P200</span> Sesi · Setup
+      <p className="mb-4 flex items-center gap-2 text-base uppercase tracking-wide text-[var(--text-secondary)]">
+        <PixelIcon name="people" size={16} className="text-[var(--tt-cyan)]" /> Sesi · Setup
       </p>
 
       {/* Player checkboxes — everyone selectable */}
-      <p className={sectionLabel}><span className="text-[var(--tt-magenta)]">101</span> Pilih Pemain</p>
+      <p className={sectionLabel}>Pilih Pemain</p>
 
       {players.length === 0 ? (
         <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
@@ -244,7 +245,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
       {/* Single dealer choice from the selected players */}
       {selectedPlayers.length > 0 && (
         <>
-          <p className={sectionLabel}><span className="text-[var(--tt-magenta)]">102</span> Siapa Yang Bagi Kartu?</p>
+          <p className={sectionLabel}>Siapa Yang Bagi Kartu?</p>
           <div className="mb-3 flex flex-col gap-2">
             {selectedPlayers.map((p) => (
               <label key={p.id} className={rowClass(dealerId === p.id)}>
@@ -277,7 +278,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
           {/* Dealer mode — only when 4+ players (a neutral dealer needs 3 others to play) */}
           {canBeNeutral && (
             <div className="mb-3">
-              <p className={sectionLabel}><span className="text-[var(--tt-magenta)]">103</span> Dealer Ikut Main?</p>
+              <p className={sectionLabel}>Dealer Ikut Main?</p>
               <div className="flex gap-2">
                 <button
                   type="button"

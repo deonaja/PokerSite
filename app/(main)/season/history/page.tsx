@@ -1,6 +1,7 @@
 import { sql } from '@/lib/db'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import PixelIcon from '@/components/PixelIcon'
 import HistoryAccordion from './HistoryAccordion'
 
 interface SeasonRow {
@@ -90,8 +91,8 @@ export default async function SeasonHistoryPage() {
         >
           <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
-        <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
-          <span className="text-[var(--tt-magenta)]">P400</span> Riwayat Musim
+        <span className="flex items-center gap-2 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+          <PixelIcon name="calendar" size={16} className="text-[var(--tt-cyan)]" /> Riwayat Musim
         </span>
       </div>
 

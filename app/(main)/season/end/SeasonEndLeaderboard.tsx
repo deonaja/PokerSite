@@ -1,4 +1,5 @@
 import { Card } from '@/components/ui/card'
+import PixelIcon from '@/components/PixelIcon'
 
 interface Player {
   id: string
@@ -36,8 +37,8 @@ export default function SeasonEndLeaderboard({ players, startingBalance }: Props
 
   return (
     <div className="px-3 pt-5">
-      <p className="mb-4 text-base uppercase tracking-[0.1em] text-[var(--text-secondary)]">
-        <span className="text-[var(--tt-magenta)]">P410</span> Leaderboard
+      <p className="mb-4 flex items-center gap-2 text-base uppercase tracking-[0.1em] text-[var(--text-secondary)]">
+        <PixelIcon name="trophy" size={16} className="text-[var(--tt-yellow)]" /> Leaderboard
       </p>
 
       {players.length >= 3 ? (

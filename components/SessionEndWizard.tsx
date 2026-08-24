@@ -6,6 +6,7 @@ import { Star, TriangleAlert, ArrowLeft, ArrowRight } from 'lucide-react'
 import { endSession } from '@/lib/actions/session'
 import BalanceDisplay from './BalanceDisplay'
 import Button from './Button'
+import PixelIcon from './PixelIcon'
 import { Card } from './ui/card'
 import { Badge } from './ui/badge'
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '@/lib/safeStorage'
@@ -184,8 +185,8 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
       <div className="pb-24">
         <div className="flex items-center gap-2 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-2.5">
           {backButton}
-          <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
-            <span className="text-[var(--tt-magenta)]">P211</span> Konfirmasi
+          <span className="flex items-center gap-2 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+            <PixelIcon name="flag" size={16} className="text-[var(--tt-cyan)]" /> Konfirmasi
           </span>
         </div>
 
@@ -281,8 +282,8 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
       <div className="flex items-center justify-between gap-3 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-2.5">
         <div className="flex items-center gap-2">
           {backButton}
-          <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
-            <span className="text-[var(--tt-magenta)]">P210</span> End Sesi
+          <span className="flex items-center gap-2 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+            <PixelIcon name="flag" size={16} className="text-[var(--tt-cyan)]" /> End Sesi
           </span>
         </div>
         <span className="text-lg tabular-nums text-[var(--tt-cyan)]">

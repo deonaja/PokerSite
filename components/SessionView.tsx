@@ -10,6 +10,7 @@ import { useElapsedSeconds } from '@/lib/useElapsed'
 import { formatClock } from '@/lib/duration'
 import Sheet from './Sheet'
 import Button from './Button'
+import PixelIcon from './PixelIcon'
 import { Badge } from './ui/badge'
 import type { PollParticipant, PollResponse } from '@/lib/types'
 import { getLocalStorageItem } from '@/lib/safeStorage'
@@ -107,8 +108,8 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
             <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
           </Link>
           <div className="flex flex-col leading-tight">
-            <span className="flex items-center gap-1.5 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
-              <span className="text-[var(--tt-magenta)]">P200</span> Sesi Aktif
+            <span className="flex items-center gap-2 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+              <PixelIcon name="cards" size={16} className="text-[var(--tt-cyan)]" /> Sesi Aktif
             </span>
             <span className="flex items-center gap-2 text-sm uppercase tracking-wide text-[var(--text-secondary)]">
               {elapsed != null && (

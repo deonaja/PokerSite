@@ -8,6 +8,7 @@ import Button from './Button'
 import Sheet from './Sheet'
 import LoanWidget from './LoanWidget'
 import JoinSeasonPrompt from './JoinSeasonPrompt'
+import PixelIcon, { type PixelIconName } from './PixelIcon'
 import { getLocalStorageItem, setLocalStorageItem } from '@/lib/safeStorage'
 import type { PollResponse, Season } from '@/lib/types'
 
@@ -50,16 +51,16 @@ function ChipMosaic({ value, max }: { value: number; max: number }) {
   )
 }
 
-// A single teletext page tab (>=44px touch cell).
-function PageTab({ code, label, href, active }: { code: string; label: string; href?: string; active?: boolean }) {
+// A single teletext page tab (>=48px touch cell): block-mosaic icon over label.
+function PageTab({ icon, label, href, active }: { icon: PixelIconName; label: string; href?: string; active?: boolean }) {
   const cls =
-    'flex h-12 flex-1 items-center justify-center gap-1.5 border-r border-[var(--tt-rule)] text-base uppercase tracking-wide last:border-r-0 ' +
+    'flex h-14 flex-1 flex-col items-center justify-center gap-1 border-r border-[var(--tt-rule)] text-base uppercase tracking-wide last:border-r-0 ' +
     (active
       ? 'bg-[var(--tt-cyan)] text-black'
       : 'text-[var(--tt-white)] transition-colors hover:bg-[var(--bg-elevated)]')
   const inner = (
     <>
-      <span className={active ? 'text-black/70' : 'text-[var(--tt-magenta)]'}>{code}</span>
+      <PixelIcon name={icon} size={20} />
       {label}
     </>
   )
@@ -123,16 +124,17 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
 
   return (
     <div className="pb-28">
-      {/* Page tabs — teletext magazine navigation */}
+      {/* Page tabs — teletext magazine navigation (icon over label) */}
       <div className="flex border-b-2 border-[var(--tt-rule)]">
-        <PageTab code="100" label="Saldo" active />
-        <PageTab code="200" label="Sesi" href={activeSession ? '/session' : '/session/setup'} />
-        <PageTab code="300" label="Riwayat" href="/riwayat" />
+        <PageTab icon="chip" label="Saldo" active />
+        <PageTab icon="person" label="Profil" href={currentPlayerId ? `/player/${currentPlayerId}` : '/identity'} />
+        <PageTab icon="clock" label="Riwayat" href="/riwayat" />
       </div>
 
       {/* Double-height yellow header + season line */}
       <div className="px-3 pt-3">
-        <h1 className="text-3xl uppercase leading-none tracking-[0.06em] text-[var(--tt-yellow)]">
+        <h1 className="flex items-center gap-2.5 text-3xl uppercase leading-none tracking-[0.06em] text-[var(--tt-yellow)]">
+          <PixelIcon name="chip" size={26} className="shrink-0 text-[var(--tt-cyan)]" />
           Papan Saldo
         </h1>
         {season && (
@@ -262,12 +264,12 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
       )}
 
       {/* Teletext page footer — reachable pages */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 px-3 text-sm uppercase tracking-wide text-[var(--text-tertiary)]">
-        <Link href="/riwayat" className="transition-colors hover:text-[var(--tt-cyan)]">
-          <span className="text-[var(--tt-magenta)]">300</span> Riwayat Sesi
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 px-3 text-sm uppercase tracking-wide text-[var(--text-tertiary)]">
+        <Link href="/riwayat" className="inline-flex items-center gap-1.5 transition-colors hover:text-[var(--tt-cyan)]">
+          <PixelIcon name="clock" size={13} /> Riwayat Sesi
         </Link>
-        <Link href="/season/history" className="transition-colors hover:text-[var(--tt-cyan)]">
-          <span className="text-[var(--tt-magenta)]">400</span> Riwayat Musim
+        <Link href="/season/history" className="inline-flex items-center gap-1.5 transition-colors hover:text-[var(--tt-cyan)]">
+          <PixelIcon name="calendar" size={13} /> Riwayat Musim
         </Link>
       </div>
 

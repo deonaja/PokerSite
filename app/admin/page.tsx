@@ -10,6 +10,7 @@ import InviteCodeSection from './InviteCodeSection'
 import RollbackButton from '@/components/admin/RollbackButton'
 import { MAX_INVITE_CODE_USES } from '@/lib/auth'
 import { Download, ArrowLeft, ArrowRight } from 'lucide-react'
+import PixelIcon from '@/components/PixelIcon'
 
 const PAGE_SIZE = 20
 const ROLLBACK_PAGE_SIZE = 10
@@ -144,8 +145,8 @@ export default async function AdminPage({
 
   return (
     <div className="mx-auto flex min-h-[100dvh] max-w-[480px] flex-col gap-6 bg-background p-4">
-      <h1 className="text-xl uppercase tracking-[0.08em] text-[var(--tt-yellow)]">
-        <span className="text-[var(--tt-magenta)]">P900</span> Admin
+      <h1 className="flex items-center gap-2 text-xl uppercase tracking-[0.08em] text-[var(--tt-yellow)]">
+        <PixelIcon name="shield" size={18} className="text-[var(--tt-cyan)]" /> Admin
       </h1>
 
       {/* Players */}

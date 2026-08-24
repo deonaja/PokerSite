@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { PickerPlayer } from '@/lib/types'
 import Button from './Button'
 import RegisterForm from './RegisterForm'
+import PixelIcon from './PixelIcon'
 import { setLocalStorageItem } from '@/lib/safeStorage'
 
 interface Props {
@@ -44,8 +45,8 @@ export default function IdentityPicker({ players, error }: Props) {
       {/* Teletext status bar + page id */}
       <div className="flex items-center gap-2.5 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-2">
         <span className="text-lg uppercase tracking-[0.12em] text-[var(--tt-yellow)]">PokerAja</span>
-        <span className="ml-auto text-base uppercase tracking-wide text-[var(--text-tertiary)]">
-          <span className="text-[var(--tt-magenta)]">P000</span> Identitas
+        <span className="ml-auto flex items-center gap-2 text-base uppercase tracking-wide text-[var(--text-secondary)]">
+          <PixelIcon name="person" size={14} className="text-[var(--tt-cyan)]" /> Identitas
         </span>
       </div>
 
@@ -77,8 +78,8 @@ export default function IdentityPicker({ players, error }: Props) {
 
                 {showGroups ? (
                   <>
-                    <PlayerGroup code="100" label="Musim ini" players={members} selectedId={selectedId} onSelect={setSelectedId} />
-                    <PlayerGroup code="200" label="Lainnya" players={others} selectedId={selectedId} onSelect={setSelectedId} />
+                    <PlayerGroup label="Musim ini" players={members} selectedId={selectedId} onSelect={setSelectedId} />
+                    <PlayerGroup label="Lainnya" players={others} selectedId={selectedId} onSelect={setSelectedId} />
                   </>
                 ) : (
                   <PlayerGroup players={players} selectedId={selectedId} onSelect={setSelectedId} />
@@ -136,13 +137,11 @@ export default function IdentityPicker({ players, error }: Props) {
 }
 
 function PlayerGroup({
-  code,
   label,
   players,
   selectedId,
   onSelect,
 }: {
-  code?: string
   label?: string
   players: PickerPlayer[]
   selectedId: string
@@ -153,7 +152,6 @@ function PlayerGroup({
     <div className="flex flex-col gap-2">
       {label && (
         <p className="mt-1 px-0.5 text-sm uppercase tracking-[0.1em] text-[var(--text-tertiary)]">
-          {code && <span className="text-[var(--tt-magenta)]">{code} </span>}
           {label}
         </p>
       )}

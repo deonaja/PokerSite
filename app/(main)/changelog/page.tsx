@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import PixelIcon from '@/components/PixelIcon'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CHANGELOG } from '@/lib/changelog'
@@ -22,8 +23,8 @@ export default function ChangelogPage() {
         >
           <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
-        <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
-          <span className="text-[var(--tt-magenta)]">P700</span> Apa Yang Baru
+        <span className="flex items-center gap-2 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+          <PixelIcon name="star" size={16} className="text-[var(--tt-cyan)]" /> Apa Yang Baru
         </span>
       </div>
 

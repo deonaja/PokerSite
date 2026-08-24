@@ -8,6 +8,7 @@ import { ACHIEVEMENTS, computeLifetimeCounts } from '@/lib/achievements'
 import { AchievementIcon, type AchievementCategoryId } from '@/components/AchievementIcon'
 import { formatDurationShort } from '@/lib/duration'
 import { ArrowLeft } from 'lucide-react'
+import PixelIcon from '@/components/PixelIcon'
 
 interface PlayerRow {
   id: string
@@ -286,7 +287,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-xl uppercase tracking-wide text-[var(--tt-white)]">{player.name}</p>
-          <p className="text-sm uppercase tracking-wide text-[var(--text-tertiary)]"><span className="text-[var(--tt-magenta)]">P500</span> Pemain</p>
+          <p className="flex items-center gap-1.5 text-sm uppercase tracking-wide text-[var(--text-tertiary)]"><PixelIcon name="person" size={12} className="text-[var(--tt-cyan)]" /> Pemain</p>
         </div>
         <span className={'text-2xl tabular-nums ' + (player.balance < 0 ? 'text-[var(--tt-red)]' : 'text-[var(--tt-cyan)]')}>
           {player.balance}

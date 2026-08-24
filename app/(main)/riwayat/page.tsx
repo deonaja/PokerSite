@@ -1,6 +1,7 @@
 import { sql } from '@/lib/db'
 import Link from 'next/link'
 import { ArrowLeft, Clock, Star } from 'lucide-react'
+import PixelIcon from '@/components/PixelIcon'
 import { getAuthenticatedPlayerId } from '@/lib/auth-server'
 import { formatDurationShort } from '@/lib/duration'
 
@@ -91,8 +92,8 @@ export default async function RiwayatSesiPage() {
         <Link href="/" className="flex min-h-11 min-w-11 items-center text-[var(--tt-cyan)] no-underline">
           <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
-        <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
-          <span className="text-[var(--tt-magenta)]">P300</span> Riwayat Sesi
+        <span className="flex items-center gap-2 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+          <PixelIcon name="clock" size={16} className="text-[var(--tt-cyan)]" /> Riwayat Sesi
         </span>
       </div>
 
