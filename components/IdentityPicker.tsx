@@ -40,97 +40,109 @@ export default function IdentityPicker({ players, error }: Props) {
     null
 
   return (
-    <div className="flex flex-col px-4 pt-12 pb-8">
-      {mode === 'register' ? (
-        <>
-          <p className="mb-6 text-sm text-muted-foreground">Daftar pemain baru</p>
-          <RegisterForm onBack={() => setMode('login')} />
-        </>
-      ) : (
-        <>
-          <p className="mb-6 text-sm text-muted-foreground">Pilih nama kamu</p>
+    <div className="flex min-h-dvh flex-col">
+      {/* Teletext status bar + page id */}
+      <div className="flex items-center gap-2.5 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-2">
+        <span className="text-lg uppercase tracking-[0.12em] text-[var(--tt-yellow)]">PokerAja</span>
+        <span className="ml-auto text-base uppercase tracking-wide text-[var(--text-tertiary)]">
+          <span className="text-[var(--tt-magenta)]">P000</span> Identitas
+        </span>
+      </div>
 
-          {players.length === 0 ? (
-        <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
-      ) : (
-        <form
-          method="post"
-          action="/api/identity"
-          className="flex flex-col gap-3"
-          onSubmit={() => {
-            if (!selectedPlayer) return
-            setLocalStorageItem('playerId', selectedPlayer.id)
-            setLocalStorageItem('playerName', selectedPlayer.name)
-          }}
-        >
-          <input type="hidden" name="playerId" value={selectedId} />
+      <div className="flex flex-1 flex-col px-3 pt-5 pb-8">
+        {mode === 'register' ? (
+          <>
+            <h1 className="mb-5 text-2xl uppercase tracking-[0.06em] text-[var(--tt-yellow)]">Daftar Pemain Baru</h1>
+            <RegisterForm onBack={() => setMode('login')} />
+          </>
+        ) : (
+          <>
+            <h1 className="mb-1 text-2xl uppercase tracking-[0.06em] text-[var(--tt-yellow)]">Kamu Siapa?</h1>
+            <p className="mb-5 text-base uppercase tracking-wide text-[var(--text-secondary)]">Pilih nama kamu</p>
 
-          {showGroups ? (
-            <>
-              <PlayerGroup label="Musim ini" players={members} selectedId={selectedId} onSelect={setSelectedId} />
-              <PlayerGroup label="Lainnya" players={others} selectedId={selectedId} onSelect={setSelectedId} />
-            </>
-          ) : (
-            <PlayerGroup players={players} selectedId={selectedId} onSelect={setSelectedId} />
-          )}
+            {players.length === 0 ? (
+              <p className="text-base uppercase tracking-wide text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
+            ) : (
+              <form
+                method="post"
+                action="/api/identity"
+                className="flex flex-col gap-3"
+                onSubmit={() => {
+                  if (!selectedPlayer) return
+                  setLocalStorageItem('playerId', selectedPlayer.id)
+                  setLocalStorageItem('playerName', selectedPlayer.name)
+                }}
+              >
+                <input type="hidden" name="playerId" value={selectedId} />
 
-          <input
-            name="pin"
-            type="password"
-            inputMode="numeric"
-            maxLength={6}
-            minLength={4}
-            required
-            autoComplete="one-time-code"
-            placeholder="PIN (4-6 digit)"
-            className={
-              'w-full rounded-lg border bg-[var(--bg-elevated)] px-4 py-3 font-mono text-sm text-foreground outline-none ' +
-              (errorMessage ? 'border-destructive' : 'border-input')
-            }
-          />
+                {showGroups ? (
+                  <>
+                    <PlayerGroup code="100" label="Musim ini" players={members} selectedId={selectedId} onSelect={setSelectedId} />
+                    <PlayerGroup code="200" label="Lainnya" players={others} selectedId={selectedId} onSelect={setSelectedId} />
+                  </>
+                ) : (
+                  <PlayerGroup players={players} selectedId={selectedId} onSelect={setSelectedId} />
+                )}
 
-          {errorMessage && <p className="m-0 text-[0.8125rem] text-destructive">{errorMessage}</p>}
+                <label className="mt-2 block text-sm uppercase tracking-[0.1em] text-[var(--text-secondary)]">PIN</label>
+                <input
+                  name="pin"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  minLength={4}
+                  required
+                  autoComplete="one-time-code"
+                  placeholder="4-6 DIGIT"
+                  className={
+                    'w-full border bg-[var(--bg-elevated)] px-4 py-3 text-lg tracking-[0.3em] text-[var(--tt-cyan)] outline-none placeholder:tracking-wide placeholder:text-[var(--text-tertiary)] focus:border-[var(--tt-cyan)] ' +
+                    (errorMessage ? 'border-[var(--tt-red)]' : 'border-[var(--tt-rule-strong)]')
+                  }
+                />
 
-          <Button type="submit" fullWidth disabled={!selectedId} className="h-12 text-base font-semibold uppercase tracking-wide">
-            Masuk
-          </Button>
-        </form>
-          )}
+                {errorMessage && (
+                  <p className="m-0 border border-[var(--tt-red)] bg-[color-mix(in_srgb,var(--tt-red)_16%,#000)] px-3 py-2 text-base uppercase tracking-wide text-[var(--tt-red)]">
+                    {errorMessage}
+                  </p>
+                )}
 
-          <button
-            type="button"
-            onClick={() => setMode('register')}
-            className="mt-4 min-h-11 self-center text-[0.8125rem] text-primary underline-offset-4 hover:underline"
-          >
-            + Daftar pemain baru
-          </button>
-        </>
-      )}
+                <Button type="submit" fullWidth disabled={!selectedId} className="h-12 bg-[var(--tt-yellow)] text-black">
+                  Masuk
+                </Button>
+              </form>
+            )}
 
-      <div className="mt-6 flex flex-col items-center gap-2">
-        <Link
-          href="/lihat"
-          className="text-[0.8125rem] text-muted-foreground underline-offset-4 hover:underline"
-        >
-          Lihat dulu (tanpa daftar)
-        </Link>
-        <Link
-          href="/panduan"
-          className="text-[0.8125rem] text-muted-foreground underline-offset-4 hover:underline"
-        >
-          Baru di sini? Lihat panduan
-        </Link>
+            <button
+              type="button"
+              onClick={() => setMode('register')}
+              className="mt-4 min-h-11 self-center text-base uppercase tracking-wide text-[var(--tt-cyan)] underline-offset-4 hover:underline"
+            >
+              + Daftar pemain baru
+            </button>
+          </>
+        )}
+
+        <div className="mt-auto flex flex-col items-center gap-2 pt-6">
+          <Link href="/lihat" className="text-base uppercase tracking-wide text-[var(--text-secondary)] underline-offset-4 hover:text-[var(--tt-cyan)] hover:underline">
+            Lihat dulu (tanpa daftar)
+          </Link>
+          <Link href="/panduan" className="text-base uppercase tracking-wide text-[var(--text-secondary)] underline-offset-4 hover:text-[var(--tt-cyan)] hover:underline">
+            Baru di sini? Lihat panduan
+          </Link>
+        </div>
       </div>
     </div>
   )
 }
 
 function PlayerGroup({
+  code,
   label,
   players,
   selectedId,
   onSelect,
 }: {
+  code?: string
   label?: string
   players: PickerPlayer[]
   selectedId: string
@@ -140,7 +152,8 @@ function PlayerGroup({
   return (
     <div className="flex flex-col gap-2">
       {label && (
-        <p className="mt-1 px-1 text-[0.6875rem] font-medium uppercase tracking-wider text-[var(--text-tertiary)]">
+        <p className="mt-1 px-0.5 text-sm uppercase tracking-[0.1em] text-[var(--text-tertiary)]">
+          {code && <span className="text-[var(--tt-magenta)]">{code} </span>}
           {label}
         </p>
       )}
@@ -151,18 +164,29 @@ function PlayerGroup({
             key={p.id}
             type="button"
             onClick={() => onSelect(p.id)}
+            aria-pressed={active}
             className={
-              'flex min-h-11 w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors duration-150 ' +
-              (active ? 'border-primary bg-accent' : 'border-border bg-card')
+              'flex min-h-12 w-full items-center gap-3 border px-4 py-3 text-left transition-colors duration-150 ' +
+              (active
+                ? 'border-[var(--tt-cyan)] bg-[var(--tt-cyan-dim)]'
+                : 'border-[var(--tt-rule)] bg-[#0a0a0a] hover:bg-[var(--bg-elevated)]')
             }
           >
             <span
               aria-hidden
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground"
+              className={
+                'flex h-9 w-9 shrink-0 items-center justify-center border text-base uppercase ' +
+                (active
+                  ? 'border-[var(--tt-cyan)] bg-black text-[var(--tt-cyan)]'
+                  : 'border-[var(--tt-rule-strong)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]')
+              }
             >
               {initialOf(p.name)}
             </span>
-            <span className="truncate text-foreground">{p.name}</span>
+            <span className={'truncate text-lg uppercase tracking-wide ' + (active ? 'text-[var(--tt-white)]' : 'text-[var(--text-secondary)]')}>
+              {p.name}
+            </span>
+            {active && <span className="ml-auto text-[var(--tt-cyan)]">◀</span>}
           </button>
         )
       })}

@@ -5,15 +5,15 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40 [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-base uppercase tracking-[0.08em] leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-40 [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        // felt-green primary — NOT default blue
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        // teletext primary — cyan block, black ink
+        default: 'bg-primary text-primary-foreground hover:bg-[color-mix(in_srgb,var(--tt-cyan)_82%,#000)]',
+        destructive: 'bg-destructive text-destructive-foreground hover:bg-[color-mix(in_srgb,var(--tt-red)_82%,#000)]',
         outline: 'border border-input bg-transparent text-foreground hover:bg-secondary',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-[var(--bg-elevated)]',
         ghost: 'text-foreground hover:bg-secondary',
         link: 'text-primary underline-offset-4 hover:underline',
       },

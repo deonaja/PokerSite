@@ -13,9 +13,16 @@ interface PlayerWithMeta extends Player {
 
 const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
-function Avatar({ name }: { name: string }) {
+function Avatar({ name, active = false }: { name: string; active?: boolean }) {
   return (
-    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--bg-elevated)] font-mono text-xs font-medium text-foreground">
+    <span
+      className={
+        'flex h-8 w-8 shrink-0 items-center justify-center border text-base uppercase ' +
+        (active
+          ? 'border-[var(--tt-cyan)] bg-black text-[var(--tt-cyan)]'
+          : 'border-[var(--tt-rule-strong)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]')
+      }
+    >
       {initialOf(name)}
     </span>
   )
@@ -189,18 +196,23 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
     })
   }
 
-  // Row style: felt-green active state, neutral surface otherwise. Min 44px tap
-  // target. transition-colors keeps the 150ms ease without a custom rule.
+  // Row style: teletext cyan active state, flat black surface otherwise. Min 44px
+  // tap target. transition-colors keeps the 150ms ease without a custom rule.
   const rowClass = (active: boolean) =>
-    'flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 transition-colors [touch-action:manipulation] ' +
-    (active ? 'border-primary bg-accent' : 'border-border bg-card')
+    'flex min-h-12 cursor-pointer items-center gap-3 border px-4 py-3 transition-colors [touch-action:manipulation] ' +
+    (active ? 'border-[var(--tt-cyan)] bg-[var(--tt-cyan-dim)]' : 'border-[var(--tt-rule)] bg-[#0a0a0a] hover:bg-[var(--bg-elevated)]')
 
-  const sectionLabel = 'mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]'
+  const sectionLabel = 'mb-3 text-base uppercase tracking-[0.1em] text-[var(--text-secondary)]'
 
   return (
-    <div className="px-4 pt-6">
+    <div className="px-3 pt-4">
+      {/* Teletext page id */}
+      <p className="mb-4 text-base uppercase tracking-wide text-[var(--text-tertiary)]">
+        <span className="text-[var(--tt-magenta)]">P200</span> Sesi · Setup
+      </p>
+
       {/* Player checkboxes — everyone selectable */}
-      <p className={sectionLabel}>PILIH PEMAIN</p>
+      <p className={sectionLabel}><span className="text-[var(--tt-magenta)]">101</span> Pilih Pemain</p>
 
       {players.length === 0 ? (
         <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
@@ -216,11 +228,11 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   checked={selectedIds.has(p.id)}
                   disabled={isPending}
                   onChange={() => togglePlayer(p.id)}
-                  className="h-4 w-4 shrink-0 accent-primary"
+                  className="h-5 w-5 shrink-0 accent-[var(--tt-cyan)]"
                 />
-                <Avatar name={p.name} />
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{p.name}</span>
-                <span className={'font-mono text-[0.8125rem] ' + (lowBalance ? 'text-warn' : 'text-[var(--text-tertiary)]')}>
+                <Avatar name={p.name} active={selectedIds.has(p.id)} />
+                <span className="min-w-0 flex-1 truncate text-lg uppercase tracking-wide text-[var(--tt-white)]">{p.name}</span>
+                <span className={'text-lg tabular-nums ' + (lowBalance ? 'text-[var(--tt-yellow)]' : 'text-[var(--tt-cyan)]')}>
                   {p.balance}
                 </span>
               </label>
@@ -232,7 +244,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
       {/* Single dealer choice from the selected players */}
       {selectedPlayers.length > 0 && (
         <>
-          <p className={sectionLabel}>SIAPA YANG BAGI KARTU?</p>
+          <p className={sectionLabel}><span className="text-[var(--tt-magenta)]">102</span> Siapa Yang Bagi Kartu?</p>
           <div className="mb-3 flex flex-col gap-2">
             {selectedPlayers.map((p) => (
               <label key={p.id} className={rowClass(dealerId === p.id)}>
@@ -243,19 +255,19 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   checked={dealerId === p.id}
                   disabled={isPending}
                   onChange={() => { setDealerId(p.id); setDealerManuallySet(true) }}
-                  className="h-4 w-4 shrink-0 accent-primary"
+                  className="h-5 w-5 shrink-0 accent-[var(--tt-cyan)]"
                 />
-                <Avatar name={p.name} />
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground">{p.name}</span>
-                <span className="shrink-0 font-mono text-[0.8125rem] text-[var(--text-tertiary)]">{p.balance}</span>
+                <Avatar name={p.name} active={dealerId === p.id} />
+                <span className="min-w-0 flex-1 truncate text-lg uppercase tracking-wide text-[var(--tt-white)]">{p.name}</span>
+                <span className="shrink-0 text-lg tabular-nums text-[var(--tt-cyan)]">{p.balance}</span>
                 {p.cooldown_remaining > 0 && currentPhase === 'bootstrap' && (
-                  <span className="shrink-0 text-[0.6875rem] text-warn">
-                    cooldown {p.cooldown_remaining} sesi
+                  <span className="shrink-0 text-sm uppercase text-[var(--tt-yellow)]">
+                    cooldown {p.cooldown_remaining}
                   </span>
                 )}
                 {p.id === recommendedDealerId && (
-                  <span className="shrink-0 rounded-sm border border-primary px-1.5 py-px text-[0.625rem] font-medium tracking-[0.05em] text-primary">
-                    REKOMENDASI
+                  <span className="shrink-0 bg-[var(--tt-cyan)] px-1.5 text-xs uppercase tracking-[0.05em] text-black">
+                    Reko
                   </span>
                 )}
               </label>
@@ -265,7 +277,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
           {/* Dealer mode — only when 4+ players (a neutral dealer needs 3 others to play) */}
           {canBeNeutral && (
             <div className="mb-3">
-              <p className={sectionLabel}>DEALER IKUT MAIN?</p>
+              <p className={sectionLabel}><span className="text-[var(--tt-magenta)]">103</span> Dealer Ikut Main?</p>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -309,7 +321,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
           fullWidth
           disabled={!canStart || isPending}
           onClick={handleSubmit}
-          className="h-12 text-base font-semibold uppercase tracking-wide"
+          className="h-14 bg-[var(--tt-yellow)] text-xl text-black hover:bg-[color-mix(in_srgb,var(--tt-yellow)_86%,#000)]"
         >
           {isPending ? 'Memulai...' : 'Mulai'}
         </Button>

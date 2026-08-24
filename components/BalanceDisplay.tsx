@@ -9,8 +9,9 @@ export default function BalanceDisplay({ balance, className }: Props) {
   return (
     <span
       className={cn(
-        'font-mono text-sm',
-        balance < 0 ? 'text-destructive' : 'text-foreground',
+        // Teletext live figure: cyan when up, red when negative.
+        'font-mono text-sm tabular-nums',
+        balance < 0 ? 'text-[var(--tt-red)]' : 'text-[var(--tt-cyan)]',
         className
       )}
     >

@@ -19,6 +19,12 @@ async function getSetupData(): Promise<{ players: PlayerWithMeta[]; buyIn: numbe
             SELECT COUNT(*) FROM sessions s
             WHERE s.started_at > (SELECT started_at FROM sessions WHERE id = p.last_dealer_session_id)
             AND s.status IN ('active', 'ended')
+            -- Only face-to-face sessions count down the dealer cooldown. An
+            -- online table has no physical dealer; poker-online fills
+            -- sessions.dealer_id with the host purely because the column is NOT
+            -- NULL. Counting those here would let someone shorten their wait to
+            -- deal again just by opening an online table.
+            AND s.mode = 'offline'
           ))
         END::int AS cooldown_remaining
       FROM players p

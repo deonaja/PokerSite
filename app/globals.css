@@ -2,53 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =====================================================================
+   PokerAja — TELETEXT world (Impeccable redesign, seed 2c95db6f).
+   Broadcast-8 palette on flat black. Felt-green retired 2026-08-23.
+   Variable NAMES are kept so existing components inherit the new world;
+   only the VALUES changed. New --tt-* names are the canonical handles.
+   ===================================================================== */
 :root {
-  --bg-base: #0a0a0a;
-  --bg-surface: #141414;
-  --bg-elevated: #1c1c1c;
-  --border-subtle: #2a2a2a;
+  /* broadcast-8 core */
+  --tt-black: #000000;
+  --tt-white: #eaeaea;      /* body — warmed pure-white to cut glare */
+  --tt-yellow: #ffe800;     /* double-height headers, primary CTA */
+  --tt-cyan: #00d0d0;       /* live figures (balances), primary action, active */
+  --tt-cyan-dim: #073a3a;   /* cyan panel / selected fill */
+  --tt-green: #00c000;      /* REVEAL, success, sub-headers */
+  --tt-red: #ff3b30;        /* alerts, negatives, destructive */
+  --tt-magenta: #e850c0;    /* ranks, secondary accent */
+  --tt-rule: #262626;       /* 1px hairline rules between cells */
+  --tt-rule-strong: #3a3a3a;
+
+  /* legacy app var names → teletext values (kept so components don't break) */
+  --bg-base: #000000;
+  --bg-surface: #0a0a0a;      /* barely-lifted panel; cells read by rule, not fill */
+  --bg-elevated: #121212;     /* sheets, hover */
+  --border-subtle: #262626;
   --border-strong: #3a3a3a;
-  --text-primary: #e8e8e6;
-  --text-secondary: #9c9a92;
-  --text-tertiary: #6a6862;
-  --accent-felt: #1d6b4f;
-  --accent-felt-dim: #15493a;
-  --accent-warn: #b8860b;
-  --accent-danger: #a03030;
-  --accent-success: #5a8a40;
+  --text-primary: #eaeaea;
+  --text-secondary: #8f9a9a;  /* dim teal-gray, tinted off the world */
+  --text-tertiary: #5f6a6a;
+  --accent-felt: #00d0d0;     /* was felt-green; now cyan (live/primary) */
+  --accent-felt-dim: #073a3a;
+  --accent-warn: #ffe800;     /* was gold; now teletext yellow */
+  --accent-danger: #ff3b30;
+  --accent-success: #00c000;
 
-  /* ===== shadcn token aliases → felt-green palette (single source of truth) =====
-     Themed on purpose: primary & ring are felt-green (not default blue), radius
-     is tighter than shadcn default. Do NOT ship default shadcn neutrals. */
-  --background: var(--bg-base);
-  --foreground: var(--text-primary);
-  --card: var(--bg-surface);
-  --card-foreground: var(--text-primary);
-  --popover: var(--bg-elevated);
-  --popover-foreground: var(--text-primary);
-  --primary: var(--accent-felt);
-  --primary-foreground: var(--text-primary);
-  --secondary: var(--bg-elevated);
-  --secondary-foreground: var(--text-primary);
-  --muted: var(--bg-surface);
+  /* ===== shadcn token aliases → teletext palette (single source of truth) =====
+     primary = cyan with BLACK foreground (broadcast blocks carry black text),
+     ring = cyan, radius = 0 (teletext is blocky — no rounded corners). */
+  --background: var(--tt-black);
+  --foreground: var(--tt-white);
+  --card: #0a0a0a;
+  --card-foreground: var(--tt-white);
+  --popover: #0a0a0a;
+  --popover-foreground: var(--tt-white);
+  --primary: var(--tt-cyan);
+  --primary-foreground: #000000;
+  --secondary: #121212;
+  --secondary-foreground: var(--tt-white);
+  --muted: #0a0a0a;
   --muted-foreground: var(--text-secondary);
-  --accent: var(--accent-felt-dim);
-  --accent-foreground: var(--text-primary);
-  --destructive: var(--accent-danger);
-  --destructive-foreground: var(--text-primary);
-  --border: var(--border-subtle);
-  --input: var(--border-strong);
-  --ring: var(--accent-felt);
-  --radius: 0.5rem;
+  --accent: var(--tt-cyan-dim);
+  --accent-foreground: var(--tt-white);
+  --destructive: var(--tt-red);
+  --destructive-foreground: #000000;
+  --border: var(--tt-rule);
+  --input: var(--tt-rule-strong);
+  --ring: var(--tt-cyan);
+  --radius: 0rem;
 
-  /* Chart palette — keep felt-green as the primary line.
-     Series 2+ are reserved for future multi-series charts; pick muted
-     surfaces, not flashy hues, so charts stay underground-felt. */
-  --chart-1: var(--accent-felt);
-  --chart-2: var(--accent-warn);
-  --chart-3: var(--accent-success);
-  --chart-4: var(--accent-danger);
-  --chart-5: var(--text-secondary);
+  /* Chart palette — broadcast-8 series. */
+  --chart-1: var(--tt-cyan);
+  --chart-2: var(--tt-yellow);
+  --chart-3: var(--tt-green);
+  --chart-4: var(--tt-red);
+  --chart-5: var(--tt-magenta);
 }
 
 *,
@@ -63,17 +80,43 @@ body {
 }
 
 body {
-  background-color: var(--bg-base);
-  color: var(--text-primary);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--tt-black);
+  color: var(--tt-white);
+  /* Teletext bitmap face is the app's voice; Geist stays available via .font-read */
+  font-family: var(--font-tt), var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 18px;               /* VT323 renders small; lift the base */
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: none;  /* keep the bitmap crisp, don't smooth it */
+  text-rendering: geometricPrecision;
   margin: 0;
 }
 
-/* JetBrains Mono always gets tabular-nums */
+/* Long-form reading copy opts back into a humanist face for legibility. */
+.font-read {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  letter-spacing: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* All numerics stay tabular so columns of money line up. */
 .font-mono {
   font-variant-numeric: tabular-nums;
+}
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* ---- Teletext text selection / caret / scrollbar (browser surfaces) ---- */
+::selection { background: var(--tt-cyan); color: #000; }
+:root { caret-color: var(--tt-cyan); accent-color: var(--tt-cyan); }
+* { scrollbar-color: var(--tt-rule-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--tt-rule-strong); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Focus ring reads as a teletext block outline, never a soft glow. */
+:where(a, button, [role="button"], input, select, textarea):focus-visible {
+  outline: 2px solid var(--tt-cyan);
+  outline-offset: 1px;
 }
 
 @keyframes pulse {
@@ -81,13 +124,17 @@ body {
   50% { opacity: 0.4; }
 }
 
-/* One-shot soft glow for the season-end podium winner. Runs once after the
-   pillar finishes its entrance animation (delayed in animation-delay so it
-   lines up with the slide-in finishing). */
+/* Teletext "HOLD" flag — a steady 1s cell reveal, not a lebay flash. */
+@keyframes tt-cursor {
+  0%, 55% { opacity: 1; }
+  56%, 100% { opacity: 0; }
+}
+
+/* One-shot soft ignite for the season-end podium winner (kept, re-hued cyan). */
 @keyframes season-podium-glow {
-  0% { box-shadow: 0 0 0 0 rgba(218, 165, 32, 0); }
-  35% { box-shadow: 0 0 32px 6px rgba(218, 165, 32, 0.55); }
-  100% { box-shadow: 0 0 0 0 rgba(218, 165, 32, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(0, 208, 208, 0); }
+  35% { box-shadow: 0 0 24px 4px rgba(0, 208, 208, 0.5); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 208, 208, 0); }
 }
 .season-podium-glow {
   animation: season-podium-glow 1.6s ease-out 1.6s 1 both;
@@ -96,4 +143,12 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

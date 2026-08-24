@@ -24,15 +24,37 @@ async function getPlayers(seasonId: string): Promise<PickerPlayer[]> {
   return rows as PickerPlayer[]
 }
 
+// No active season yet, but players exist (between seasons / post-reset). List
+// everyone so a returning player can log in; membership is meaningless with no
+// active season, so is_member is false for all.
+async function getAllPlayers(): Promise<PickerPlayer[]> {
+  const rows = await sql`
+    SELECT id, name, balance, created_at, false AS is_member
+    FROM players
+    ORDER BY name ASC
+  `
+  return rows as PickerPlayer[]
+}
+
 export default async function IdentityPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>
 }) {
-  // No season has started yet → there's nothing to identify into.
-  // Force everyone (except admin) to create the first season.
   const activeSeason = await sql`SELECT id FROM seasons WHERE status = 'active' LIMIT 1`
-  if (activeSeason.length === 0) redirect('/season/new')
+
+  if (activeSeason.length === 0) {
+    // No active season. Only a TRULY empty DB (nobody to identify into) goes
+    // straight to first-season creation. If players already exist, we must let a
+    // returning player log in here — otherwise they deadlock: creating the next
+    // season requires auth once players exist (balances get reset), but they could
+    // never authenticate because this page used to bounce everyone to /season/new.
+    const anyPlayer = await sql`SELECT 1 FROM players LIMIT 1`
+    if (anyPlayer.length === 0) redirect('/season/new')
+
+    const [players, params] = await Promise.all([getAllPlayers(), searchParams])
+    return <IdentityPicker players={players} error={params.error} />
+  }
 
   const [players, params] = await Promise.all([
     getPlayers((activeSeason[0] as { id: string }).id),

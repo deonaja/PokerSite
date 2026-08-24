@@ -9,8 +9,10 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-mono)', 'monospace'],
+        // Teletext bitmap face is the default voice; Geist is the reading face.
+        sans: ['var(--font-tt)', 'var(--font-geist-sans)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-tt)', 'var(--font-geist-sans)', 'monospace'],
+        read: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
       },
       // shadcn tokens — all point at the felt-green CSS vars (see globals.css).
       // Direct var() refs (not hsl()) because our source palette is hex.
@@ -52,10 +54,19 @@ const config: Config = {
         warn: 'var(--accent-warn)',
         success: 'var(--accent-success)',
       },
+      // Teletext is blocky: every corner is square. Overriding the whole scale
+      // (not just lg/md/sm) squares rounded-full avatars, rounded-xl sheets, and
+      // pills app-wide in one place, so no screen keeps a stray rounded corner.
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        none: '0',
+        DEFAULT: '0',
+        sm: '0',
+        md: '0',
+        lg: '0',
+        xl: '0',
+        '2xl': '0',
+        '3xl': '0',
+        full: '0',
       },
       keyframes: {
         'accordion-down': {

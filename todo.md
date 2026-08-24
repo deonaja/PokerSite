@@ -1,5 +1,16 @@
 # Poker Chip Tracker — Progress & TODO
 
+Last updated: 2026-08-24 — **🎨 REDESIGN: felt-green → TELETEXT (Impeccable skill).** In progress on branch `dev`, NOT committed yet.
+- **Owner released felt-green** (was binding) and chose a **broadcast Teletext** world (Impeccable seed `2c95db6f`, bolder round reroll 1) after a mobile mitigation-mockup review. PRODUCT.md written + updated to record it. DESIGN.md pending (authored at finish).
+- **Foundation done**: `globals.css` re-worlded to broadcast-8 (var NAMES kept → whole app inherits; radius 0; teletext selection/caret/scrollbar/focus); `layout.tsx` VT323 self-hosted via next/font + direction-contract HTML comment (greppable by seed); `tailwind.config.ts` sans/mono→VT323, `read`→Geist, all border-radius→0; `ui/button` teletext block; `BalanceDisplay` cyan/red live figures; `manifest.ts` black.
+- **ALL screens composed & committed** (4 commits on dev): dashboard, identity, header, session-active, session-setup, session-end, season-new (SeasonSetup), player/[id], riwayat, season-end leaderboard (podium re-hued), season-history, changelog, notifications, admin. Consistent teletext headers with page codes (P100/P200/…/P900), cyan live-figure balances, magenta ranks, yellow CTAs, block-mosaic chip stacks, gold multi-step marker.
+- **DESIGN.md written** at finish (broadcast-8 tokens, VT323, square, components/patterns/motion/a11y). **detect.mjs slop-check clean (`[]`).** Typecheck green at every step.
+- **BUG FIXED (deadlock)**: could not create a season when players exist + no active season + logged out — `/identity` bounced to `/season/new` (no login possible) while `createSeason` required login (balance-reset guard). Fixed both sides; **createSeason auth gate NOT weakened**. Verified live on :3000 (307 flows correct).
+- **Commits on dev (not pushed)**: `08f2d98` fix deadlock · `90ea7c7` foundation+core · `ca7bfb6` play-loop+season · `f4b15bf` secondary screens · (+DESIGN.md/todo).
+- **REMAINING before merge**: run `pnpm build` clean (couldn't run mid-session — user's dev server holds :3000); optional fuller finish-reviewer pass once authed play-loop screens can be screenshot; push dev + open PR to main. Real-app identity screenshot confirmed the world renders. Old prod likely just Neon auto-suspend (wakes on access).
+
+---
+
 Last updated: 2026-06-29 — **🚀 Big push session: v0.11.0 → v0.14.0 LIVE.** 3 wave dispatch via subagents + 2 security audit:
 - **v0.11.0** (`26d165a`): Web Push notif (HP push utk loan events, sw.js, /settings/notifications, VAPID env)
 - **v0.12.0** (`7c4d76c`): Wave 1 — B6 buy_in display fix · B4 session creator cancel non-admin (migration 012a) · NEW win streak stats · I2 performance chart (recharts lazy-load) · F1 secure cookies

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 import { sql } from '@/lib/db'
+import { getAuthenticatedPlayerId, isAdmin } from '@/lib/auth-server'
 import SeasonSetup from '@/components/SeasonSetup'
 
 async function getSeasonContext() {
@@ -41,6 +42,16 @@ export default async function SeasonNewPage() {
   const { hasActiveSeason, allPlayers, nextSeasonNumber } = await getSeasonContext()
 
   if (hasActiveSeason) redirect('/')
+
+  // Deadlock guard: once players exist, createSeason resets their balances and so
+  // requires auth (admin or a logged-in player). Send an unauthenticated caller to
+  // log in FIRST instead of letting them fill the whole wizard only to be rejected
+  // with "Belum login" at submit. A truly empty DB (genuine first run, nobody to log
+  // in as) skips this and creates season 1 unauthenticated, per spec.
+  if (allPlayers.length > 0) {
+    const [authedId, admin] = await Promise.all([getAuthenticatedPlayerId(), isAdmin()])
+    if (!authedId && !admin) redirect('/identity')
+  }
 
   return (
     <div className="min-h-dvh bg-background">

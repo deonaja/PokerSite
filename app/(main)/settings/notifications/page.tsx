@@ -15,7 +15,9 @@ export default async function NotificationsSettingsPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-lg font-medium text-foreground">Notifikasi</h1>
+        <h1 className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+          <span className="text-[var(--tt-magenta)]">P600</span> Notifikasi
+        </h1>
       </div>
 
       <NotificationToggle showTestButton={admin} />
