@@ -1,6 +1,8 @@
 import { sql } from '@/lib/db'
 import Link from 'next/link'
-import { ArrowLeft, Clock, Star } from 'lucide-react'
+import { ArrowLeft, Clock } from 'lucide-react'
+import PixelIcon from '@/components/PixelIcon'
+import Avatar from '@/components/Avatar'
 import { getAuthenticatedPlayerId } from '@/lib/auth-server'
 import { formatDurationShort } from '@/lib/duration'
 
@@ -91,8 +93,8 @@ export default async function RiwayatSesiPage() {
         <Link href="/" className="flex min-h-11 min-w-11 items-center text-[var(--tt-cyan)] no-underline">
           <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
-        <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
-          <span className="text-[var(--tt-magenta)]">P300</span> Riwayat Sesi
+        <span className="flex items-center gap-2 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+          <PixelIcon name="clock" size={16} className="text-[var(--tt-cyan)]" /> Riwayat Sesi
         </span>
       </div>
 
@@ -123,7 +125,7 @@ export default async function RiwayatSesiPage() {
                     )}
                     {sess.dealer_name && (
                       <span className="inline-flex items-center gap-1 text-xs text-[var(--text-tertiary)]">
-                        <Star className="h-3 w-3 text-primary" />
+                        <PixelIcon name="star" size={11} className="text-[var(--tt-cyan)]" />
                         {sess.dealer_name}
                       </span>
                     )}
@@ -139,12 +141,10 @@ export default async function RiwayatSesiPage() {
                         key={p.player_id}
                         className={`flex items-center gap-2.5 px-3.5 py-2 ${isMe ? 'bg-[var(--accent-felt-dim)]' : ''}`}
                       >
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--bg-elevated)] text-xs font-semibold text-muted-foreground">
-                          {p.player_name.charAt(0).toUpperCase()}
-                        </span>
+                        <Avatar name={p.player_name} size={28} />
                         <span className="flex-1 truncate text-sm text-foreground">
                           {p.player_name}
-                          {p.is_dealer && <Star className="ml-1 inline h-3 w-3 text-primary" aria-label="Dealer" />}
+                          {p.is_dealer && <PixelIcon name="star" size={11} className="ml-1 inline-block align-middle text-[var(--tt-cyan)]" />}
                           {isMe && <span className="ml-1.5 text-[10px] font-semibold text-primary">KAMU</span>}
                           {p.rebuys > 0 && (
                             <span className="ml-1.5 text-xs text-[var(--text-tertiary)]">{p.rebuys}× rebuy</span>

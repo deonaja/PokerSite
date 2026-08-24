@@ -60,12 +60,18 @@ themed cyan (`globals.css`). Dark-mode only; there is no light theme.
 ## Components & patterns
 
 - **Status bar** (`HeaderMenu`, page headers): black bar, 2px bottom rule, yellow
-  `POKERAJA` / page title on the left, actions on the right. Every screen carries a
-  **page code** in magenta — `P100` Saldo, `P200` Sesi, `P210/P211` End, `P300`
-  Riwayat, `P400` Musim, `P500` Pemain, `P600` Notifikasi, `P700` Changelog, `P900`
-  Admin, `P000` Identitas — the teletext page-address motif.
-- **Page tabs** (dashboard): full-width ≥48px cells, magenta code + label; active
-  tab is a solid cyan block with black ink.
+  `POKERAJA` / page title on the left, actions on the right. Every screen's title is
+  prefixed by a **block-mosaic pixel icon** (`PixelIcon`, 5×5 SVG in cyan) naming the
+  section — chip=Saldo, person=Profil/Pemain/Identitas, cards=Sesi, flag=End,
+  clock=Riwayat, calendar=Musim, trophy=Leaderboard, plus=Season baru, bell=Notif,
+  star=Changelog, shield=Admin. This replaced the earlier numeric teletext page codes
+  (P100/P200/…): on a touch app the codes were non-functional decoration, so the
+  authentic teletext *graphic* (block-mosaic, which real teletext pages were built
+  from) carries section identity instead. Icons always sit beside their label.
+- **Page tabs** (dashboard): full-width ≥56px cells, pixel icon over label; active
+  tab is a solid cyan block with black ink. Tabs are Saldo · Profil (→ the player's
+  own `/player/[id]` stats) · Riwayat — session start lives on the sticky CTA and the
+  live-session band, so it needs no tab.
 - **Standings / results table**: rank (magenta for top-3, tertiary otherwise) ·
   block-mosaic chip stack · UPPERCASE name · cyan balance (red if negative). This
   replaced the old 3-D podium on the dashboard; the season-end climax keeps its
@@ -75,8 +81,22 @@ themed cyan (`globals.css`). Dark-mode only; there is no light theme.
   primitive, used for chip stacks and the phase-progress bar (20 cells).
 - **Buttons** (`ui/button`): square, UPPERCASE, `tracking-0.08em`. Primary = cyan
   block; the top-level CTA (Mulai Sesi / Masuk / Confirm) is the **yellow** action.
-- **Avatars**: square, cyan border + cyan-dim fill + cyan initial when active;
-  dim otherwise.
+- **Avatars** (`Avatar`): a pixel-art poker chip — 11×11 blocky ring with white
+  edge spots and the initial in the teletext face. Colour is derived
+  deterministically from the name (broadcast-8 palette), so each player reads as a
+  distinct chip. Used everywhere a player appears (header, identity, session, end,
+  leaderboard, riwayat, player page).
+- **Achievements** (`AchievementIcon` + `AchievementsGrid`): detailed teletext
+  block-mosaic glyphs (12×12), one per category (bandar/juara/podium/veteran/
+  sultan/untung); tier drives colour, not shape — locked dark → silver → cyan →
+  gold-with-glow. The profile shows a compact 3-tier grid per category; tapping a
+  category opens a bottom-sheet with each tier's name, short requirement, and
+  status (pixel check / progress count / pixel lock) — descriptions live in the
+  popup, not inline, since touch has no hover.
+- **Icons**: the pixel `PixelIcon` set is the primary icon language (section
+  headers, dealer star, warnings, chevrons). Lucide remains for a few simple
+  functional glyphs (back arrow, close, account-sheet, preset icons) as a clean
+  monoline secondary set.
 - **Inputs**: flat elevated fill, strong-rule border, cyan value, cyan focus
   border. The end-session stack input is jumbo cyan.
 - **Sheets** (`Sheet`, Radix): bottom sheet, square, slide-up 200ms.

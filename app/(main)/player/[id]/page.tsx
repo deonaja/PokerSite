@@ -4,10 +4,12 @@ import { sql } from '@/lib/db'
 import PerformanceChartLazy from '@/components/PerformanceChartLazy'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ACHIEVEMENTS, computeLifetimeCounts } from '@/lib/achievements'
-import { AchievementIcon, type AchievementCategoryId } from '@/components/AchievementIcon'
+import { computeLifetimeCounts } from '@/lib/achievements'
+import AchievementsGrid from '@/components/AchievementsGrid'
 import { formatDurationShort } from '@/lib/duration'
 import { ArrowLeft } from 'lucide-react'
+import PixelIcon from '@/components/PixelIcon'
+import Avatar from '@/components/Avatar'
 
 interface PlayerRow {
   id: string
@@ -225,10 +227,6 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function initialOf(name: string) {
-  return (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
-}
-
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const {
@@ -268,6 +266,12 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const avgPlaySeconds = playedSessionCount > 0 ? Math.round(totalPlaySeconds / playedSessionCount) : 0
   const streaks = computeStreaks(sessionDeltas.map((d) => d.delta))
 
+  // Serialize the earned-tiers map for the client achievements grid.
+  const earnedRecord: Record<string, number[]> = {}
+  earnedByCategory.forEach((set, key) => {
+    earnedRecord[key] = Array.from(set)
+  })
+
   return (
     <div className="pb-8">
       {/* Header — teletext status bar */}
@@ -278,15 +282,10 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         >
           <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
-        <span
-          aria-hidden
-          className="flex h-12 w-12 shrink-0 items-center justify-center border border-[var(--tt-cyan)] bg-[var(--tt-cyan-dim)] text-xl uppercase text-[var(--tt-cyan)]"
-        >
-          {initialOf(player.name)}
-        </span>
+        <Avatar name={player.name} size={48} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-xl uppercase tracking-wide text-[var(--tt-white)]">{player.name}</p>
-          <p className="text-sm uppercase tracking-wide text-[var(--text-tertiary)]"><span className="text-[var(--tt-magenta)]">P500</span> Pemain</p>
+          <p className="flex items-center gap-1.5 text-sm uppercase tracking-wide text-[var(--text-tertiary)]"><PixelIcon name="person" size={12} className="text-[var(--tt-cyan)]" /> Pemain</p>
         </div>
         <span className={'text-2xl tabular-nums ' + (player.balance < 0 ? 'text-[var(--tt-red)]' : 'text-[var(--tt-cyan)]')}>
           {player.balance}
@@ -343,49 +342,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
           </>
         )}
 
-        {/* Progressive achievements — each row is one category with 3 tier icons. */}
+        {/* Progressive achievements — compact grid; tap a category for detail. */}
         <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">PENCAPAIAN</p>
-        <div className="mb-6 flex flex-col gap-3">
-          {ACHIEVEMENTS.map((cat) => {
-            const earnedTiers = earnedByCategory.get(cat.id) ?? new Set<number>()
-            const count = lifetimeCounts[cat.metric]
-            // Highest tier earned drives the "MAX" / "x/y" progress line.
-            const maxTier = Math.max(0, ...Array.from(earnedTiers))
-            const nextTier = cat.tiers.find((t) => t.tier > maxTier) ?? null
-            const allEarned = maxTier === 3
-            return (
-              <div key={cat.id} className="rounded-lg border border-border bg-card px-3 py-3">
-                <div className="grid grid-cols-3 gap-2">
-                  {cat.tiers.map((t) => {
-                    const earned = earnedTiers.has(t.tier)
-                    return (
-                      <div
-                        key={t.tier}
-                        className="flex flex-col items-center gap-1.5"
-                        title={`${t.name} — ${t.description}`}
-                      >
-                        <AchievementIcon
-                          categoryId={cat.id as AchievementCategoryId}
-                          tier={earned ? (t.tier as 1 | 2 | 3) : 0}
-                          size={48}
-                        />
-                        <p className={
-                          'text-center text-[0.6875rem] leading-tight ' +
-                          (earned ? 'text-foreground' : 'text-[var(--text-tertiary)]')
-                        }>
-                          {t.name}
-                        </p>
-                      </div>
-                    )
-                  })}
-                </div>
-                <p className="mt-2 text-center font-mono text-[0.6875rem] tabular-nums text-[var(--text-tertiary)]">
-                  {allEarned ? 'MAX' : nextTier ? `${count} / ${nextTier.threshold}` : `${count}`}
-                </p>
-              </div>
-            )
-          })}
-        </div>
+        <AchievementsGrid earned={earnedRecord} counts={lifetimeCounts} />
 
         {/* Per-season breakdown */}
         <p className="mb-3 text-xs font-medium tracking-[0.08em] text-[var(--text-tertiary)]">

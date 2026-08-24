@@ -4,28 +4,13 @@ import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Player } from '@/lib/types'
 import Button from './Button'
+import PixelIcon from './PixelIcon'
+import Avatar from './Avatar'
 import { startSession } from '@/lib/actions/session'
 import { getLocalStorageItem } from '@/lib/safeStorage'
 
 interface PlayerWithMeta extends Player {
   cooldown_remaining: number
-}
-
-const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
-
-function Avatar({ name, active = false }: { name: string; active?: boolean }) {
-  return (
-    <span
-      className={
-        'flex h-8 w-8 shrink-0 items-center justify-center border text-base uppercase ' +
-        (active
-          ? 'border-[var(--tt-cyan)] bg-black text-[var(--tt-cyan)]'
-          : 'border-[var(--tt-rule-strong)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]')
-      }
-    >
-      {initialOf(name)}
-    </span>
-  )
 }
 
 interface Props {
@@ -207,12 +192,12 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
   return (
     <div className="px-3 pt-4">
       {/* Teletext page id */}
-      <p className="mb-4 text-base uppercase tracking-wide text-[var(--text-tertiary)]">
-        <span className="text-[var(--tt-magenta)]">P200</span> Sesi · Setup
+      <p className="mb-4 flex items-center gap-2 text-base uppercase tracking-wide text-[var(--text-secondary)]">
+        <PixelIcon name="people" size={16} className="text-[var(--tt-cyan)]" /> Sesi · Setup
       </p>
 
       {/* Player checkboxes — everyone selectable */}
-      <p className={sectionLabel}><span className="text-[var(--tt-magenta)]">101</span> Pilih Pemain</p>
+      <p className={sectionLabel}>Pilih Pemain</p>
 
       {players.length === 0 ? (
         <p className="text-sm text-[var(--text-tertiary)]">Belum ada pemain terdaftar.</p>
@@ -230,7 +215,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   onChange={() => togglePlayer(p.id)}
                   className="h-5 w-5 shrink-0 accent-[var(--tt-cyan)]"
                 />
-                <Avatar name={p.name} active={selectedIds.has(p.id)} />
+                <Avatar name={p.name} size={32} />
                 <span className="min-w-0 flex-1 truncate text-lg uppercase tracking-wide text-[var(--tt-white)]">{p.name}</span>
                 <span className={'text-lg tabular-nums ' + (lowBalance ? 'text-[var(--tt-yellow)]' : 'text-[var(--tt-cyan)]')}>
                   {p.balance}
@@ -244,7 +229,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
       {/* Single dealer choice from the selected players */}
       {selectedPlayers.length > 0 && (
         <>
-          <p className={sectionLabel}><span className="text-[var(--tt-magenta)]">102</span> Siapa Yang Bagi Kartu?</p>
+          <p className={sectionLabel}>Siapa Yang Bagi Kartu?</p>
           <div className="mb-3 flex flex-col gap-2">
             {selectedPlayers.map((p) => (
               <label key={p.id} className={rowClass(dealerId === p.id)}>
@@ -257,7 +242,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   onChange={() => { setDealerId(p.id); setDealerManuallySet(true) }}
                   className="h-5 w-5 shrink-0 accent-[var(--tt-cyan)]"
                 />
-                <Avatar name={p.name} active={dealerId === p.id} />
+                <Avatar name={p.name} size={32} />
                 <span className="min-w-0 flex-1 truncate text-lg uppercase tracking-wide text-[var(--tt-white)]">{p.name}</span>
                 <span className="shrink-0 text-lg tabular-nums text-[var(--tt-cyan)]">{p.balance}</span>
                 {p.cooldown_remaining > 0 && currentPhase === 'bootstrap' && (
@@ -277,7 +262,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
           {/* Dealer mode — only when 4+ players (a neutral dealer needs 3 others to play) */}
           {canBeNeutral && (
             <div className="mb-3">
-              <p className={sectionLabel}><span className="text-[var(--tt-magenta)]">103</span> Dealer Ikut Main?</p>
+              <p className={sectionLabel}>Dealer Ikut Main?</p>
               <div className="flex gap-2">
                 <button
                   type="button"

@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Star, TriangleAlert, ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { endSession } from '@/lib/actions/session'
 import BalanceDisplay from './BalanceDisplay'
 import Button from './Button'
+import PixelIcon from './PixelIcon'
+import Avatar from './Avatar'
 import { Card } from './ui/card'
 import { Badge } from './ui/badge'
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '@/lib/safeStorage'
@@ -44,8 +46,6 @@ const STORAGE_KEY = (sessionId: string) => `endSession:${sessionId}`
 // Sticky bottom CTA bar — matches the dashboard pattern (safe-area aware).
 const STICKY_BOTTOM =
   'fixed bottom-0 left-1/2 w-full max-w-[480px] -translate-x-1/2 border-t border-border bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]'
-
-const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
 export default function SessionEndWizard({ sessionId, participants, expectedTotal, rakeInfo, startedAt }: Props) {
   const router = useRouter()
@@ -184,8 +184,8 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
       <div className="pb-24">
         <div className="flex items-center gap-2 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-2.5">
           {backButton}
-          <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
-            <span className="text-[var(--tt-magenta)]">P211</span> Konfirmasi
+          <span className="flex items-center gap-2 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+            <PixelIcon name="flag" size={16} className="text-[var(--tt-cyan)]" /> Konfirmasi
           </span>
         </div>
 
@@ -208,11 +208,9 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
               return (
                 <Card key={p.player_id} className="px-4 py-3">
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center border border-[var(--tt-rule-strong)] bg-[var(--bg-elevated)] text-base uppercase text-[var(--text-secondary)]">
-                      {initialOf(p.player_name)}
-                    </span>
+                    <Avatar name={p.player_name} size={32} />
                     <span className="min-w-0 truncate text-lg uppercase tracking-wide text-[var(--tt-white)]">{p.player_name}</span>
-                    {p.is_dealer && <Badge className="px-1.5 py-0.5"><Star aria-label="dealer" className="h-3 w-3 fill-current" /></Badge>}
+                    {p.is_dealer && <Badge className="px-1.5 py-0.5"><PixelIcon name="star" size={11} /></Badge>}
                     {p.no_gaji_dealer && (
                       <span className="text-[0.625rem] text-[var(--text-tertiary)]">bagi kartu</span>
                     )}
@@ -248,7 +246,7 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
             </div>
             {chipDiff !== 0 && (
               <p className="m-0 flex items-start gap-1.5 border-t border-border pt-2 text-[0.8125rem] text-warn">
-                <TriangleAlert aria-hidden className="mt-px h-3.5 w-3.5 shrink-0" />
+                <PixelIcon name="warn" size={13} className="mt-px shrink-0" />
                 <span>Selisih {chipDiff > 0 ? '+' : ''}
                 {chipDiff}. Confirm tetap atau revisi?</span>
               </p>
@@ -281,8 +279,8 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
       <div className="flex items-center justify-between gap-3 border-b-2 border-[var(--tt-rule)] bg-black px-3 py-2.5">
         <div className="flex items-center gap-2">
           {backButton}
-          <span className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
-            <span className="text-[var(--tt-magenta)]">P210</span> End Sesi
+          <span className="flex items-center gap-2 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+            <PixelIcon name="flag" size={16} className="text-[var(--tt-cyan)]" /> End Sesi
           </span>
         </div>
         <span className="text-lg tabular-nums text-[var(--tt-cyan)]">
@@ -302,13 +300,11 @@ export default function SessionEndWizard({ sessionId, participants, expectedTota
       </div>
 
       <div className="flex flex-col items-center gap-1.5 px-6 pt-7">
-        <span className="mb-1 flex h-16 w-16 items-center justify-center border border-[var(--tt-cyan)] bg-[var(--tt-cyan-dim)] text-2xl uppercase text-[var(--tt-cyan)]">
-          {initialOf(current.player_name)}
-        </span>
+        <Avatar name={current.player_name} size={64} className="mb-1" />
         <p className="m-0 text-2xl uppercase tracking-wide text-[var(--tt-white)]">{current.player_name}</p>
         {current.is_dealer && (
           <Badge className="inline-flex items-center gap-1 px-2 py-0.5 text-sm uppercase tracking-wider">
-            <Star aria-hidden className="h-3 w-3 fill-current" />
+            <PixelIcon name="star" size={11} />
             DEALER{current.no_gaji_dealer ? ' · BAGI KARTU' : ''}
           </Badge>
         )}

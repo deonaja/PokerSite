@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import PixelIcon from '@/components/PixelIcon'
 import NotificationToggle from '@/components/NotificationToggle'
 import { isAdmin } from '@/lib/auth-server'
 
@@ -15,8 +16,8 @@ export default async function NotificationsSettingsPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
-          <span className="text-[var(--tt-magenta)]">P600</span> Notifikasi
+        <h1 className="flex items-center gap-2 text-lg uppercase tracking-wide text-[var(--tt-yellow)]">
+          <PixelIcon name="bell" size={16} className="text-[var(--tt-cyan)]" /> Notifikasi
         </h1>
       </div>
 

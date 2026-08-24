@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { Flame, Scale, Turtle, X, ArrowLeft, ArrowRight } from 'lucide-react'
 import { createSeason } from '@/lib/actions/season'
 import Button from './Button'
+import PixelIcon from './PixelIcon'
 import { Card } from './ui/card'
 
 // Preset = durasi (jumlah sesi) + rake. Label hari ngira-ngira di pace ~3 sesi/hari.
@@ -166,8 +167,8 @@ export default function SeasonSetup({ seasonNumber, allPlayers }: Props) {
     <div className="flex flex-col px-4 pt-12 pb-8 gap-6">
       {/* Header */}
       <div>
-        <p className="mb-1 text-base uppercase tracking-wide text-[var(--text-tertiary)]">
-          <span className="text-[var(--tt-magenta)]">P400</span> Season {seasonNumber} · Baru
+        <p className="mb-1 flex items-center gap-1.5 text-base uppercase tracking-wide text-[var(--text-tertiary)]">
+          <PixelIcon name="plus" size={13} className="text-[var(--tt-cyan)]" /> Season {seasonNumber} · Baru
         </p>
         <h1 className="m-0 text-2xl uppercase tracking-[0.04em] text-[var(--tt-yellow)]">
           {step === 1 && 'Siapa yang main?'}

@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { KeyRound, LogOut, ChevronDown, Sparkles, HelpCircle, Bell } from 'lucide-react'
+import { KeyRound, LogOut, Sparkles, HelpCircle, Bell } from 'lucide-react'
 import Sheet from './Sheet'
+import Avatar from './Avatar'
+import PixelIcon from './PixelIcon'
 import { Badge } from './ui/badge'
 import { getLocalStorageItem } from '@/lib/safeStorage'
 import { LATEST_VERSION, CHANGELOG_SEEN_KEY } from '@/lib/changelog'
@@ -16,7 +18,6 @@ export default function HeaderMenu({ name }: { name: string }) {
   // Defaults to false so SSR/first client render match (no hydration mismatch);
   // the effect flips it on once we can read localStorage.
   const [hasNew, setHasNew] = useState(false)
-  const initial = (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
   useEffect(() => {
     setHasNew(getLocalStorageItem(CHANGELOG_SEEN_KEY) !== LATEST_VERSION)
@@ -60,9 +61,7 @@ export default function HeaderMenu({ name }: { name: string }) {
         className="ml-auto flex min-w-0 items-center gap-2 border border-[var(--tt-rule-strong)] px-2 py-1 transition-colors hover:bg-[var(--bg-elevated)]"
       >
         <span className="relative shrink-0">
-          <span className="flex h-7 w-7 items-center justify-center border border-[var(--tt-cyan)] bg-[var(--tt-cyan-dim)] text-base uppercase text-[var(--tt-cyan)]">
-            {initial}
-          </span>
+          <Avatar name={name} size={30} />
           {hasNew && (
             <span
               aria-hidden
@@ -73,7 +72,7 @@ export default function HeaderMenu({ name }: { name: string }) {
         <span className="truncate text-base uppercase tracking-wide text-[var(--tt-white)]">
           {name}
         </span>
-        <ChevronDown className="size-4 shrink-0 text-[var(--tt-cyan)]" />
+        <PixelIcon name="chevronDown" size={14} className="shrink-0 text-[var(--tt-cyan)]" />
       </button>
 
       <Link
@@ -86,9 +85,7 @@ export default function HeaderMenu({ name }: { name: string }) {
 
       <Sheet isOpen={open} onClose={() => setOpen(false)} title="Akun">
         <div className="mb-4 flex items-center gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center border border-[var(--tt-cyan)] bg-[var(--tt-cyan-dim)] text-xl uppercase text-[var(--tt-cyan)]">
-            {initial}
-          </span>
+          <Avatar name={name} size={48} />
           <span className="truncate text-lg uppercase tracking-wide text-foreground">{name}</span>
         </div>
 
