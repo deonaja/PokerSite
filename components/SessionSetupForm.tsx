@@ -5,28 +5,12 @@ import { useRouter } from 'next/navigation'
 import type { Player } from '@/lib/types'
 import Button from './Button'
 import PixelIcon from './PixelIcon'
+import Avatar from './Avatar'
 import { startSession } from '@/lib/actions/session'
 import { getLocalStorageItem } from '@/lib/safeStorage'
 
 interface PlayerWithMeta extends Player {
   cooldown_remaining: number
-}
-
-const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
-
-function Avatar({ name, active = false }: { name: string; active?: boolean }) {
-  return (
-    <span
-      className={
-        'flex h-8 w-8 shrink-0 items-center justify-center border text-base uppercase ' +
-        (active
-          ? 'border-[var(--tt-cyan)] bg-black text-[var(--tt-cyan)]'
-          : 'border-[var(--tt-rule-strong)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]')
-      }
-    >
-      {initialOf(name)}
-    </span>
-  )
 }
 
 interface Props {
@@ -231,7 +215,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   onChange={() => togglePlayer(p.id)}
                   className="h-5 w-5 shrink-0 accent-[var(--tt-cyan)]"
                 />
-                <Avatar name={p.name} active={selectedIds.has(p.id)} />
+                <Avatar name={p.name} size={32} />
                 <span className="min-w-0 flex-1 truncate text-lg uppercase tracking-wide text-[var(--tt-white)]">{p.name}</span>
                 <span className={'text-lg tabular-nums ' + (lowBalance ? 'text-[var(--tt-yellow)]' : 'text-[var(--tt-cyan)]')}>
                   {p.balance}
@@ -258,7 +242,7 @@ export default function SessionSetupForm({ players, buyIn, currentPhase }: Props
                   onChange={() => { setDealerId(p.id); setDealerManuallySet(true) }}
                   className="h-5 w-5 shrink-0 accent-[var(--tt-cyan)]"
                 />
-                <Avatar name={p.name} active={dealerId === p.id} />
+                <Avatar name={p.name} size={32} />
                 <span className="min-w-0 flex-1 truncate text-lg uppercase tracking-wide text-[var(--tt-white)]">{p.name}</span>
                 <span className="shrink-0 text-lg tabular-nums text-[var(--tt-cyan)]">{p.balance}</span>
                 {p.cooldown_remaining > 0 && currentPhase === 'bootstrap' && (

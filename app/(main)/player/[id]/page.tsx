@@ -9,6 +9,7 @@ import { AchievementIcon, type AchievementCategoryId } from '@/components/Achiev
 import { formatDurationShort } from '@/lib/duration'
 import { ArrowLeft } from 'lucide-react'
 import PixelIcon from '@/components/PixelIcon'
+import Avatar from '@/components/Avatar'
 
 interface PlayerRow {
   id: string
@@ -226,10 +227,6 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function initialOf(name: string) {
-  return (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
-}
-
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const {
@@ -279,12 +276,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         >
           <ArrowLeft aria-label="Kembali" className="h-5 w-5" />
         </Link>
-        <span
-          aria-hidden
-          className="flex h-12 w-12 shrink-0 items-center justify-center border border-[var(--tt-cyan)] bg-[var(--tt-cyan-dim)] text-xl uppercase text-[var(--tt-cyan)]"
-        >
-          {initialOf(player.name)}
-        </span>
+        <Avatar name={player.name} size={48} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-xl uppercase tracking-wide text-[var(--tt-white)]">{player.name}</p>
           <p className="flex items-center gap-1.5 text-sm uppercase tracking-wide text-[var(--text-tertiary)]"><PixelIcon name="person" size={12} className="text-[var(--tt-cyan)]" /> Pemain</p>

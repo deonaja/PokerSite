@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card'
 import PixelIcon from '@/components/PixelIcon'
+import Avatar from '@/components/Avatar'
 
 interface Player {
   id: string
@@ -10,12 +11,6 @@ interface Player {
 interface Props {
   players: Player[]
   startingBalance: number
-}
-
-// First-letter avatar matches the rest of the app (HeaderMenu / SessionView /
-// PlayerCard). Felt-green tile, no emoji.
-function initial(name: string): string {
-  return name.charAt(0).toUpperCase() || '?'
 }
 
 /**
@@ -166,15 +161,7 @@ function PodiumPillar({
     >
       {/* Avatar + name above the pillar */}
       <div className="mb-2 flex flex-col items-center gap-1.5">
-        <div
-          className={
-            'flex h-12 w-12 items-center justify-center rounded-full bg-[var(--bg-elevated)] text-base font-medium text-foreground ' +
-            ringClass
-          }
-          aria-hidden
-        >
-          {initial(player.name)}
-        </div>
+        <Avatar name={player.name} size={48} className={ringClass} />
         <p className="line-clamp-1 max-w-full text-center text-base uppercase tracking-wide text-foreground">
           {player.name}
         </p>
@@ -236,12 +223,7 @@ function PlayerRow({
       >
         #{rank}
       </span>
-      <div
-        className="flex h-8 w-8 flex-shrink-0 items-center justify-center border border-[var(--tt-rule-strong)] bg-[var(--bg-elevated)] text-base uppercase text-[var(--text-secondary)]"
-        aria-hidden
-      >
-        {initial(player.name)}
-      </div>
+      <Avatar name={player.name} size={32} />
       <span className="flex-1 truncate text-lg uppercase tracking-wide text-foreground">
         {player.name}
       </span>

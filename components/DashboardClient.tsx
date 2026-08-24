@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { TriangleAlert } from 'lucide-react'
 import { usePoll } from '@/lib/usePoll'
 import Button from './Button'
 import Sheet from './Sheet'
@@ -227,7 +226,7 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
                       )}
                     </span>
                     {lowBalance && (
-                      <TriangleAlert aria-label="saldo di bawah buy-in" className="size-4 shrink-0 text-[var(--tt-yellow)]" />
+                      <PixelIcon name="warn" size={14} className="shrink-0 text-[var(--tt-yellow)]" />
                     )}
                     <span
                       className={

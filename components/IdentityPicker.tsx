@@ -6,14 +6,13 @@ import type { PickerPlayer } from '@/lib/types'
 import Button from './Button'
 import RegisterForm from './RegisterForm'
 import PixelIcon from './PixelIcon'
+import Avatar from './Avatar'
 import { setLocalStorageItem } from '@/lib/safeStorage'
 
 interface Props {
   players: PickerPlayer[]
   error?: string
 }
-
-const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
 export default function IdentityPicker({ players, error }: Props) {
   // players arrives members-first (active-season members, then everyone else).
@@ -170,17 +169,7 @@ function PlayerGroup({
                 : 'border-[var(--tt-rule)] bg-[#0a0a0a] hover:bg-[var(--bg-elevated)]')
             }
           >
-            <span
-              aria-hidden
-              className={
-                'flex h-9 w-9 shrink-0 items-center justify-center border text-base uppercase ' +
-                (active
-                  ? 'border-[var(--tt-cyan)] bg-black text-[var(--tt-cyan)]'
-                  : 'border-[var(--tt-rule-strong)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]')
-              }
-            >
-              {initialOf(p.name)}
-            </span>
+            <Avatar name={p.name} size={36} className={active ? '' : 'opacity-70'} />
             <span className={'truncate text-lg uppercase tracking-wide ' + (active ? 'text-[var(--tt-white)]' : 'text-[var(--text-secondary)]')}>
               {p.name}
             </span>

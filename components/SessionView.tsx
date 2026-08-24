@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Star, ArrowLeft, UserPlus } from 'lucide-react'
+import { ArrowLeft, UserPlus } from 'lucide-react'
 import { rebuy, undoRebuy, joinSession, cancelSession } from '@/lib/actions/session'
 import { usePoll } from '@/lib/usePoll'
 import { useElapsedSeconds } from '@/lib/useElapsed'
@@ -11,6 +11,7 @@ import { formatClock } from '@/lib/duration'
 import Sheet from './Sheet'
 import Button from './Button'
 import PixelIcon from './PixelIcon'
+import Avatar from './Avatar'
 import { Badge } from './ui/badge'
 import type { PollParticipant, PollResponse } from '@/lib/types'
 import { getLocalStorageItem } from '@/lib/safeStorage'
@@ -23,8 +24,6 @@ interface Props {
   currentPlayerId?: string | null
   creatorPlayerId?: string | null
 }
-
-const initialOf = (name: string) => (name.match(/[a-zA-Z0-9]/)?.[0] ?? '?').toUpperCase()
 
 export default function SessionView({ sessionId, initial, buyIn = 100, startedAt = null, currentPlayerId = null, creatorPlayerId = null }: Props) {
   const router = useRouter()
@@ -157,21 +156,14 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
             >
               {/* Avatar + name + role */}
               <div className="flex items-center gap-2.5">
-                <span
-                  className={
-                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card font-mono text-sm font-medium text-foreground ' +
-                    (isMe ? 'border-2 border-primary ring-2 ring-primary/40' : 'border border-border')
-                  }
-                >
-                  {initialOf(p.player_name)}
-                </span>
+                <Avatar name={p.player_name} size={36} className={isMe ? 'ring-2 ring-[var(--tt-cyan)]' : ''} />
                 <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-medium text-foreground">
                   {p.player_name}
                 </span>
                 {isMe && (
                   <Badge variant="outline" className="border-primary text-primary">kamu</Badge>
                 )}
-                {p.is_dealer && <Badge className="inline-flex items-center gap-1"><Star aria-hidden className="h-3 w-3 fill-current" />DEALER</Badge>}
+                {p.is_dealer && <Badge className="inline-flex items-center gap-1"><PixelIcon name="star" size={11} />DEALER</Badge>}
                 {p.no_gaji_dealer && (
                   <Badge variant="outline" className="border-input text-muted-foreground">BAGI KARTU</Badge>
                 )}
@@ -269,12 +261,7 @@ export default function SessionView({ sessionId, initial, buyIn = 100, startedAt
                       (active ? 'border-primary bg-accent' : 'border-border bg-card')
                     }
                   >
-                    <span
-                      aria-hidden
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card font-mono text-xs font-medium text-foreground"
-                    >
-                      {initialOf(p.name)}
-                    </span>
+                    <Avatar name={p.name} size={32} />
                     <span className="min-w-0 flex-1 truncate text-foreground">{p.name}</span>
                     <span className="font-mono text-[0.8125rem] tabular-nums text-muted-foreground">Saldo: {p.balance}</span>
                   </button>

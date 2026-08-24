@@ -5,6 +5,7 @@
 export type PixelIconName =
   | 'chip' | 'person' | 'clock' | 'cards' | 'flag' | 'people'
   | 'calendar' | 'trophy' | 'bell' | 'star' | 'shield' | 'plus'
+  | 'warn' | 'chevronRight' | 'chevronDown'
 
 // Row-major 5x5, 1 = lit.
 const GLYPHS: Record<PixelIconName, number[]> = {
@@ -20,6 +21,9 @@ const GLYPHS: Record<PixelIconName, number[]> = {
   star:     [0,0,1,0,0, 0,1,1,1,0, 1,1,1,1,1, 0,1,1,1,0, 1,0,1,0,1],
   shield:   [1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 0,1,1,1,0, 0,0,1,0,0],
   plus:     [0,0,1,0,0, 0,0,1,0,0, 1,1,1,1,1, 0,0,1,0,0, 0,0,1,0,0],
+  warn:     [0,0,1,0,0, 0,1,1,1,0, 0,1,0,1,0, 0,1,1,1,0, 1,1,1,1,1],
+  chevronRight: [0,1,0,0,0, 0,0,1,0,0, 0,0,0,1,0, 0,0,1,0,0, 0,1,0,0,0],
+  chevronDown:  [0,0,0,0,0, 1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,0,0,0,0],
 }
 
 interface Props {
