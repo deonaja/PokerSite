@@ -12,6 +12,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.16.0',
+    date: '2026-08-24',
+    changes: [
+      'TAMPILAN BARU TOTAL cuy — sekarang gaya "teletext": layar item, angka gede warna cyan, font pixel, semua siku. Vibe underground, bukan casino norak.',
+      'Avatar baru: tiap orang dapet keping poker pixel warna sendiri — gampang bedain siapa-siapa.',
+      'Tab atas ganti: SESI diganti PROFIL (langsung ke statistik lo). Mulai sesi tetep lewat tombol gede di bawah.',
+      'Achievement dirombak: ikon lebih detail, dan sekarang tinggal TAP kategorinya buat liat syarat tiap tingkat + progress lo (dulu cuma bisa di-hover, percuma di HP).',
+      'Fix: dulu ada kondisi ga bisa bikin musim baru kalau belum login padahal udah ada pemain — sekarang otomatis diarahin login dulu, ga mentok lagi.',
+    ],
+  },
+  {
     version: '0.15.0',
     date: '2026-06-30',
     changes: [
