@@ -3,7 +3,6 @@ import { sql } from '@/lib/db'
 import { getAuthenticatedPlayer } from '@/lib/auth-server'
 import LocalStorageSync from '@/components/LocalStorageSync'
 import HeaderMenu from '@/components/HeaderMenu'
-import WelcomeGuide from '@/components/WelcomeGuide'
 import PushToast from '@/components/PushToast'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
@@ -17,7 +16,6 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   return (
     <div className="flex min-h-dvh flex-col">
       <HeaderMenu name={authPlayer.name} avatarColor={authPlayer.avatar_color} />
-      <WelcomeGuide />
       <PushToast />
 
       <main className="flex-1">

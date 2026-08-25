@@ -186,7 +186,7 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
 
       {/* Standings — teletext results table */}
       {ranked.length > 0 ? (
-        <div className="mt-4">
+        <div data-tour="tour-standings" className="mt-4">
           <div className="flex items-center justify-between border-y border-[var(--tt-rule)] bg-[#0a0a0a] px-3 py-1.5 text-sm uppercase tracking-[0.12em] text-[var(--text-secondary)]">
             <span>Peringkat</span>
             <span className="text-[var(--tt-cyan)]">Saldo</span>
@@ -273,7 +273,10 @@ export default function DashboardClient({ initial, season, sessionsPlayed, curre
       </div>
 
       {/* Sticky CTA — yellow broadcast action */}
-      <div className="fixed bottom-0 left-1/2 w-full max-w-[480px] -translate-x-1/2 border-t-2 border-[var(--tt-rule)] bg-black px-3 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <div
+        data-tour="tour-start-cta"
+        className="fixed bottom-0 left-1/2 w-full max-w-[480px] -translate-x-1/2 border-t-2 border-[var(--tt-rule)] bg-black px-3 pt-2.5 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+      >
         {activeSession ? (
           <Button fullWidth disabled className="h-14 bg-[var(--tt-yellow)] text-xl text-black">
             Mulai Sesi
