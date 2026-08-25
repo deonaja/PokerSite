@@ -1,5 +1,19 @@
 # Poker Chip Tracker — Progress & TODO
 
+Last updated: 2026-08-25 — **🧭 GUEST MODE → "Tur Tamu" (guided read-only walkthrough).** On branch `dev`, PR to main.
+- **Kenapa:** guest mode lama = `/lihat` (leaderboard read-only doang). Owner mau app ini jadi **porto** — pengunjung baru harus ngerasain produk aslinya (dashboard, alur sesi, settle), bukan cuma papan skor. Shape brief FINAL: read-only atas halaman asli + cross-route coach-mark, **loop inti dulu** (v1).
+- **v1 SHIPPED (this session):**
+  - `lib/tour.ts` — 6-step tour state (identity → dashboard×2 → sesi → sesi/end → outro), progress di localStorage (`tour_active`/`tour_step`), event `tour-changed`. Reuse pola `GUIDE_SEEN_KEY`.
+  - `components/TourOverlay.tsx` — coach-mark lintas-route: anchor ke `[data-tour]`, retry sampai target mount pasca-navigasi, caption **docked bottom** (aman ke tinggi konten var), scrim + cyan ring, `router.push` antar-route, tombol Keluar per step.
+  - `components/WelcomeGuide.tsx` — di-repurpose jadi **fork first-run** di `/identity` (dulu post-login di `(main)/layout`): "Mulai tur" (kuning) vs "Aku pemain, langsung masuk".
+  - Route baru **read-only** `/tur/dashboard` (data live asli, `currentPlayerId=null`), `/tur/sesi` + `/tur/sesi/end` (komponen asli, **state contoh beku**, tombol mutasi disabled). `components/tour/TourHeader|TourSessionView|TourSessionEndView`.
+  - `data-tour` anchor ditambah di `IdentityPicker` (form wrapper) + `DashboardClient` (standings, sticky CTA).
+  - `/lihat` lama jadi orphan (masih ada, ga di-link) — tests/invite.spec.ts masih pakai.
+- **🐛 BUG DIAGNOSED + FIXED (bukan bug tur):** di HP tombol ga bisa diklik (cuma `<a>` panduan yang jalan) — root cause `next.config.js` `allowedDevOrigins: ['192.168.18.*']` **stale**, subnet HP sekarang `192.168.0.106`. Next 16 blokir dev JS bundle ke origin ga-diizinin → SSR jalan, hydration ga → semua `<button>` mati, `<a>` hidup. Fix: `allowedDevOrigins: ['192.168.0.*','192.168.1.*','192.168.18.*']` + restart dev. (Catatan: in-app browser preview NG buat tes klik — ga hydrate/composite; sempet nyesatin diagnosa.)
+- **📝 NEXT — "tur lengkap" v2 (DRAFT, belum dibangun):** pandu satu-satu fitur sisa yang di v1 cuma disebut di outro — profil dalem (achievement grid + popup tier), riwayat sesi, halaman pemain lain, musim/leaderboard. Nambah stop ke `TOUR_STEPS` + `data-tour` anchor + (mungkin) route `/tur/*` read-only tambahan. Opsi jauh: sandbox demo beneran-bisa-diklik (identitas "Tamu" + season demo terisolasi + reset) — ditunda, owner ga mau mikir celah keamanannya dulu.
+
+---
+
 Last updated: 2026-08-24 — **🎨 REDESIGN: felt-green → TELETEXT (Impeccable skill).** In progress on branch `dev`, NOT committed yet.
 - **Owner released felt-green** (was binding) and chose a **broadcast Teletext** world (Impeccable seed `2c95db6f`, bolder round reroll 1) after a mobile mitigation-mockup review. PRODUCT.md written + updated to record it. DESIGN.md pending (authored at finish).
 - **Foundation done**: `globals.css` re-worlded to broadcast-8 (var NAMES kept → whole app inherits; radius 0; teletext selection/caret/scrollbar/focus); `layout.tsx` VT323 self-hosted via next/font + direction-contract HTML comment (greppable by seed); `tailwind.config.ts` sans/mono→VT323, `read`→Geist, all border-radius→0; `ui/button` teletext block; `BalanceDisplay` cyan/red live figures; `manifest.ts` black.

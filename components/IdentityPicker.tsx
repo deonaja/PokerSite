@@ -7,7 +7,10 @@ import Button from './Button'
 import RegisterForm from './RegisterForm'
 import PixelIcon from './PixelIcon'
 import Avatar from './Avatar'
+import WelcomeGuide from './WelcomeGuide'
+import TourOverlay from './TourOverlay'
 import { setLocalStorageItem } from '@/lib/safeStorage'
+import { startTour } from '@/lib/tour'
 
 interface Props {
   players: PickerPlayer[]
@@ -56,7 +59,7 @@ export default function IdentityPicker({ players, error }: Props) {
             <RegisterForm onBack={() => setMode('login')} />
           </>
         ) : (
-          <>
+          <div data-tour="tour-identity" className="flex flex-col">
             <h1 className="mb-1 text-2xl uppercase tracking-[0.06em] text-[var(--tt-yellow)]">Kamu Siapa?</h1>
             <p className="mb-5 text-base uppercase tracking-wide text-[var(--text-secondary)]">Pilih nama kamu</p>
 
@@ -119,18 +122,25 @@ export default function IdentityPicker({ players, error }: Props) {
             >
               + Daftar pemain baru
             </button>
-          </>
+          </div>
         )}
 
         <div className="mt-auto flex flex-col items-center gap-2 pt-6">
-          <Link href="/lihat" className="text-base uppercase tracking-wide text-[var(--text-secondary)] underline-offset-4 hover:text-[var(--tt-cyan)] hover:underline">
-            Lihat dulu (tanpa daftar)
-          </Link>
+          <button
+            type="button"
+            onClick={() => startTour()}
+            className="text-base uppercase tracking-wide text-[var(--text-secondary)] underline-offset-4 hover:text-[var(--tt-cyan)] hover:underline"
+          >
+            Baru di sini? Mulai tur
+          </button>
           <Link href="/panduan" className="text-base uppercase tracking-wide text-[var(--text-secondary)] underline-offset-4 hover:text-[var(--tt-cyan)] hover:underline">
-            Baru di sini? Lihat panduan
+            Lihat panduan tertulis
           </Link>
         </div>
       </div>
+
+      <WelcomeGuide />
+      <TourOverlay />
     </div>
   )
 }

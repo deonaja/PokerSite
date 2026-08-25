@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.17.0',
+    date: '2026-08-25',
+    changes: [
+      'Tur buat tamu is here cuy! Orang baru yang mampir sekarang bisa tap "Mulai tur" dari layar identitas, terus dipandu keliling layar aslinya — papan saldo, cara nyatet rebuy pas sesi, sampe cara settle di akhir. Read-only, ga ngutak-ngatik data beneran. Biar app ini bisa jadi porto — orang langsung ngerti ngapain aja.',
+      'Pertama kali buka di HP baru, ada pilihan: lihat-lihat tur dulu, atau "Aku pemain, langsung masuk" buat yang emang mau main.',
+    ],
+  },
+  {
     version: '0.16.0',
     date: '2026-08-24',
     changes: [
